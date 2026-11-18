@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { labelColor, SYSTEM_LABELS } from '../model';
 import { actions, type AppState } from '../store';
 import { Menu } from './common';
+import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
 
 function userLabels(s: AppState) {
@@ -17,7 +18,7 @@ export function LabelMenu({ s, ids, current }: { s: AppState; ids: string[]; cur
     return rows.length > 0 && rows.every((r) => r.labelIds.includes(id));
   };
   return (
-    <Menu label={t('act.labelAs')} style={{ color: 'var(--c-drafts)' }} button={<Icon name="tag" />}>
+    <Menu label={t('act.labelAs')} button={<CIcon name="label" />}>
       {(close) => (
         <>
           <div class="pop-h">{t('act.labelAs')}</div>
@@ -51,7 +52,7 @@ export function LabelMenu({ s, ids, current }: { s: AppState; ids: string[]; cur
 
 export function MoveMenu({ s, ids }: { s: AppState; ids: string[] }) {
   return (
-    <Menu label={t('act.moveTo')} style={{ color: 'var(--c-scheduled)' }} button={<Icon name="folderMove" />}>
+    <Menu label={t('act.moveTo')} button={<CIcon name="move" />}>
       {(close) => (
         <>
           <div class="pop-h">{t('act.moveTo')}</div>
@@ -77,5 +78,38 @@ export function MoveMenu({ s, ids }: { s: AppState; ids: string[] }) {
         </>
       )}
     </Menu>
+  );
+}
+
+export function MoveItems({ s, ids }: { s: AppState; ids: string[] }) {
+  return (
+    <>
+      <button class="mi" onClick={() => actions.moveToInbox(ids)}>
+        <Icon name="inbox" size={16} style={{ color: 'var(--c-inbox)' }} />
+        {t('nav.inbox')}
+      </button>
+      {userLabels(s).filter((l) => !SYSTEM_LABELS.has(l.id)).map((l) => (
+        <button class="mi" onClick={() => actions.moveTo(ids, l.id)}>
+          <span aria-hidden="true" style={{ width: '10px', height: '10px', borderRadius: '3px', background: labelColor(l), margin: '0 3px' }} />
+          <span class="ell">{l.name}</span>
+        </button>
+      ))}
+    </>
+  );
+}
+
+export function LabelItems({ s, ids, current }: { s: AppState; ids: string[]; current: string[] }) {
+  return (
+    <>
+      {userLabels(s).map((l) => {
+        const on = current.includes(l.id);
+        return (
+          <button role="menuitemcheckbox" aria-checked={on} class="mi" onClick={() => actions.label(ids, on ? [] : [l.id], on ? [l.id] : [])}>
+            <Icon name={on ? 'check' : 'tag'} size={16} style={{ color: labelColor(l) }} />
+            <span class="ell">{l.name}</span>
+          </button>
+        );
+      })}
+    </>
   );
 }

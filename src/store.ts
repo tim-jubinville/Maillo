@@ -810,3 +810,27 @@ export async function sendCompose() {
 export function senderName(a: Address) {
   return a.email.toLowerCase() === state.me.toLowerCase() ? t('list.me') : displayName(a);
 }
+
+function quickHtml(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((l) => `<div>${l.trim() ? escapeHtml(l) : '<br>'}</div>`)
+    .join('');
+}
+
+export async function quickReply(msg: ParsedMessage, text: string): Promise<void> {
+  if (state.compose) await closeCompose();
+  openCompose('reply', msg);
+  const c = state.compose;
+  if (!c) return;
+  setState({ compose: { ...c, html: `${quickHtml(text)}${signatureFor(c.from)}`, minimized: true } });
+  await sendCompose();
+}
+
+export async function expandQuickReply(msg: ParsedMessage, text: string): Promise<void> {
+  if (state.compose) await closeCompose();
+  openCompose('reply', msg);
+  const c = state.compose;
+  if (!c) return;
+  setState({ compose: { ...c, html: `${quickHtml(text)}<div><br></div>${signatureFor(c.from)}` } });
+}

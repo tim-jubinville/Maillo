@@ -87,11 +87,14 @@ Open `config.js` on the server and set at least `googleClientId`:
 window.MAILMAX_CONFIG = {
   appName: "Mailmax",
   logoUrl: "",
+  logoText: "",
+  logoInvertDark: true,
   googleClientId: "1234567890-abc123.apps.googleusercontent.com",
   allowedAccounts: ["you@example.com"],
   allowedDomains: [],
   language: "auto",
-  accentColor: "#14213D",
+  theme: "sky",
+  accentColor: "",
   features: { calendar: false, tasks: false },
   links: { /* see below */ },
   demo: false
@@ -100,13 +103,16 @@ window.MAILMAX_CONFIG = {
 
 | Option | What it does |
 |---|---|
-| `appName` | Name in the header and browser tab. The logo is a monogram of the first letter unless `logoUrl` is set. |
-| `logoUrl` | Optional square image (path or URL). |
+| `appName` | Name in the browser tab, and in the header when there is no logo (shown next to a monogram of its first letter). |
+| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the monogram and name. A logo uploaded in **Settings → Appearance** takes priority. |
+| `logoText` | Optional text shown after the logo, such as `"Mail"`. Empty (the default) shows the logo alone. |
+| `logoInvertDark` | SVG logos are recoloured to match the theme automatically. For PNG, JPG or WebP logos, `true` turns a dark single-colour logo white in dark mode. |
 | `googleClientId` | Required. The Client ID from step 3. |
 | `allowedAccounts` | Email addresses allowed to use this install. Anyone else is signed out right away. |
 | `allowedDomains` | Domains allowed to use this install, such as `"example.com"`. |
 | `language` | `"auto"`, `"en"` or `"fr"`. People can also change it in Settings. |
-| `accentColor` | Main colour for buttons, as a hex code. |
+| `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
+| `accentColor` | Optional hex colour that replaces the default theme's accent. |
 | `features.calendar` | Shows today's events in the side panel. Adds the Calendar permission at sign-in. |
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
 | `links` | Addresses opened by Chat, Meet, Calendar, Keep, Contacts and Gmail settings. Change them if you use a different Google account index (`/u/1/`) or other apps. |
@@ -134,11 +140,24 @@ Other options: HTTP basic authentication on your web server, or a VPN.
 
 ## Updating
 
-Upload the files from a newer release and keep your existing `config.js`. Browsers pick up the new version on the next load.
+**From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Mailmax:
+
+- checks that the zip is a Mailmax release and refuses unexpected files
+- keeps your `config.js` and `.htaccess`
+- backs up the current version to `.mailmax-backup/` (the last three are kept, and the folder is blocked from the web)
+- installs the new files and reloads
+
+**Restore previous version** in the same section puts the last backup back.
+
+This needs PHP 7.4 or later with the zip extension, and write permission on the install folder (standard on cPanel hosting). It only works for accounts listed in `allowedAccounts` or `allowedDomains`: the server checks your Google sign-in against your OAuth Client ID before changing anything. If the upload is refused as too large, raise `upload_max_filesize` and `post_max_size` in your host's PHP settings.
+
+**By hand (any host).** Upload the files from a newer release and keep your existing `config.js`. Browsers pick up the new version on the next load.
+
+If you do not want browser updates at all, delete `update.php` from the server.
 
 ## Security notes
 
-- Mailmax has no server component. Google access tokens are kept in the browser tab's session storage and are cleared when you sign out or close the tab.
+- Mailmax runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The only server-side file is `update.php`, which verifies your Google sign-in and allowed account before installing an update.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
 - The content security policy only allows connections to Google's APIs.

@@ -1,13 +1,15 @@
-import { useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { config } from '../config';
 import { b64urlToBase64, displayName, type Attachment, type ParsedMessage } from '../gmail/mime';
 import { locale, t } from '../i18n';
 import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
 import { go, listHash, threadHash, type MailRoute } from '../route';
-import { actions, api, closeThread, openCompose, openDraft, senderName, toast, type AppState } from '../store';
-import { Avatar, Menu, downloadBase64 } from './common';
+import { actions, api, closeThread, expandQuickReply, openCompose, openDraft, quickReply, senderName, toast, type AppState } from '../store';
+import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
+import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
-import { LabelMenu, MoveMenu } from './Menus';
+import { LabelItems, LabelMenu, MoveItems, MoveMenu } from './Menus';
 import { MessageBody } from './MessageBody';
 
 const TINTS: [RegExp, string][] = [
@@ -105,71 +107,61 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
 
   return (
     <section class="readcol" aria-label={t('read.label')}>
-      <div class="toolbar">
-        {showBack && (
+      <Ribbon label={t('read.label')}>
+      <RibbonBar
+        showBack={showBack}
+        position={idx >= 0 ? t('read.position', { i: idx + 1, n: ids.length }) : ''}
+        canPrev={idx > 0}
+        canNext={idx >= 0 && idx < ids.length - 1}
+        onPrev={() => go(threadHash(route, ids[idx - 1]))}
+        onNext={() => go(threadHash(route, ids[idx + 1]))}
+        items={[
+          ...(inSpam
+            ? [{ id: 'notspam', group: 1, prio: 10, w: 104, label: t('act.notSpam'), icon: 'spam' as const, text: true, run: () => actions.notSpam(id) }]
+            : inTrash
+              ? [{ id: 'restore', group: 1, prio: 10, w: 96, label: t('act.restore'), icon: 'inbox' as const, text: true, run: () => actions.restore(id) }]
+              : inInbox
+                ? [{ id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, run: () => actions.archive(id) }]
+                : [{ id: 'inbox', group: 1, prio: 10, w: 38, label: t('act.moveInbox'), icon: 'inbox' as const, run: () => actions.moveToInbox(id) }]),
+          ...(!inSpam ? [{ id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, run: () => actions.spam(id) }] : []),
+          ...(!inTrash ? [{ id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, run: () => actions.trash(id) }] : []),
+          { id: 'unread', group: 2, prio: 7, w: 38, label: t('act.markUnread'), icon: 'unread' as const, run: () => actions.read(id, false) },
+          ...(config.features.tasks ? [{ id: 'tasks', group: 2, prio: 3, w: 38, label: t('act.addTask'), icon: 'tasks' as const, run: () => actions.addTask(o.id) }] : []),
+          { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move' as const, menu: <MoveMenu s={s} ids={id} />, sub: () => <MoveItems s={s} ids={id} /> },
+          { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label' as const, menu: <LabelMenu s={s} ids={id} current={o.labelIds} />, sub: () => <LabelItems s={s} ids={id} current={o.labelIds} /> }
+        ]}
+        more={(close) => (
           <>
-            <button class="ib" aria-label={t('act.back')} title={t('act.back')} onClick={closeThread}><Icon name="arrowLeft" /></button>
-            <span class="sep" />
+            <button class="mi" onClick={() => { actions.important(id, !important); close(); }}>
+              <Icon name="important" size={16} style={{ color: 'var(--c-important)' }} />
+              {important ? t('act.markNotImportant') : t('act.markImportant')}
+            </button>
+            <a class="mi" href="#/settings/filters" onClick={close}>
+              <Icon name="filter" size={16} style={{ color: 'var(--c-sent)' }} />
+              {t('act.filterLike')}
+            </a>
+            <hr />
+            <button class="mi" onClick={() => { close(); window.print(); }}>
+              <Icon name="printer" size={16} />
+              {t('act.print')}
+            </button>
+            {last && (
+              <button class="mi" onClick={() => { close(); showOriginal(last.id); }}>
+                <Icon name="file" size={16} />
+                {t('act.original')}
+              </button>
+            )}
+            {!config.demo && (
+              <a class="mi" href={`https://mail.google.com/mail/u/0/#all/${o.id}`} target="_blank" rel="noopener noreferrer" onClick={close}>
+                <Icon name="external" size={16} />
+                {t('act.newWindow')}
+              </a>
+            )}
           </>
         )}
-        {inSpam ? (
-          <button class="btn sm" onClick={() => actions.notSpam(id)}>{t('act.notSpam')}</button>
-        ) : inTrash ? (
-          <button class="btn sm" onClick={() => actions.restore(id)}>{t('act.restore')}</button>
-        ) : inInbox ? (
-          <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(id)}><Icon name="archive" /></button>
-        ) : (
-          <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={t('act.moveInbox')} title={t('act.moveInbox')} onClick={() => actions.moveToInbox(id)}><Icon name="inbox" /></button>
-        )}
-        {!inSpam && <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(id)}><Icon name="spam" /></button>}
-        {!inTrash && <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(id)}><Icon name="trash" /></button>}
-        <span class="sep" />
-        <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={t('act.markUnread')} title={t('act.markUnread')} onClick={() => actions.read(id, false)}><Icon name="mail" /></button>
-        {config.features.tasks && (
-          <button class="ib" style={{ color: 'var(--c-tasks)' }} aria-label={t('act.addTask')} title={t('act.addTask')} onClick={() => actions.addTask(o.id)}><Icon name="check" /></button>
-        )}
-        <span class="sep" />
-        <MoveMenu s={s} ids={id} />
-        <LabelMenu s={s} ids={id} current={o.labelIds} />
-        <Menu label={t('act.more')} button={<Icon name="more" />}>
-          {(close) => (
-            <>
-              <button class="mi" onClick={() => { actions.important(id, !important); close(); }}>
-                <Icon name="important" size={16} style={{ color: 'var(--c-important)' }} />
-                {important ? t('act.markNotImportant') : t('act.markImportant')}
-              </button>
-              <a class="mi" href="#/settings/filters" onClick={close}>
-                <Icon name="filter" size={16} style={{ color: 'var(--c-sent)' }} />
-                {t('act.filterLike')}
-              </a>
-              <hr />
-              <button class="mi" onClick={() => { close(); window.print(); }}>
-                <Icon name="printer" size={16} />
-                {t('act.print')}
-              </button>
-              {last && (
-                <button class="mi" onClick={() => { close(); showOriginal(last.id); }}>
-                  <Icon name="file" size={16} />
-                  {t('act.original')}
-                </button>
-              )}
-              {!config.demo && (
-                <a class="mi" href={`https://mail.google.com/mail/u/0/#all/${o.id}`} target="_blank" rel="noopener noreferrer" onClick={close}>
-                  <Icon name="external" size={16} />
-                  {t('act.newWindow')}
-                </a>
-              )}
-            </>
-          )}
-        </Menu>
-        {idx >= 0 && <span class="range">{t('read.position', { i: idx + 1, n: ids.length })}</span>}
-        <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={idx <= 0} onClick={() => go(threadHash(route, ids[idx - 1]))} style={idx < 0 ? { marginLeft: 'auto' } : undefined}>
-          <Icon name="chevLeft" />
-        </button>
-        <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={idx < 0 || idx >= ids.length - 1} onClick={() => go(threadHash(route, ids[idx + 1]))}>
-          <Icon name="chevRight" />
-        </button>
-      </div>
+      />
+
+      </Ribbon>
 
       <div class="readscroll">
         {o.loading ? (
@@ -188,7 +180,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <h2 class="subject">{subject}</h2>
               <div class="labels-line">
-                {important && <span class="tag" style={{ background: '#fff6d6' }}>{t('list.important')}</span>}
+                {important && <span class="tag important" style={{ background: 'var(--warn-bg)' }}>{t('list.important')}</span>}
                 {inInbox && <span class="tag">{t('nav.inbox')}</span>}
                 {userLabels.map((l) => (
                   <span class="tag removable">
@@ -218,6 +210,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
 
             {last?.calendar && <Invite m={last} />}
 
+            {!draft && last && <QuickReply key={o.id} m={last} />}
+
             <div class="reply-row">
               {draft ? (
                 <button class="btn primary" onClick={() => openDraft(o.id)}>
@@ -227,7 +221,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
               ) : (
                 last && (
                   <>
-                    <button class="btn" onClick={() => openCompose('reply', last)}><Icon name="reply" style={{ color: 'var(--c-inbox)' }} />{t('act.reply')}</button>
+                    <button class="btn" onClick={() => openCompose('reply', last)}><CIcon name="reply" size={18} />{t('act.reply')}</button>
                     {last.to.length + last.cc.length > 1 && (
                       <button class="btn" onClick={() => openCompose('replyAll', last)}><Icon name="replyAll" style={{ color: 'var(--c-snooze)' }} />{t('act.replyAll')}</button>
                     )}
@@ -290,7 +284,7 @@ function Message({ m, me, defaultOpen, last }: { m: ParsedMessage; me: string; d
               </div>
             )}
           </div>
-          <span class="msg-time">{fullDate(m.date)}</span>
+          <span class="msg-time" title={m.date.toLocaleString(locale())}>{fullDate(m.date)}</span>
           <button class="ib" aria-label={t('act.reply')} title={t('act.reply')} onClick={() => openCompose('reply', m)}>
             <Icon name="reply" />
           </button>
@@ -371,3 +365,168 @@ function Invite({ m }: { m: ParsedMessage }) {
   );
 }
 
+
+interface BarItem {
+  id: string;
+  group: number;
+  prio: number;
+  w: number;
+  label: string;
+  icon: ColorIconName;
+  text?: boolean;
+  run?: () => void;
+  menu?: ComponentChildren;
+  sub?: () => ComponentChildren;
+}
+
+function RibbonBar({
+  items,
+  more,
+  showBack,
+  position,
+  canPrev,
+  canNext,
+  onPrev,
+  onNext
+}: {
+  items: BarItem[];
+  more: (close: () => void) => ComponentChildren;
+  showBack: boolean;
+  position: string;
+  canPrev: boolean;
+  canNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const bar = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(2000);
+  useLayoutEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const fixed = 18 + 38 + 76 + (showBack ? 52 : 0);
+  let room = width - fixed;
+  const posW = position ? 72 : 0;
+  const shown = new Set<string>();
+  const groupsUsed = new Set<number>();
+  for (const it of [...items].sort((a, b) => b.prio - a.prio)) {
+    const sep = groupsUsed.size > 0 && !groupsUsed.has(it.group) ? 14 : 0;
+    if (it.w + sep <= room) {
+      shown.add(it.id);
+      groupsUsed.add(it.group);
+      room -= it.w + sep;
+    }
+  }
+  const showPos = !!position && room >= posW && shown.size === items.length;
+  const hidden = items.filter((i) => !shown.has(i.id));
+
+  let lastGroup = -1;
+  return (
+    <div class="toolbar nowrap" ref={bar}>
+      {showBack && (
+        <>
+          <button class="ib" aria-label={t('act.back')} title={t('act.back')} onClick={closeThread}><Icon name="arrowLeft" /></button>
+          <span class="sep" />
+        </>
+      )}
+      {items.filter((i) => shown.has(i.id)).map((i) => {
+        const sep = lastGroup !== -1 && i.group !== lastGroup;
+        lastGroup = i.group;
+        return (
+          <>
+            {sep && <span class="sep" />}
+            {i.menu ?? (i.text ? (
+              <button class="btn sm" onClick={i.run}>{i.label}</button>
+            ) : (
+              <button class="ib" aria-label={i.label} title={i.label} onClick={i.run}><CIcon name={i.icon} /></button>
+            ))}
+          </>
+        );
+      })}
+      <Menu label={t('act.more')} button={<CIcon name="more" />}>
+        {(close) => (
+          <>
+            {hidden.map((i) =>
+              i.sub ? (
+                <>
+                  <div class="pop-h">{i.label}</div>
+                  <div onClick={close}>{i.sub()}</div>
+                  <hr />
+                </>
+              ) : (
+                <button class="mi" onClick={() => { close(); i.run?.(); }}>
+                  <CIcon name={i.icon} size={18} />
+                  {i.label}
+                </button>
+              )
+            )}
+            {hidden.some((i) => !i.sub) && <hr />}
+            {more(close)}
+          </>
+        )}
+      </Menu>
+      <span class="range">{showPos ? position : ''}</span>
+      <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={!canPrev} onClick={onPrev}><Icon name="chevLeft" /></button>
+      <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!canNext} onClick={onNext}><Icon name="chevRight" /></button>
+    </div>
+  );
+}
+
+function QuickReply({ m }: { m: ParsedMessage }) {
+  const [text, setText] = useState('');
+  const area = useRef<HTMLTextAreaElement>(null);
+  const resize = () => {
+    const el = area.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+  };
+  const target = m.replyTo[0] ?? m.from;
+  const send = async () => {
+    const v = text.trim();
+    if (!v) return;
+    setText('');
+    requestAnimationFrame(resize);
+    await quickReply(m, v);
+  };
+  const expand = () => {
+    const v = text;
+    setText('');
+    expandQuickReply(m, v);
+  };
+  return (
+    <div class="quick">
+      <label for={`quick-${m.id}`} class="sr-only">{t('quick.label')}</label>
+      <textarea
+        id={`quick-${m.id}`}
+        ref={area}
+        rows={1}
+        value={text}
+        placeholder={t('quick.placeholder', { name: senderName(target) })}
+        onInput={(e) => {
+          setText((e.target as HTMLTextAreaElement).value);
+          resize();
+        }}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            send();
+          }
+        }}
+      />
+      {text.trim() && (
+        <button class="ib" aria-label={t('quick.expand')} title={t('quick.expand')} onClick={expand}>
+          <Icon name="maximize" />
+        </button>
+      )}
+      <button class="quick-send" aria-label={t('compose.send')} title={`${t('compose.send')} (Ctrl/⌘ + Enter)`} disabled={!text.trim()} onClick={send}>
+        <Icon name="send" size={17} />
+      </button>
+    </div>
+  );
+}

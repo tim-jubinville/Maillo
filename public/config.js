@@ -7,8 +7,14 @@ window.MAILMAX_CONFIG = {
   // Name shown in the header and the browser tab.
   appName: "Mailmax",
 
-  // Optional square logo (URL or path). Leave empty to use a monogram of appName.
+  // Optional logo (URL or path), shown instead of the monogram and appName.
+  // You can also upload one in Settings > Appearance.
   logoUrl: "",
+  // Optional text shown after the logo, for example "Mail".
+  logoText: "",
+  // SVG logos take the theme colour automatically. For PNG, JPG or WebP logos,
+  // this turns a dark single-colour logo white in dark mode.
+  logoInvertDark: true,
 
   // Required: OAuth 2.0 Client ID of type "Web application" from Google Cloud.
   googleClientId: "",
@@ -21,8 +27,12 @@ window.MAILMAX_CONFIG = {
   // "auto" follows the browser. Available: "en", "fr".
   language: "auto",
 
-  // Main colour for buttons and highlights.
-  accentColor: "#14213D",
+  // Default colour theme: sky, teal, pine, iris, plum, coral, tangerine, cocoa or steel.
+  // People can pick another in Settings > Appearance.
+  theme: "sky",
+
+  // Optional hex colour that replaces the theme's accent, for example "#2B59E8".
+  accentColor: "",
 
   // Optional Google features. Each one adds a permission to the sign-in screen.
   features: {

@@ -1,18 +1,61 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { config } from '../config';
 import type { Address } from '../gmail/mime';
 import { avatarColor, initials } from '../model';
 
 export function Brand({ compact }: { compact?: boolean }) {
   const letter = (config.appName.trim()[0] || 'M').toUpperCase();
+  if (config.logoUrl) {
+    return (
+      <a class="brand" href="#/inbox" aria-label={config.logoText ? `${config.appName} ${config.logoText}` : config.appName}>
+        <Logo src={config.logoUrl} invert={config.logoInvertDark} />
+        {!compact && config.logoText && <span class="brand-name">{config.logoText}</span>}
+      </a>
+    );
+  }
   return (
     <a class="brand" href="#/inbox" aria-label={config.appName}>
-      <span class="brand-mark" aria-hidden="true">
-        {config.logoUrl ? <img src={config.logoUrl} alt="" /> : letter}
-      </span>
+      <span class="brand-mark" aria-hidden="true">{letter}</span>
       {!compact && <span class="brand-name">{config.appName}</span>}
     </a>
+  );
+}
+
+export function isSvgUrl(src: string) {
+  return /^data:image\/svg\+xml/i.test(src) || /\.svg(\?|#|$)/i.test(src);
+}
+
+export function Logo({ src, invert, height = 24, color }: { src: string; invert?: boolean; height?: number; color?: string }) {
+  const [ratio, setRatio] = useState(0);
+  const svg = isSvgUrl(src);
+  useEffect(() => {
+    if (!svg) return;
+    const img = new Image();
+    img.onload = () => setRatio(img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 4);
+    img.onerror = () => setRatio(4);
+    img.src = src;
+  }, [src]);
+  if (!svg) return <img class={`brand-logo ${invert ? 'mono' : ''}`} src={src} alt="" style={{ height: `${height}px` }} />;
+  const url = `url("${src.replace(/"/g, '%22')}")`;
+  return (
+    <span
+      class="brand-logo tinted"
+      aria-hidden="true"
+      style={{
+        height: `${height}px`,
+        width: `${Math.round(height * (ratio || 4))}px`,
+        background: color ?? 'var(--logo-color)',
+        WebkitMaskImage: url,
+        maskImage: url,
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'left center',
+        maskPosition: 'left center'
+      }}
+    />
   );
 }
 
@@ -121,4 +164,23 @@ export function downloadBase64(b64: string, filename: string, mimeType: string) 
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+export function Ribbon({ children, label }: { children: ComponentChildren; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const parent = el?.parentElement;
+    if (!el || !parent) return;
+    const set = () => parent.style.setProperty('--rh', `${el.offsetHeight + 20}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div class="ribbon" ref={ref} role="group" aria-label={label}>
+      {children}
+    </div>
+  );
 }

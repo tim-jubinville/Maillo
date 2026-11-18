@@ -1,6 +1,9 @@
 export interface AppConfig {
   appName: string;
   logoUrl: string;
+  logoText: string;
+  logoInvertDark: boolean;
+  theme: string;
   googleClientId: string;
   allowedAccounts: string[];
   allowedDomains: string[];
@@ -27,11 +30,14 @@ declare global {
 const defaults: AppConfig = {
   appName: 'Mailmax',
   logoUrl: '',
+  logoText: '',
+  logoInvertDark: true,
+  theme: 'sky',
   googleClientId: '',
   allowedAccounts: [],
   allowedDomains: [],
   language: 'auto',
-  accentColor: '#14213D',
+  accentColor: '',
   features: { calendar: false, tasks: false },
   links: {
     chat: 'https://mail.google.com/chat/',
@@ -52,12 +58,28 @@ function color(v: unknown, fallback: string): string {
   return typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v.trim()) ? v.trim() : fallback;
 }
 
+export interface Branding {
+  logoUrl?: string;
+  logoText?: string;
+  logoInvertDark?: boolean;
+}
+
+export function applyBranding(b: Branding | null | undefined) {
+  if (!b) return;
+  if (typeof b.logoUrl === 'string') config.logoUrl = b.logoUrl;
+  if (typeof b.logoText === 'string') config.logoText = b.logoText;
+  if (typeof b.logoInvertDark === 'boolean') config.logoInvertDark = b.logoInvertDark;
+}
+
 function load(): AppConfig {
   const raw = (window.MAILMAX_CONFIG ?? {}) as Partial<AppConfig>;
   const params = new URLSearchParams(location.search);
   return {
     appName: (raw.appName ?? '').trim() || defaults.appName,
     logoUrl: (raw.logoUrl ?? '').trim(),
+    logoText: typeof raw.logoText === 'string' ? raw.logoText.trim() : defaults.logoText,
+    logoInvertDark: raw.logoInvertDark !== false,
+    theme: typeof raw.theme === 'string' && raw.theme.trim() ? raw.theme.trim().toLowerCase() : defaults.theme,
     googleClientId: (raw.googleClientId ?? '').trim(),
     allowedAccounts: list(raw.allowedAccounts),
     allowedDomains: list(raw.allowedDomains).map((d) => d.replace(/^@/, '')),

@@ -5,9 +5,11 @@ import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, closeThread, getState, openCompose, openRow, setState, targetIds, toggleSelect, type AppState } from '../store';
 import { Icon } from './Icon';
 
+export const SEARCH_KEY = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl + K';
+
 const MAP: [string, StringKey][] = [
   ['c', 'keys.compose'],
-  ['/', 'keys.search'],
+  [SEARCH_KEY, 'keys.search'],
   ['j', 'keys.next'],
   ['k', 'keys.prev'],
   ['o / Enter', 'keys.open'],
@@ -41,7 +43,17 @@ export function useShortcuts(s: AppState) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const st = getState();
-      if (st.phase !== 'ready' || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (st.phase !== 'ready') return;
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        if ((e.target as HTMLElement | null)?.isContentEditable) return;
+        e.preventDefault();
+        setState({ showKeys: false });
+        const el = document.getElementById('mm-search') as HTMLInputElement | null;
+        el?.focus();
+        el?.select();
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'Escape') {
         if (st.showKeys) setState({ showKeys: false });
         return;
@@ -79,7 +91,6 @@ export function useShortcuts(s: AppState) {
         switch (e.key) {
           case 'g': gPressed.current = Date.now(); return true;
           case 'c': openCompose(); return true;
-          case '/': document.getElementById('mm-search')?.focus(); return true;
           case '?': setState({ showKeys: true }); return true;
           case 'j': move(1); return true;
           case 'k': move(-1); return true;

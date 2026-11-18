@@ -2,7 +2,7 @@
 
 A self-hosted web interface for Gmail. Your mail stays in your Google account; Mailmax is a set of static files you upload to your own web server. It talks to Gmail directly from your browser through Google's official API.
 
-- No server-side code, no database, no third-party service in between
+- No database and no third-party service in between; the only server-side file is an optional updater (`update.php`) for PHP hosts
 - Sign in with Google; access tokens stay in the browser tab and are never stored on a server
 - Works on any static host: shared hosting (Apache, cPanel), Nginx, Cloudflare Pages, Netlify, and others
 - English and French interface
@@ -28,6 +28,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Show original, print
 
 **Writing**
+- Quick reply box at the bottom of every conversation, with a button to open the full reply
 - Compose, reply, reply all, forward (with the original attachments)
 - Rich text formatting, links, signatures, attachments (drag and drop works)
 - Send from any of your Gmail "Send mail as" addresses
@@ -42,6 +43,8 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Vacation responder
 - Read-only status for forwarding, IMAP and POP
 - Display options: density, reading pane, inbox categories, images, page size, language, keyboard shortcuts
+- Appearance: light, dark or system mode, nine colour themes, and a custom logo upload
+- Updates: upload a newer release zip from Settings, with an automatic backup and one-click restore (PHP hosts)
 
 **Extras**
 - Keyboard shortcuts (press `?`)
@@ -89,6 +92,7 @@ Local development needs `http://localhost:5173` listed as an authorised JavaScri
 ```
 public/config.js      runtime configuration, copied as-is into the build
 public/.htaccess      headers for Apache hosts
+public/update.php     optional in-browser updater for PHP hosts
 src/auth.ts           Google sign-in (token flow, no server)
 src/gmail/api.ts      Gmail, Calendar and Tasks API calls
 src/gmail/demo.ts     sample data for demo mode

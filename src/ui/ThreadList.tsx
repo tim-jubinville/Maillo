@@ -1,11 +1,21 @@
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type ThreadRow } from '../model';
 import { getPrefs } from '../prefs';
-import { CATEGORIES, go, listHash, type MailRoute } from '../route';
+import { CATEGORIES, go, listHash, type Category, type MailRoute } from '../route';
 import { actions, loadList, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
 import { Avatar } from './common';
+import { InboxZero } from './InboxZero';
+import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
+
+const CAT_ICON: Record<Category, ColorIconName> = {
+  primary: 'inbox',
+  promotions: 'cat-promo',
+  social: 'cat-social',
+  updates: 'cat-updates',
+  forums: 'cat-forums'
+};
 
 export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute; split: boolean }) {
   const prefs = getPrefs();
@@ -33,6 +43,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
 
   return (
     <section class={`listcol ${split ? 'split' : 'full'}`} aria-label={t('list.label')}>
+      <div class="listhead">
       <div class="toolbar">
         <input type="checkbox" class="cb" aria-label={t('list.selectAll')} checked={all} indeterminate={sel.length > 0 && !all} onChange={() => selectAll(!all)} />
         {sel.length > 0 ? (
@@ -44,17 +55,17 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
               <button class="btn sm" onClick={() => actions.restore(sel)}>{t('act.restore')}</button>
             ) : (
               <>
-                <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(sel)}><Icon name="archive" /></button>
-                <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(sel)}><Icon name="spam" /></button>
-                <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(sel)}><Icon name="trash" /></button>
+                <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(sel)}><CIcon name="archive" /></button>
+                <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(sel)}><CIcon name="spam" /></button>
+                <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(sel)}><CIcon name="trash" /></button>
               </>
             )}
             <span class="sep" />
             <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={anyUnread ? t('act.markRead') : t('act.markUnread')} title={anyUnread ? t('act.markRead') : t('act.markUnread')} onClick={() => actions.read(sel, anyUnread)}>
-              <Icon name={anyUnread ? 'mailOpen' : 'mail'} />
+              <CIcon name={anyUnread ? 'mail' : 'unread'} />
             </button>
-            <button class="ib" style={{ color: 'var(--c-star)' }} aria-label={t('list.star')} title={t('list.star')} onClick={() => actions.star(sel, true)}><Icon name="star" /></button>
-            <button class="ib" style={{ color: 'var(--c-important)' }} aria-label={t('act.markImportant')} title={t('act.markImportant')} onClick={() => actions.important(sel, true)}><Icon name="important" /></button>
+            <button class="ib" style={{ color: 'var(--c-star)' }} aria-label={t('list.star')} title={t('list.star')} onClick={() => actions.star(sel, true)}><CIcon name="starred" /></button>
+            <button class="ib" style={{ color: 'var(--c-important)' }} aria-label={t('act.markImportant')} title={t('act.markImportant')} onClick={() => actions.important(sel, true)}><CIcon name="important" /></button>
             <span class="sep" />
             <MoveMenu s={s} ids={sel} />
             <LabelMenu s={s} ids={sel} />
@@ -77,10 +88,23 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
           {CATEGORIES.map((c) => {
             const on = route.category === c;
             const n = s.catNew[c] ?? 0;
+            const name = t(`cat.${c}` as StringKey);
+            const fresh = c !== 'primary' && n > 0;
+            const label = fresh ? `${name}, ${t('cat.new', { n })}` : name;
             return (
-              <button role="tab" aria-selected={on} class={`tab ${on ? 'on' : ''}`} onClick={() => go(listHash({ ...route, category: c, thread: undefined }))}>
-                {t(`cat.${c}` as StringKey)}
-                {c !== 'primary' && n > 0 && <span class="pill">{t('cat.new', { n })}</span>}
+              <button
+                role="tab"
+                aria-selected={on}
+                aria-label={label}
+                title={on ? undefined : label}
+                class={`tab ${on ? 'on' : ''}`}
+                onClick={() => go(listHash({ ...route, category: c, thread: undefined }))}
+              >
+                <span class="tab-ic">
+                  <CIcon name={CAT_ICON[c]} size={20} />
+                  {fresh && !on && <span class="tab-dot" aria-hidden="true" />}
+                </span>
+                {on && <span aria-hidden="true">{name}</span>}
               </button>
             );
           })}
@@ -104,6 +128,8 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
         </div>
       )}
 
+      </div>
+
       <div class="rows" role="list">
         {s.list.loading && !rows.length && Array.from({ length: 6 }, () => <div class="skeleton" />)}
         {s.list.error && !rows.length && (
@@ -113,7 +139,13 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
             <button class="btn sm" onClick={() => loadList(true)}>{t('list.retry')}</button>
           </div>
         )}
-        {!s.list.loading && !s.list.error && !rows.length && (
+        {!s.list.loading && !s.list.error && !rows.length && folder === 'inbox' && route.q === undefined && !route.label && (
+          <InboxZero
+            title={!showTabs || route.category === 'primary' ? t('zero.title') : t('zero.cat', { name: t(`cat.${route.category}` as StringKey) })}
+            sub={t('zero.sub')}
+          />
+        )}
+        {!s.list.loading && !s.list.error && !rows.length && !(folder === 'inbox' && route.q === undefined && !route.label) && (
           <div class="empty">
             <Icon name="inbox" size={32} style={{ strokeWidth: '1.4' }} />
             <b>{t('list.empty')}</b>

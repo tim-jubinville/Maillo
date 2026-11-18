@@ -1,14 +1,16 @@
 import DOMPurify from 'dompurify';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { currentToken } from '../auth';
 import { config } from '../config';
 import type { GFilter, GSendAs, GVacation } from '../gmail/types';
 import { setLanguage, t, type StringKey } from '../i18n';
-import { labelColor } from '../model';
+import { labelColor, sizeLabel } from '../model';
+import { THEMES, currentTheme } from '../theme';
 import { getPrefs, setPrefs } from '../prefs';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
-import { Seg, Switch } from './common';
+import { Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon } from './Icon';
 import { KeyList } from './Keys';
 
@@ -16,12 +18,14 @@ declare const __APP_VERSION__: string;
 
 const ICONS: Record<SettingsSection, [string, string]> = {
   general: ['gear', 'var(--c-scheduled)'],
+  appearance: ['sun', 'var(--c-important)'],
   labels: ['tag', 'var(--c-drafts)'],
   filters: ['filter', 'var(--c-sent)'],
   accounts: ['user', 'var(--c-snooze)'],
   vacation: ['sun', 'var(--c-important)'],
   forwarding: ['forward', 'var(--c-tasks)'],
   shortcuts: ['keyboard', 'var(--c-trash)'],
+  updates: ['download', 'var(--c-inbox)'],
   about: ['info', 'var(--c-all)']
 };
 
@@ -47,6 +51,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
         </nav>
         <main class="scontent">
           {section === 'general' && <General />}
+          {section === 'appearance' && <Appearance />}
           {section === 'labels' && <Labels s={s} />}
           {section === 'filters' && <Filters s={s} />}
           {section === 'accounts' && <Accounts />}
@@ -57,6 +62,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
               <div style={{ padding: '0 24px 20px' }}><KeyList /></div>
             </Section>
           )}
+          {section === 'updates' && <Updates />}
           {section === 'about' && (
             <Section title={t('settings.about')} note={t('settings.syncNote')}>
               <div class="srow"><div class="slbl"><b>{config.appName}</b><span>{t('settings.version', { v: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '' })}</span></div></div>
@@ -443,7 +449,7 @@ function Forwarding() {
     );
   }, []);
   const status = (on?: boolean) => (
-    <span class="tag" style={{ background: on ? 'linear-gradient(135deg,#d2f1e6,#e3f5ee)' : 'var(--cloud)' }}>{on ? t('settings.enabled') : t('settings.disabled')}</span>
+    <span class="tag" style={{ background: on ? 'color-mix(in srgb, #57997f 28%, var(--surface))' : 'var(--cloud)' }}>{on ? t('settings.enabled') : t('settings.disabled')}</span>
   );
   return (
     <Section
@@ -460,5 +466,294 @@ function Forwarding() {
         </>
       )}
     </Section>
+  );
+}
+
+interface UpdaterStatus {
+  ok: boolean;
+  error?: string;
+  version?: string;
+  php?: string;
+  zip?: boolean;
+  writable?: boolean;
+  maxUpload?: number;
+  account?: string;
+  backups?: { id: string; version: string }[];
+  path?: string;
+  current?: string;
+}
+
+function callUpdater(form: FormData, onProgress?: (pct: number) => void): Promise<UpdaterStatus> {
+  return new Promise((resolve, reject) => {
+    const token = currentToken();
+    if (!token) return reject(new Error('invalid_token'));
+    form.append('token', token);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', './update.php');
+    xhr.responseType = 'text';
+    if (onProgress) xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      try {
+        const j = JSON.parse(xhr.responseText) as UpdaterStatus;
+        resolve(j);
+      } catch {
+        resolve({ ok: false, error: xhr.status === 404 ? 'unavailable' : 'unavailable' });
+      }
+    };
+    xhr.onerror = () => reject(new Error('network'));
+    xhr.send(form);
+  });
+}
+
+function updateError(r: UpdaterStatus): string {
+  const key = `upd.err.${r.error}` as StringKey;
+  const known = t(key);
+  return known === key ? t('upd.err.generic', { code: r.error ?? 'unknown' }) : t(key, { path: r.path ?? '' });
+}
+
+function Updates() {
+  const [status, setStatus] = useState<UpdaterStatus | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const current = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '';
+
+  const load = () => {
+    if (config.demo) return;
+    const f = new FormData();
+    f.append('action', 'status');
+    callUpdater(f).then(setStatus).catch(() => setStatus({ ok: false, error: 'unavailable' }));
+  };
+  useEffect(load, []);
+
+  const install = async (force = false) => {
+    if (!file) return;
+    setError('');
+    setBusy(t('upd.uploading', { pct: 0 }));
+    const f = new FormData();
+    f.append('action', 'update');
+    f.append('package', file);
+    if (force) f.append('force', '1');
+    try {
+      const r = await callUpdater(f, (pct) => setBusy(pct >= 100 ? t('upd.installing') : t('upd.uploading', { pct })));
+      if (r.ok) {
+        setBusy(t('upd.done', { v: r.version ?? '' }));
+        setTimeout(() => location.reload(), 1500);
+        return;
+      }
+      setBusy('');
+      if (r.error === 'downgrade' && confirm(t('upd.downgrade', { v: r.version ?? '', current: r.current ?? '' }))) return install(true);
+      setError(updateError(r));
+    } catch (e) {
+      setBusy('');
+      setError(updateError({ ok: false, error: e instanceof Error ? e.message : 'network' }));
+    }
+  };
+
+  const rollback = async () => {
+    const prev = status?.backups?.[0]?.version ?? '';
+    if (!confirm(t('upd.rollbackConfirm', { v: prev }))) return;
+    setError('');
+    setBusy(t('upd.installing'));
+    const f = new FormData();
+    f.append('action', 'rollback');
+    try {
+      const r = await callUpdater(f);
+      if (r.ok) {
+        setBusy(t('upd.rolledBack', { v: r.version ?? prev }));
+        setTimeout(() => location.reload(), 1500);
+        return;
+      }
+      setBusy('');
+      setError(updateError(r));
+    } catch (e) {
+      setBusy('');
+      setError(updateError({ ok: false, error: e instanceof Error ? e.message : 'network' }));
+    }
+  };
+
+  const ready = !!status?.ok && status.zip && status.writable;
+  return (
+    <Section title={t('settings.updates')} note={t('upd.help')}>
+      <Row title={t('upd.installed')} help={status?.ok ? t('upd.server', { php: status.php ?? '', email: status.account ?? '' }) : undefined}>
+        <span class="tag" style={{ fontSize: '13px', height: '26px' }}>{status?.version || current || '—'}</span>
+      </Row>
+      {config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.demo')}</div>}
+      {!config.demo && status === null && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.checking')}</div>}
+      {!config.demo && status && !status.ok && status.error === 'unavailable' && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.unavailable')}</div>}
+      {!config.demo && status && !status.ok && status.error !== 'unavailable' && <div class="frow err">{updateError(status)}</div>}
+      {!config.demo && status?.ok && !status.zip && <div class="frow err">{t('upd.err.zip_unavailable')}</div>}
+      {!config.demo && status?.ok && status.zip && !status.writable && <div class="frow err">{t('upd.err.not_writable')}</div>}
+      {ready && (
+        <>
+          <div class="srow">
+            <div class="slbl">
+              <b><label for="upd-file">{t('upd.choose')}</label></b>
+              {!!status?.maxUpload && <span>{t('upd.maxSize', { size: sizeLabel(status.maxUpload) })}</span>}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input id="upd-file" type="file" accept=".zip,application/zip" disabled={!!busy} onChange={(e) => { setFile((e.target as HTMLInputElement).files?.[0] ?? null); setError(''); }} />
+              <button class="btn primary sm" disabled={!file || !!busy} onClick={() => install()}>
+                <Icon name="download" size={16} />
+                {t('upd.install')}
+              </button>
+            </div>
+          </div>
+          {(busy || error) && (
+            <div class={`frow ${error ? 'err' : ''}`} role="status" aria-live="polite">{error || busy}</div>
+          )}
+          {!!status?.backups?.length && (
+            <Row title={t('upd.rollback')} help={t('upd.rollbackHelp', { v: status.backups[0].version || '?' })}>
+              <button class="btn sm" disabled={!!busy} onClick={rollback}>{t('upd.rollback')}</button>
+            </Row>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
+function readDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+function Appearance() {
+  const p = getPrefs();
+  const active = currentTheme().id;
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState(config.logoUrl);
+  const [text, setText] = useState(config.logoUrl ? config.logoText : '');
+  const [invert, setInvert] = useState(config.logoInvertDark);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const saveLocal = async () => {
+    const logoUrl = file ? await readDataUrl(file) : config.logoUrl;
+    localStorage.setItem('mailmax.branding', JSON.stringify({ logoUrl, logoText: text, logoInvertDark: invert }));
+  };
+
+  const save = async () => {
+    setError('');
+    if (file && file.size > 1024 * 1024) return setError(t('upd.err.logo_too_large'));
+    setBusy(t('upd.installing'));
+    try {
+      if (config.demo) {
+        await saveLocal();
+        setBusy(t('app.logoLocal'));
+      } else {
+        const f = new FormData();
+        f.append('action', 'branding');
+        f.append('logoText', text);
+        f.append('logoInvertDark', invert ? '1' : '0');
+        if (file) f.append('logo', file);
+        const r = await callUpdater(f).catch(() => ({ ok: false, error: 'unavailable' }) as UpdaterStatus);
+        if (!r.ok && r.error !== 'unavailable') {
+          setBusy('');
+          return setError(updateError(r));
+        }
+        if (r.ok) localStorage.removeItem('mailmax.branding');
+        else await saveLocal();
+        setBusy(r.ok ? t('app.logoSaved') : t('app.logoLocal'));
+      }
+      setTimeout(() => location.reload(), 1400);
+    } catch (e) {
+      setBusy('');
+      setError(updateError({ ok: false, error: e instanceof Error ? e.message : 'network' }));
+    }
+  };
+
+  const remove = async () => {
+    setError('');
+    localStorage.removeItem('mailmax.branding');
+    if (!config.demo) {
+      const f = new FormData();
+      f.append('action', 'branding_remove');
+      await callUpdater(f).catch(() => undefined);
+    }
+    location.reload();
+  };
+
+  const sample = (dark: boolean) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '12px 16px', borderRadius: '14px', background: dark ? '#161f34' : '#ffffff', border: '1px solid var(--line)', minWidth: '220px' }}>
+      {preview ? (
+        isSvgUrl(preview) || file?.type === 'image/svg+xml' ? (
+          <Logo src={preview} color={dark ? `color-mix(in srgb, ${currentTheme().accent} 35%, #ffffff)` : `color-mix(in srgb, ${currentTheme().accent} 82%, #14213d)`} />
+        ) : (
+          <img src={preview} alt="" style={{ height: '24px', width: 'auto', maxWidth: '180px', filter: dark && invert ? 'brightness(0) invert(1)' : undefined }} />
+        )
+      ) : (
+        <span class="brand-mark" aria-hidden="true">{(config.appName[0] || 'M').toUpperCase()}</span>
+      )}
+      {(preview ? text : config.appName) && <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{preview ? text : config.appName}</span>}
+    </div>
+  );
+
+  return (
+    <>
+      <Section title={t('settings.appearance')}>
+        <Row title={t('app.mode')} help={t('app.modeHelp')}>
+          <Seg label={t('app.mode')} value={p.mode} onChange={(v) => setPrefs({ mode: v })} options={[{ value: 'system', label: t('app.system') }, { value: 'light', label: t('app.light') }, { value: 'dark', label: t('app.dark') }]} />
+        </Row>
+        <div class="srow" style={{ alignItems: 'flex-start' }}>
+          <div class="slbl"><b>{t('app.theme')}</b><span>{t('app.themeHelp')}</span></div>
+          <div role="radiogroup" aria-label={t('app.theme')} style={{ flex: '2 1 380px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: '10px' }}>
+            {THEMES.map((th) => {
+              const on = th.id === active;
+              return (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setPrefs({ theme: th.id })}
+                  style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px', borderRadius: '14px', border: on ? `2px solid ${th.accent}` : '2px solid var(--line-soft)', background: 'var(--surface)', textAlign: 'left' }}
+                >
+                  <span aria-hidden="true" style={{ height: '46px', borderRadius: '9px', background: `linear-gradient(180deg, ${th.top}, ${th.bottom})`, position: 'relative', display: 'block' }}>
+                    <span style={{ position: 'absolute', left: '8px', bottom: '8px', width: '28px', height: '12px', borderRadius: '6px', background: th.accent }} />
+                  </span>
+                  <span style={{ fontSize: '13px', fontWeight: on ? 700 : 500, color: 'var(--ink)' }}>{t(`theme.${th.id}` as StringKey)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Section>
+      <Section title={t('app.logo')} note={t('app.logoHelp')}>
+        <div class="srow" style={{ alignItems: 'flex-start' }}>
+          <div class="slbl"><b>{t('app.preview')}</b></div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>{sample(false)}{sample(true)}</div>
+        </div>
+        <div class="formgrid">
+          <label>
+            {t('app.logoChoose')}
+            <input type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={(e) => { setFile((e.target as HTMLInputElement).files?.[0] ?? null); setError(''); }} />
+          </label>
+          <label>
+            {t('app.logoText')}
+            <input class="input" value={text} maxLength={40} onInput={(e) => setText((e.target as HTMLInputElement).value)} />
+          </label>
+          <label class="checkline" style={{ alignSelf: 'end', paddingBottom: '8px' }}>
+            <input type="checkbox" checked={invert} onChange={(e) => setInvert((e.target as HTMLInputElement).checked)} />
+            {t('app.logoInvert')}
+          </label>
+        </div>
+        <div class="frow">
+          <button class="btn primary sm" disabled={!!busy || (!file && !config.logoUrl)} onClick={save}>{t('app.logoSave')}</button>
+          {config.logoUrl && <button class="btn sm" disabled={!!busy} onClick={remove}>{t('app.logoRemove')}</button>}
+          {(busy || error) && <span class={error ? 'err' : ''} role="status" style={{ fontSize: '13px' }}>{error || busy}</span>}
+        </div>
+      </Section>
+    </>
   );
 }
