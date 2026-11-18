@@ -4,16 +4,17 @@ import { getPrefs } from '../prefs';
 import { CATEGORIES, go, listHash, type Category, type MailRoute } from '../route';
 import { actions, loadList, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
 import { Avatar } from './common';
+import { InboxZero } from './InboxZero';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
 
 const CAT_ICON: Record<Category, ColorIconName> = {
   primary: 'inbox',
-  promotions: 'label',
-  social: 'contacts',
-  updates: 'unread',
-  forums: 'chat'
+  promotions: 'cat-promo',
+  social: 'cat-social',
+  updates: 'cat-updates',
+  forums: 'cat-forums'
 };
 
 export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute; split: boolean }) {
@@ -138,7 +139,13 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
             <button class="btn sm" onClick={() => loadList(true)}>{t('list.retry')}</button>
           </div>
         )}
-        {!s.list.loading && !s.list.error && !rows.length && (
+        {!s.list.loading && !s.list.error && !rows.length && folder === 'inbox' && route.q === undefined && !route.label && (
+          <InboxZero
+            title={!showTabs || route.category === 'primary' ? t('zero.title') : t('zero.cat', { name: t(`cat.${route.category}` as StringKey) })}
+            sub={t('zero.sub')}
+          />
+        )}
+        {!s.list.loading && !s.list.error && !rows.length && !(folder === 'inbox' && route.q === undefined && !route.label) && (
           <div class="empty">
             <Icon name="inbox" size={32} style={{ strokeWidth: '1.4' }} />
             <b>{t('list.empty')}</b>
