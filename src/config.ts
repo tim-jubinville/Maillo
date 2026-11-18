@@ -30,7 +30,7 @@ declare global {
 const defaults: AppConfig = {
   appName: 'Mailmax',
   logoUrl: '',
-  logoText: 'Mail',
+  logoText: '',
   logoInvertDark: true,
   theme: 'sky',
   googleClientId: '',

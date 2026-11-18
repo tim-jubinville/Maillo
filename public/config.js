@@ -10,9 +10,10 @@ window.MAILMAX_CONFIG = {
   // Optional logo (URL or path), shown instead of the monogram and appName.
   // You can also upload one in Settings > Appearance.
   logoUrl: "",
-  // Text shown after the logo, for example "Mail". Leave empty for the logo alone.
-  logoText: "Mail",
-  // Turn a dark single-colour logo white in dark mode.
+  // Optional text shown after the logo, for example "Mail".
+  logoText: "",
+  // SVG logos take the theme colour automatically. For PNG, JPG or WebP logos,
+  // this turns a dark single-colour logo white in dark mode.
   logoInvertDark: true,
 
   // Required: OAuth 2.0 Client ID of type "Web application" from Google Cloud.

@@ -87,7 +87,7 @@ Open `config.js` on the server and set at least `googleClientId`:
 window.MAILMAX_CONFIG = {
   appName: "Mailmax",
   logoUrl: "",
-  logoText: "Mail",
+  logoText: "",
   logoInvertDark: true,
   googleClientId: "1234567890-abc123.apps.googleusercontent.com",
   allowedAccounts: ["you@example.com"],
@@ -105,8 +105,8 @@ window.MAILMAX_CONFIG = {
 |---|---|
 | `appName` | Name in the browser tab, and in the header when there is no logo (shown next to a monogram of its first letter). |
 | `logoUrl` | Optional logo image (path or URL), shown in the header instead of the monogram and name. A logo uploaded in **Settings → Appearance** takes priority. |
-| `logoText` | Text shown after the logo, such as `"Mail"`. Empty shows the logo alone. |
-| `logoInvertDark` | `true` turns a dark single-colour logo white in dark mode. |
+| `logoText` | Optional text shown after the logo, such as `"Mail"`. Empty (the default) shows the logo alone. |
+| `logoInvertDark` | SVG logos are recoloured to match the theme automatically. For PNG, JPG or WebP logos, `true` turns a dark single-colour logo white in dark mode. |
 | `googleClientId` | Required. The Client ID from step 3. |
 | `allowedAccounts` | Email addresses allowed to use this install. Anyone else is signed out right away. |
 | `allowedDomains` | Domains allowed to use this install, such as `"example.com"`. |

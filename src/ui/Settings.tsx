@@ -10,7 +10,7 @@ import { THEMES, currentTheme } from '../theme';
 import { getPrefs, setPrefs } from '../prefs';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
-import { Seg, Switch } from './common';
+import { Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon } from './Icon';
 import { KeyList } from './Keys';
 
@@ -627,7 +627,7 @@ function Appearance() {
   const active = currentTheme().id;
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState(config.logoUrl);
-  const [text, setText] = useState(config.logoUrl ? config.logoText : 'Mail');
+  const [text, setText] = useState(config.logoUrl ? config.logoText : '');
   const [invert, setInvert] = useState(config.logoInvertDark);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -688,11 +688,15 @@ function Appearance() {
   const sample = (dark: boolean) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '12px 16px', borderRadius: '14px', background: dark ? '#161f34' : '#ffffff', border: '1px solid var(--line)', minWidth: '220px' }}>
       {preview ? (
-        <img src={preview} alt="" style={{ height: '24px', width: 'auto', maxWidth: '180px', filter: dark && invert ? 'brightness(0) invert(1)' : undefined }} />
+        isSvgUrl(preview) || file?.type === 'image/svg+xml' ? (
+          <Logo src={preview} color={dark ? `color-mix(in srgb, ${currentTheme().accent} 35%, #ffffff)` : `color-mix(in srgb, ${currentTheme().accent} 82%, #14213d)`} />
+        ) : (
+          <img src={preview} alt="" style={{ height: '24px', width: 'auto', maxWidth: '180px', filter: dark && invert ? 'brightness(0) invert(1)' : undefined }} />
+        )
       ) : (
         <span class="brand-mark" aria-hidden="true">{(config.appName[0] || 'M').toUpperCase()}</span>
       )}
-      <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{preview ? text : config.appName}</span>
+      {(preview ? text : config.appName) && <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{preview ? text : config.appName}</span>}
     </div>
   );
 

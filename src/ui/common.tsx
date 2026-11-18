@@ -9,7 +9,7 @@ export function Brand({ compact }: { compact?: boolean }) {
   if (config.logoUrl) {
     return (
       <a class="brand" href="#/inbox" aria-label={config.logoText ? `${config.appName} ${config.logoText}` : config.appName}>
-        <img class={`brand-logo ${config.logoInvertDark ? 'mono' : ''}`} src={config.logoUrl} alt="" />
+        <Logo src={config.logoUrl} invert={config.logoInvertDark} />
         {!compact && config.logoText && <span class="brand-name">{config.logoText}</span>}
       </a>
     );
@@ -19,6 +19,43 @@ export function Brand({ compact }: { compact?: boolean }) {
       <span class="brand-mark" aria-hidden="true">{letter}</span>
       {!compact && <span class="brand-name">{config.appName}</span>}
     </a>
+  );
+}
+
+export function isSvgUrl(src: string) {
+  return /^data:image\/svg\+xml/i.test(src) || /\.svg(\?|#|$)/i.test(src);
+}
+
+export function Logo({ src, invert, height = 24, color }: { src: string; invert?: boolean; height?: number; color?: string }) {
+  const [ratio, setRatio] = useState(0);
+  const svg = isSvgUrl(src);
+  useEffect(() => {
+    if (!svg) return;
+    const img = new Image();
+    img.onload = () => setRatio(img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 4);
+    img.onerror = () => setRatio(4);
+    img.src = src;
+  }, [src]);
+  if (!svg) return <img class={`brand-logo ${invert ? 'mono' : ''}`} src={src} alt="" style={{ height: `${height}px` }} />;
+  const url = `url("${src.replace(/"/g, '%22')}")`;
+  return (
+    <span
+      class="brand-logo tinted"
+      aria-hidden="true"
+      style={{
+        height: `${height}px`,
+        width: `${Math.round(height * (ratio || 4))}px`,
+        background: color ?? 'var(--logo-color)',
+        WebkitMaskImage: url,
+        maskImage: url,
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'left center',
+        maskPosition: 'left center'
+      }}
+    />
   );
 }
 
