@@ -8,7 +8,10 @@ import type { GFilter, GSendAs, GVacation } from '../gmail/types';
 import { setLanguage, t, type StringKey } from '../i18n';
 import { labelColor, sizeLabel } from '../model';
 import { THEMES, currentTheme } from '../theme';
-import { getPrefs, setPrefs } from '../prefs';
+import { CHIMES, playChime } from '../chime';
+import { askPermission, permission, sendTest } from '../notify';
+import { getPrefs, setNotifyPrefs, setPrefs, type NotifyPrefs } from '../prefs';
+import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
 import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
@@ -20,6 +23,8 @@ declare const __APP_VERSION__: string;
 const ICONS: Record<SettingsSection, [string, string]> = {
   general: ['gear', 'var(--c-scheduled)'],
   appearance: ['sun', 'var(--c-important)'],
+  notifications: ['bell', 'var(--c-snooze)'],
+  app: ['device', 'var(--c-inbox)'],
   labels: ['tag', 'var(--c-drafts)'],
   filters: ['filter', 'var(--c-sent)'],
   accounts: ['user', 'var(--c-snooze)'],
@@ -54,6 +59,8 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
         <main class="scontent">
           {section === 'general' && <General />}
           {section === 'appearance' && <Appearance />}
+          {section === 'notifications' && <NotificationSettings s={s} />}
+          {section === 'app' && <InstallApp />}
           {section === 'labels' && <Labels s={s} />}
           {section === 'filters' && <Filters s={s} />}
           {section === 'accounts' && <Accounts />}
@@ -859,5 +866,164 @@ function Appearance() {
         </div>
       </Section>
     </>
+  );
+}
+
+function NotificationSettings({ s }: { s: AppState }) {
+  const n = getPrefs().notify;
+  const [perm, setPerm] = useState(permission());
+  const [vips, setVips] = useState(n.vips.join(', '));
+  const ios = installState() === 'ios';
+  const set = (patch: Partial<NotifyPrefs>) => setNotifyPrefs(patch);
+  const enable = async (on: boolean) => {
+    if (!on) return set({ enabled: false });
+    const p = await askPermission();
+    setPerm(p);
+    // Chimes still work without permission, so the setting turns on either way.
+    set({ enabled: true });
+  };
+  const userLabels = s.labels.filter((l) => l.type === 'user').sort((a, b) => a.name.localeCompare(b.name));
+  const toggleLabel = (id: string) => set({ labels: n.labels.includes(id) ? n.labels.filter((x) => x !== id) : [...n.labels, id] });
+  const off = !n.enabled;
+  return (
+    <Section title={t('settings.notifications')} note={t('notify.note')} actions={<Switch label={t('notify.enable')} on={n.enabled} onChange={enable} />}>
+      <Row title={t('notify.enable')} help={t('notify.enableHelp')}>
+        <button class="btn sm" onClick={() => sendTest()} disabled={off}>
+          <Icon name="bell" size={16} />
+          {t('notify.test')}
+        </button>
+      </Row>
+      {perm === 'denied' && <div class="frow err">{t('notify.blocked')}</div>}
+      {perm === 'unsupported' && <div class="frow err">{ios && !isStandalone() ? t('notify.iosHint') : t('notify.unsupported')}</div>}
+      <fieldset class="nset" disabled={off}>
+        <Row title={t('notify.scope')} help={t('notify.scopeHelp')}>
+          <Seg
+            label={t('notify.scope')}
+            value={n.scope}
+            onChange={(v) => set({ scope: v })}
+            options={[
+              { value: 'all', label: t('notify.scopeAll') },
+              { value: 'primary', label: t('notify.scopePrimary') },
+              { value: 'important', label: t('notify.scopeImportant') },
+              { value: 'none', label: t('notify.scopeNone') }
+            ]}
+          />
+        </Row>
+        <Row title={t('notify.vips')} help={t('notify.vipsHelp')}>
+          <input
+            class="input nset-wide"
+            value={vips}
+            placeholder={t('notify.vipsPlaceholder')}
+            aria-label={t('notify.vips')}
+            onInput={(e) => setVips((e.target as HTMLInputElement).value)}
+            onBlur={() => set({ vips: vips.split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean) })}
+          />
+        </Row>
+        <Row title={t('notify.labels')} help={t('notify.labelsHelp')}>
+          <div class="nset-chips" role="group" aria-label={t('notify.labels')}>
+            {userLabels.length === 0 && <span class="nset-empty">{t('notify.noLabels')}</span>}
+            {userLabels.map((l) => (
+              <button type="button" class={`chip ${n.labels.includes(l.id) ? 'on' : ''}`} aria-pressed={n.labels.includes(l.id)} onClick={() => toggleLabel(l.id)}>
+                {l.name}
+              </button>
+            ))}
+          </div>
+        </Row>
+        <Row title={t('notify.preview')} help={t('notify.previewHelp')}>
+          <Switch label={t('notify.preview')} on={n.preview} onChange={(v) => set({ preview: v })} />
+        </Row>
+        <Row title={t('notify.sound')} help={t('notify.gestureHint')}>
+          <Switch label={t('notify.sound')} on={n.sound} onChange={(v) => set({ sound: v })} />
+        </Row>
+        <Row title={t('notify.chime')} help={t('notify.chimeHelp')}>
+          <Seg
+            label={t('notify.chime')}
+            value={n.chime}
+            onChange={(v) => {
+              set({ chime: v });
+              playChime(v, n.volume);
+            }}
+            options={CHIMES.map((c) => ({ value: c, label: t(`notify.chime.${c}` as StringKey) }))}
+          />
+        </Row>
+        <Row title={t('notify.volume')}>
+          <div class="nset-vol">
+            <input
+              type="range"
+              min="0.1"
+              max="1"
+              step="0.05"
+              value={n.volume}
+              aria-label={t('notify.volume')}
+              onInput={(e) => set({ volume: Number((e.target as HTMLInputElement).value) })}
+              onChange={() => playChime(getPrefs().notify.chime, getPrefs().notify.volume)}
+            />
+            <button type="button" class="ib" aria-label={t('notify.play')} title={t('notify.play')} onClick={() => playChime(n.chime, n.volume)}>
+              <Icon name="play" size={18} />
+            </button>
+          </div>
+        </Row>
+        <Row title={t('notify.focused')} help={t('notify.focusedHelp')}>
+          <Seg
+            label={t('notify.focused')}
+            value={n.focused}
+            onChange={(v) => set({ focused: v })}
+            options={[
+              { value: 'notify', label: t('notify.focusedNotify') },
+              { value: 'chime', label: t('notify.focusedChime') },
+              { value: 'silent', label: t('notify.focusedSilent') }
+            ]}
+          />
+        </Row>
+        <Row title={t('notify.quiet')} help={t('notify.quietHelp')}>
+          <div class="nset-quiet">
+            <label>
+              <span>{t('notify.quietFrom')}</span>
+              <input class="input" type="time" value={n.quietFrom} disabled={off || !n.quiet} onInput={(e) => set({ quietFrom: (e.target as HTMLInputElement).value || '22:00' })} />
+            </label>
+            <label>
+              <span>{t('notify.quietTo')}</span>
+              <input class="input" type="time" value={n.quietTo} disabled={off || !n.quiet} onInput={(e) => set({ quietTo: (e.target as HTMLInputElement).value || '07:00' })} />
+            </label>
+            <Switch label={t('notify.quiet')} on={n.quiet} onChange={(v) => set({ quiet: v })} />
+          </div>
+        </Row>
+        <Row title={t('notify.badge')} help={t('notify.badgeHelp')}>
+          <Switch label={t('notify.badge')} on={n.badge} onChange={(v) => set({ badge: v })} />
+        </Row>
+      </fieldset>
+    </Section>
+  );
+}
+
+function InstallApp() {
+  const [, force] = useState(0);
+  useEffect(() => onInstallChange(() => force((x) => x + 1)), []);
+  const st = installState();
+  const install = async () => {
+    await promptInstall();
+    force((x) => x + 1);
+  };
+  return (
+    <Section title={t('app.title')} note={t('app.note')}>
+      <div class="app-hero">
+        <img class="for-light" src="./icon.svg" alt="" width={72} height={72} />
+        <img class="for-dark" src="./icon-dark.svg" alt="" width={72} height={72} />
+        <div class="slbl">
+          {st === 'installed' && <><b>{t('app.installed')}</b><span>{t('app.installedHelp')}</span></>}
+          {st === 'ready' && <><b>{t('app.ready')}</b><span>{t('app.readyHelp')}</span></>}
+          {st === 'ios' && <><b>{t('app.ios')}</b><span>{t('app.iosHelp')}</span></>}
+          {st === 'manual' && <><b>{t('app.manual')}</b><span>{t('app.manualHelp')}</span></>}
+          {st === 'unsupported' && <><b>{t('app.unsupported')}</b><span>{t('app.unsupportedHelp')}</span></>}
+        </div>
+        {st === 'ready' && (
+          <button class="btn primary" onClick={install}>
+            <Icon name="download" size={16} />
+            {t('app.install')}
+          </button>
+        )}
+        {st === 'installed' && <Icon name="check" size={22} style={{ color: 'var(--accent)' }} />}
+      </div>
+    </Section>
   );
 }

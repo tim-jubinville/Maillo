@@ -1,0 +1,21 @@
+{
+  "name": "Maillo",
+  "short_name": "Maillo",
+  "description": "A calmer, better-looking way to read your Gmail.",
+  "id": "./",
+  "start_url": "./#/inbox",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF1F6",
+  "theme_color": "#EEF1F6",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Compose", "url": "./#/compose", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}

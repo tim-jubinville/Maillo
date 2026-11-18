@@ -1,3 +1,27 @@
+import type { ChimeId } from './chime';
+
+export type NotifyScope = 'all' | 'primary' | 'important' | 'none';
+
+export interface NotifyPrefs {
+  enabled: boolean;
+  /** Which inbox mail notifies. */
+  scope: NotifyScope;
+  /** Always notify for mail from these addresses or domains, whatever the scope. */
+  vips: string[];
+  /** Always notify for mail given these label IDs. */
+  labels: string[];
+  preview: boolean;
+  sound: boolean;
+  chime: ChimeId;
+  volume: number;
+  /** While Maillo is the window in front: show the notification too, only chime, or stay silent. */
+  focused: 'notify' | 'chime' | 'silent';
+  quiet: boolean;
+  quietFrom: string;
+  quietTo: string;
+  badge: boolean;
+}
+
 export interface Prefs {
   density: 'comfortable' | 'compact';
   pane: 'right' | 'off';
@@ -10,6 +34,7 @@ export interface Prefs {
   sidebarCollapsed: boolean;
   mode: 'system' | 'light' | 'dark';
   theme: string;
+  notify: NotifyPrefs;
 }
 
 const KEY = 'maillo.prefs';
@@ -25,14 +50,30 @@ const defaults: Prefs = {
   tabs: true,
   sidebarCollapsed: false,
   mode: 'system',
-  theme: ''
+  theme: '',
+  notify: {
+    enabled: false,
+    scope: 'primary',
+    vips: [],
+    labels: [],
+    preview: true,
+    sound: true,
+    chime: 'mellow',
+    volume: 0.6,
+    focused: 'chime',
+    quiet: false,
+    quietFrom: '22:00',
+    quietTo: '07:00',
+    badge: true
+  }
 };
 
 function read(): Prefs {
   try {
-    return { ...defaults, ...(JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<Prefs>) };
+    const stored = JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<Prefs>;
+    return { ...defaults, ...stored, notify: { ...defaults.notify, ...(stored.notify ?? {}) } };
   } catch {
-    return { ...defaults };
+    return { ...defaults, notify: { ...defaults.notify } };
   }
 }
 
@@ -54,4 +95,8 @@ export function onPrefs(fn: () => void) {
   return () => {
     listeners.delete(fn);
   };
+}
+
+export function setNotifyPrefs(patch: Partial<NotifyPrefs>) {
+  setPrefs({ notify: { ...prefs.notify, ...patch } });
 }
