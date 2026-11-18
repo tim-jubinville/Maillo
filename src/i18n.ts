@@ -250,7 +250,7 @@ const en = {
   'ai.keyNotSet': 'Not set',
   'ai.keyStored': 'Stored on this server.',
   'ai.keyEnv': 'Set by the server (GEMINI_API_KEY). Change it in your hosting settings.',
-  'ai.keyMissing': 'Create one in Google AI Studio, in the same Google Cloud project as Mailmax.',
+  'ai.keyMissing': 'Create one in Google AI Studio, in the same Google Cloud project as Maillo.',
   'ai.model': 'Model',
   'ai.modelHelp': 'Change it with aiModel in config.js.',
   'ai.usage': 'Today',
@@ -339,7 +339,7 @@ const en = {
   'upd.err.not_allowed': 'Your account is not allowed to update this install.',
   'upd.err.no_allowed_accounts': 'Add your address to allowedAccounts or allowedDomains in config.js before updating from the browser.',
   'upd.err.not_configured': 'Add your Google Client ID to config.js first.',
-  'upd.err.not_a_release': 'This is not a Mailmax release zip.',
+  'upd.err.not_a_release': 'This is not a Maillo release zip.',
   'upd.err.not_a_zip': 'This file is not a zip archive.',
   'upd.err.too_large': 'The file is larger than this server accepts.',
   'upd.err.not_writable': 'The server does not allow changes to this folder. Check its permissions.',
@@ -715,7 +715,7 @@ const fr: Record<StringKey, string> = {
   'ai.keyNotSet': 'Aucune',
   'ai.keyStored': 'Conservée sur ce serveur.',
   'ai.keyEnv': 'Définie par le serveur (GEMINI_API_KEY). Modifiez-la dans les réglages de votre hébergement.',
-  'ai.keyMissing': 'Créez-en une dans Google AI Studio, dans le même projet Google Cloud que Mailmax.',
+  'ai.keyMissing': 'Créez-en une dans Google AI Studio, dans le même projet Google Cloud que Maillo.',
   'ai.model': 'Modèle',
   'ai.modelHelp': 'Modifiez-le avec aiModel dans config.js.',
   'ai.usage': 'Aujourd’hui',
@@ -804,7 +804,7 @@ const fr: Record<StringKey, string> = {
   'upd.err.not_allowed': 'Votre compte n’est pas autorisé à mettre à jour cette installation.',
   'upd.err.no_allowed_accounts': 'Ajoutez votre adresse à allowedAccounts ou allowedDomains dans config.js avant de mettre à jour depuis le navigateur.',
   'upd.err.not_configured': 'Ajoutez d’abord votre ID client Google dans config.js.',
-  'upd.err.not_a_release': 'Ce fichier n’est pas un zip de version de Mailmax.',
+  'upd.err.not_a_release': 'Ce fichier n’est pas un zip de version de Maillo.',
   'upd.err.not_a_zip': 'Ce fichier n’est pas une archive zip.',
   'upd.err.too_large': 'Le fichier dépasse la taille acceptée par ce serveur.',
   'upd.err.not_writable': 'Le serveur ne permet pas de modifier ce dossier. Vérifiez ses permissions.',
@@ -932,7 +932,7 @@ const dictionaries = { en, fr } as const;
 export type Lang = keyof typeof dictionaries;
 
 function detect(): Lang {
-  const stored = localStorage.getItem('mailmax.lang');
+  const stored = localStorage.getItem('maillo.lang');
   if (stored === 'en' || stored === 'fr') return stored;
   if (config.language !== 'auto') return config.language;
   return navigator.language?.toLowerCase().startsWith('fr') ? 'fr' : 'en';
@@ -942,8 +942,8 @@ export let lang: Lang = detect();
 document.documentElement.lang = lang;
 
 export function setLanguage(next: Lang | 'auto') {
-  if (next === 'auto') localStorage.removeItem('mailmax.lang');
-  else localStorage.setItem('mailmax.lang', next);
+  if (next === 'auto') localStorage.removeItem('maillo.lang');
+  else localStorage.setItem('maillo.lang', next);
   location.reload();
 }
 

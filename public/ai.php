@@ -1,6 +1,6 @@
 <?php
 /*
- * Relay between Mailmax and the Gemini API, so the API key never reaches the browser.
+ * Relay between Maillo and the Gemini API, so the API key never reaches the browser.
  * Same sign-in check as update.php: a Google access token for this install's OAuth
  * client, from an account allowed in config.js.
  *
@@ -10,7 +10,7 @@
  *   remove_key   delete the stored key
  *   generate     run instructions on input text (instructions, input, json=1 for JSON output)
  *
- * The key is kept in .mailmax-ai.php, which the updater never replaces, backs up or serves.
+ * The key is kept in .maillo-ai.php (.mailmax-ai.php before the rename), which the updater never replaces, backs up or serves.
  * A GEMINI_API_KEY environment variable takes priority if the host sets one.
  */
 declare(strict_types=1);
@@ -19,7 +19,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 
-require __DIR__ . '/mailmax-common.php';
+require __DIR__ . '/maillo-common.php';
 
 const DEFAULT_MODEL = 'gemini-flash-latest';
 const DEFAULT_DAILY_LIMIT = 300;
@@ -27,8 +27,20 @@ const MAX_INSTRUCTIONS = 8000;
 const MAX_INPUT = 300000;
 
 $root = __DIR__;
-$secretFile = $root . '/.mailmax-ai.php';
-$usageFile = $root . '/.mailmax-ai-usage.json';
+$secretFile = $root . '/.maillo-ai.php';
+$legacySecretFile = $root . '/.mailmax-ai.php';
+$usageFile = $root . '/.maillo-ai-usage.json';
+
+// Files saved before the rename to Maillo move to their new names. If the move fails,
+// the old key file is still used.
+foreach ([[$legacySecretFile, $secretFile], [$root . '/.mailmax-ai-usage.json', $usageFile]] as [$old, $new]) {
+    if (!is_file($new) && is_file($old)) {
+        @rename($old, $new);
+    }
+}
+if (!is_file($secretFile) && is_file($legacySecretFile)) {
+    $secretFile = $legacySecretFile;
+}
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     fail(405, 'method_not_allowed');
@@ -119,7 +131,7 @@ if ($action === 'set_key') {
     if ($code !== 200) {
         fail(502, 'gemini_unreachable');
     }
-    $php = "<?php\n// Gemini API key for Mailmax's AI relay. Do not share this file.\nreturn " . var_export(['key' => $key, 'saved' => gmdate('c'), 'by' => $email], true) . ";\n";
+    $php = "<?php\n// Gemini API key for Maillo's AI relay. Do not share this file.\nreturn " . var_export(['key' => $key, 'saved' => gmdate('c'), 'by' => $email], true) . ";\n";
     if (@file_put_contents($secretFile, $php, LOCK_EX) === false) {
         fail(500, 'not_writable');
     }

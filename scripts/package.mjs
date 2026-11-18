@@ -6,7 +6,7 @@ const root = new URL('..', import.meta.url).pathname;
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 const dist = join(root, 'dist');
 const outDir = join(root, 'release');
-const name = `mailmax-${pkg.version}`;
+const name = `maillo-${pkg.version}`;
 
 function walk(dir) {
   return readdirSync(dir).flatMap((f) => {

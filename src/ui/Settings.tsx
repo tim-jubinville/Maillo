@@ -104,7 +104,7 @@ function Row({ title, help, children }: { title: string; help?: string; children
 
 function General() {
   const p = getPrefs();
-  const stored = localStorage.getItem('mailmax.lang');
+  const stored = localStorage.getItem('maillo.lang');
   return (
     <Section title={t('settings.general')} note={t('settings.syncNote')}>
       <Row title={t('settings.density')} help={t('settings.densityHelp')}>
@@ -741,7 +741,7 @@ function Appearance() {
 
   const saveLocal = async () => {
     const logoUrl = file ? await readDataUrl(file) : config.logoUrl;
-    localStorage.setItem('mailmax.branding', JSON.stringify({ logoUrl, logoText: text, logoInvertDark: invert }));
+    localStorage.setItem('maillo.branding', JSON.stringify({ logoUrl, logoText: text, logoInvertDark: invert }));
   };
 
   const save = async () => {
@@ -763,7 +763,7 @@ function Appearance() {
           setBusy('');
           return setError(updateError(r));
         }
-        if (r.ok) localStorage.removeItem('mailmax.branding');
+        if (r.ok) localStorage.removeItem('maillo.branding');
         else await saveLocal();
         setBusy(r.ok ? t('app.logoSaved') : t('app.logoLocal'));
       }
@@ -776,7 +776,7 @@ function Appearance() {
 
   const remove = async () => {
     setError('');
-    localStorage.removeItem('mailmax.branding');
+    localStorage.removeItem('maillo.branding');
     if (!config.demo) {
       const f = new FormData();
       f.append('action', 'branding_remove');

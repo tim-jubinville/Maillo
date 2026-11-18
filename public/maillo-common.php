@@ -1,6 +1,6 @@
 <?php
 /*
- * Shared helpers for Mailmax's server files (update.php, ai.php).
+ * Shared helpers for Maillo's server files (update.php, ai.php).
  * authorize() accepts a request only if it carries a Google access token issued to
  * this install's OAuth client, for an account allowed in config.js.
  */

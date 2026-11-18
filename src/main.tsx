@@ -1,3 +1,4 @@
+import './migrate';
 import { render } from 'preact';
 import { applyBranding, config, type Branding } from './config';
 import { boot } from './store';
@@ -10,7 +11,7 @@ initTheme();
 
 async function loadBranding() {
   try {
-    const local = localStorage.getItem('mailmax.branding');
+    const local = localStorage.getItem('maillo.branding');
     if (local) applyBranding(JSON.parse(local) as Branding);
   } catch {
     /* empty */

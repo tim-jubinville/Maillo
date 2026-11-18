@@ -25,6 +25,8 @@ export interface AppConfig {
 
 declare global {
   interface Window {
+    MAILLO_CONFIG?: Partial<AppConfig>;
+    /** Former name, still read so older config.js files keep working. */
     MAILMAX_CONFIG?: Partial<AppConfig>;
   }
 }
@@ -78,7 +80,7 @@ export function applyBranding(b: Branding | null | undefined) {
 }
 
 function load(): AppConfig {
-  const raw = (window.MAILMAX_CONFIG ?? {}) as Partial<AppConfig>;
+  const raw = (window.MAILLO_CONFIG ?? window.MAILMAX_CONFIG ?? {}) as Partial<AppConfig>;
   const params = new URLSearchParams(location.search);
   return {
     appName: (raw.appName ?? '').trim() || defaults.appName,

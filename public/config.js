@@ -3,7 +3,7 @@
  * Edit this file after uploading. No rebuild is needed.
  * See docs/INSTALL.md for every option.
  */
-window.MAILMAX_CONFIG = {
+window.MAILLO_CONFIG = {
   // Name shown in the header and the browser tab. With the default name the
   // header shows the Maillo icon and wordmark; any other name is shown as text.
   appName: "Maillo",
