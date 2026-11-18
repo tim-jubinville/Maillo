@@ -208,13 +208,15 @@ a:hover { color: var(--violet); }
 .sp .ic { width: 20px; height: 20px; stroke-width: 1.9; }
 .sp:hover { background: var(--hover); }
 .sp.on .cic { transform: scale(1.08); }
-.sp.on::after { content: ''; position: absolute; right: 2px; top: 50%; width: 4px; height: 16px; margin-top: -8px; border-radius: 2px; background: var(--accent); }
+.sp.on { background: color-mix(in srgb, var(--surface) 85%, transparent); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08); }
 
 /* List */
 .listcol { min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line-soft); position: relative; }
 .listcol.split { flex: 0 1 460px; min-width: 340px; }
 .listcol.full { flex: 1 1 auto; border-right: 0; }
 .toolbar { display: flex; align-items: center; gap: 2px; padding: 6px 8px; min-height: 50px; flex-wrap: wrap; position: relative; }
+.toolbar.nowrap { flex-wrap: nowrap; }
+.toolbar.nowrap .range { white-space: nowrap; min-width: 0; }
 .toolbar h1 { font-size: 15px; font-weight: 700; margin: 0 0 0 8px; letter-spacing: -0.01em; }
 .toolbar .range { margin-left: auto; font-size: 12px; color: var(--muted); padding-right: 4px; }
 .cb { width: 16px; height: 16px; margin: 0 10px 0 8px; accent-color: var(--ink); flex: none; cursor: pointer; }
@@ -285,7 +287,10 @@ a:hover { color: var(--violet); }
 .msg-full { padding: 18px 18px 22px; display: flex; flex-direction: column; gap: 14px; }
 .msg-head { display: flex; align-items: flex-start; gap: 12px; }
 .msg-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.msg-who .name { font-size: 15px; font-weight: 600; }
+.msg-who .name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.msg-who > div:first-child { min-width: 0; }
+.msg-time { flex: 0 1 auto; min-width: 0; max-width: 42%; overflow: hidden; text-overflow: ellipsis; }
+.msg-head .msg-who { flex: 1 1 140px; min-width: 110px; }
 .msg-who .email { font-size: 13px; color: var(--muted); }
 .msg-who .recips { font-size: 13px; color: var(--muted); text-align: left; display: inline-flex; align-items: center; gap: 4px; }
 .msg-time { font-size: 12px; color: var(--muted); white-space: nowrap; padding-top: 3px; }
