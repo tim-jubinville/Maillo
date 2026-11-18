@@ -8,7 +8,7 @@ import { dismissToast, openCompose, setState, signInClick, signOutClick, useApp,
 import { Brand, Menu } from './common';
 import { Compose } from './Compose';
 import { Icon } from './Icon';
-import { KeyHelp, useShortcuts } from './Keys';
+import { KeyHelp, SEARCH_KEY, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
 import { Settings } from './Settings';
 import { SidePanel } from './SidePanel';
@@ -107,6 +107,7 @@ function Header({ s }: { s: AppState }) {
           type="search"
           value={q}
           placeholder={t('search.placeholder')}
+          aria-keyshortcuts="Meta+K Control+K"
           autoComplete="off"
           onInput={(e) => setQ((e.target as HTMLInputElement).value)}
         />
@@ -115,7 +116,7 @@ function Header({ s }: { s: AppState }) {
             <Icon name="x" />
           </button>
         )}
-        <span class="kbd" aria-hidden="true">/</span>
+        <span class="kbd" aria-hidden="true">{SEARCH_KEY}</span>
       </form>
       <div class="header-right">
         <span class="status">
