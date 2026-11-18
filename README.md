@@ -28,6 +28,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Show original, print
 
 **Writing**
+- Quick reply box at the bottom of every conversation, with a button to open the full reply
 - Compose, reply, reply all, forward (with the original attachments)
 - Rich text formatting, links, signatures, attachments (drag and drop works)
 - Send from any of your Gmail "Send mail as" addresses

@@ -5,7 +5,7 @@ import { b64urlToBase64, displayName, type Attachment, type ParsedMessage } from
 import { locale, t } from '../i18n';
 import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
 import { go, listHash, threadHash, type MailRoute } from '../route';
-import { actions, api, closeThread, openCompose, openDraft, senderName, toast, type AppState } from '../store';
+import { actions, api, closeThread, expandQuickReply, openCompose, openDraft, quickReply, senderName, toast, type AppState } from '../store';
 import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
@@ -209,6 +209,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
             </div>
 
             {last?.calendar && <Invite m={last} />}
+
+            {!draft && last && <QuickReply key={o.id} m={last} />}
 
             <div class="reply-row">
               {draft ? (
@@ -471,6 +473,60 @@ function RibbonBar({
       <span class="range">{showPos ? position : ''}</span>
       <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={!canPrev} onClick={onPrev}><Icon name="chevLeft" /></button>
       <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!canNext} onClick={onNext}><Icon name="chevRight" /></button>
+    </div>
+  );
+}
+
+function QuickReply({ m }: { m: ParsedMessage }) {
+  const [text, setText] = useState('');
+  const area = useRef<HTMLTextAreaElement>(null);
+  const resize = () => {
+    const el = area.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+  };
+  const target = m.replyTo[0] ?? m.from;
+  const send = async () => {
+    const v = text.trim();
+    if (!v) return;
+    setText('');
+    requestAnimationFrame(resize);
+    await quickReply(m, v);
+  };
+  const expand = () => {
+    const v = text;
+    setText('');
+    expandQuickReply(m, v);
+  };
+  return (
+    <div class="quick">
+      <label for={`quick-${m.id}`} class="sr-only">{t('quick.label')}</label>
+      <textarea
+        id={`quick-${m.id}`}
+        ref={area}
+        rows={1}
+        value={text}
+        placeholder={t('quick.placeholder', { name: senderName(target) })}
+        onInput={(e) => {
+          setText((e.target as HTMLTextAreaElement).value);
+          resize();
+        }}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            send();
+          }
+        }}
+      />
+      {text.trim() && (
+        <button class="ib" aria-label={t('quick.expand')} title={t('quick.expand')} onClick={expand}>
+          <Icon name="maximize" />
+        </button>
+      )}
+      <button class="quick-send" aria-label={t('compose.send')} title={`${t('compose.send')} (Ctrl/⌘ + Enter)`} disabled={!text.trim()} onClick={send}>
+        <Icon name="send" size={17} />
+      </button>
     </div>
   );
 }
