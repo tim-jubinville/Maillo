@@ -22,7 +22,7 @@ window.MAILMAX_CONFIG = {
   language: "auto",
 
   // Main colour for buttons and highlights.
-  accentColor: "#14213D",
+  accentColor: "#2B59E8",
 
   // Optional Google features. Each one adds a permission to the sign-in screen.
   features: {

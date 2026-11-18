@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { config } from '../config';
 import type { Address } from '../gmail/mime';
 import { avatarColor, initials } from '../model';
@@ -121,4 +121,23 @@ export function downloadBase64(b64: string, filename: string, mimeType: string) 
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+export function Ribbon({ children, label }: { children: ComponentChildren; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const parent = el?.parentElement;
+    if (!el || !parent) return;
+    const set = () => parent.style.setProperty('--rh', `${el.offsetHeight + 20}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div class="ribbon" ref={ref} role="group" aria-label={label}>
+      {children}
+    </div>
+  );
 }

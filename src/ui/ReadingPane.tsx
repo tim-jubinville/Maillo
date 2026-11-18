@@ -5,7 +5,7 @@ import { locale, t } from '../i18n';
 import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
 import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, api, closeThread, openCompose, openDraft, senderName, toast, type AppState } from '../store';
-import { Avatar, Menu, downloadBase64 } from './common';
+import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
 import { MessageBody } from './MessageBody';
@@ -105,6 +105,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
 
   return (
     <section class="readcol" aria-label={t('read.label')}>
+      <Ribbon label={t('read.label')}>
       <div class="toolbar">
         {showBack && (
           <>
@@ -170,6 +171,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
           <Icon name="chevRight" />
         </button>
       </div>
+
+      </Ribbon>
 
       <div class="readscroll">
         {o.loading ? (

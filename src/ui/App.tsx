@@ -31,9 +31,14 @@ export function App() {
       )}
       <div class="main">
         <Rail s={s} />
-        <Sidebar s={s} />
         <div class={`overlay-sidebar ${s.sidebarOpen ? 'open' : ''}`} onClick={() => setState({ sidebarOpen: false })} />
-        {s.route.view === 'settings' ? <Settings s={s} section={s.route.section} /> : <MailCard s={s} route={s.route} />}
+        {s.route.view === 'settings' ? (
+          <div class="card glass settings-card">
+            <Settings s={s} section={s.route.section} />
+          </div>
+        ) : (
+          <MailCard s={s} route={s.route} />
+        )}
         <SideIcons s={s} />
       </div>
       {s.compose && <Compose key={s.compose.key} s={s} c={s.compose} />}
@@ -244,6 +249,7 @@ function MailCard({ s, route }: { s: AppState; route: MailRoute }) {
   const showRead = pane === 'right' || reading;
   return (
     <div class={`card glass ${reading ? 'reading' : ''}`}>
+      <Sidebar s={s} />
       {showList && <ThreadList s={s} route={route} split={pane === 'right'} />}
       {showRead && <ReadingPane s={s} route={route} showBack={pane === 'off' || window.innerWidth <= 900} />}
       {s.panel && <SidePanel s={s} />}

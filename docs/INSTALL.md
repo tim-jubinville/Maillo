@@ -91,7 +91,7 @@ window.MAILMAX_CONFIG = {
   allowedAccounts: ["you@example.com"],
   allowedDomains: [],
   language: "auto",
-  accentColor: "#14213D",
+  accentColor: "#2B59E8",
   features: { calendar: false, tasks: false },
   links: { /* see below */ },
   demo: false

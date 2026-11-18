@@ -3,7 +3,7 @@ import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type 
 import { getPrefs } from '../prefs';
 import { CATEGORIES, go, listHash, type MailRoute } from '../route';
 import { actions, loadList, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
-import { Avatar } from './common';
+import { Avatar, Ribbon } from './common';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
 
@@ -33,6 +33,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
 
   return (
     <section class={`listcol ${split ? 'split' : 'full'}`} aria-label={t('list.label')}>
+      <Ribbon label={t('list.label')}>
       <div class="toolbar">
         <input type="checkbox" class="cb" aria-label={t('list.selectAll')} checked={all} indeterminate={sel.length > 0 && !all} onChange={() => selectAll(!all)} />
         {sel.length > 0 ? (
@@ -103,6 +104,8 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
           ))}
         </div>
       )}
+
+      </Ribbon>
 
       <div class="rows" role="list">
         {s.list.loading && !rows.length && Array.from({ length: 6 }, () => <div class="skeleton" />)}

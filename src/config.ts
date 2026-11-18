@@ -31,7 +31,7 @@ const defaults: AppConfig = {
   allowedAccounts: [],
   allowedDomains: [],
   language: 'auto',
-  accentColor: '#14213D',
+  accentColor: '#2B59E8',
   features: { calendar: false, tasks: false },
   links: {
     chat: 'https://mail.google.com/chat/',
