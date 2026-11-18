@@ -1,16 +1,18 @@
 import type { ComponentChildren } from 'preact';
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { config } from '../config';
 import { b64urlToBase64, displayName, type Attachment, type ParsedMessage } from '../gmail/mime';
 import { locale, t } from '../i18n';
 import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
 import { go, listHash, threadHash, type MailRoute } from '../route';
-import { actions, api, closeThread, expandQuickReply, openCompose, openDraft, quickReply, senderName, toast, type AppState } from '../store';
+import { actions, api, closeThread, expandQuickReply, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
+import type { ThreadNote } from '../gmail/types';
 import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelItems, LabelMenu, MoveItems, MoveMenu } from './Menus';
 import { MessageBody } from './MessageBody';
+import { PILE_ICON, pileKey } from './Piles';
 
 const TINTS: [RegExp, string][] = [
   [/pdf/, '#EE8F78'],
@@ -102,8 +104,11 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
   const msgs = o.messages.filter((m) => !m.labelIds.includes('DRAFT'));
   const draft = o.messages.find((m) => m.labelIds.includes('DRAFT'));
   const last = msgs[msgs.length - 1] ?? o.messages[o.messages.length - 1];
-  const userLabels = s.labels.filter((l) => l.type === 'user' && o.labelIds.includes(l.id));
+  const userLabels = s.labels.filter((l) => l.type === 'user' && o.labelIds.includes(l.id) && !pileLabelIds().includes(l.id));
   const subject = (msgs[0] ?? last)?.subject || t('list.noSubject');
+  const pile = pileOf(o.labelIds);
+  const note = s.notes[o.id];
+  const editingNote = s.noteEditing === o.id;
 
   return (
     <section class="readcol" aria-label={t('read.label')}>
@@ -120,11 +125,21 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
             ? [{ id: 'notspam', group: 1, prio: 10, w: 104, label: t('act.notSpam'), icon: 'spam' as const, text: true, run: () => actions.notSpam(id) }]
             : inTrash
               ? [{ id: 'restore', group: 1, prio: 10, w: 96, label: t('act.restore'), icon: 'inbox' as const, text: true, run: () => actions.restore(id) }]
-              : inInbox
-                ? [{ id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, run: () => actions.archive(id) }]
-                : [{ id: 'inbox', group: 1, prio: 10, w: 38, label: t('act.moveInbox'), icon: 'inbox' as const, run: () => actions.moveToInbox(id) }]),
+              : pile
+                ? [{ id: 'done', group: 1, prio: 10, w: 38, label: t('act.asideDone'), icon: 'archive' as const, run: () => actions.unpin(id, false) }]
+                : inInbox
+                  ? [{ id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, run: () => actions.archive(id) }]
+                  : [{ id: 'inbox', group: 1, prio: 10, w: 38, label: t('act.moveInbox'), icon: 'inbox' as const, run: () => actions.moveToInbox(id) }]),
           ...(!inSpam ? [{ id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, run: () => actions.spam(id) }] : []),
           ...(!inTrash ? [{ id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, run: () => actions.trash(id) }] : []),
+          ...(!inSpam && !inTrash
+            ? PILES.map((p, i) =>
+                pile === p
+                  ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t('act.backToInbox'), icon: 'inbox' as const, run: () => actions.unpin(id, true) }
+                  : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], run: () => actions.pin(p, id) }
+              )
+            : []),
+          ...(notesEnabled && !note ? [{ id: 'note', group: 2, prio: 7.5, w: 38, label: t('act.addNote'), icon: 'note' as const, run: () => setState({ noteEditing: o.id }) }] : []),
           { id: 'unread', group: 2, prio: 7, w: 38, label: t('act.markUnread'), icon: 'unread' as const, run: () => actions.read(id, false) },
           ...(config.features.tasks ? [{ id: 'tasks', group: 2, prio: 3, w: 38, label: t('act.addTask'), icon: 'tasks' as const, run: () => actions.addTask(o.id) }] : []),
           { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move' as const, menu: <MoveMenu s={s} ids={id} />, sub: () => <MoveItems s={s} ids={id} /> },
@@ -182,6 +197,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
               <div class="labels-line">
                 {important && <span class="tag important" style={{ background: 'var(--warn-bg)' }}>{t('list.important')}</span>}
                 {inInbox && <span class="tag">{t('nav.inbox')}</span>}
+                {pile && <span class="tag aside-tag"><CIcon name={PILE_ICON[pile]} size={14} />{t(pileKey(pile, 'title'))}</span>}
                 {userLabels.map((l) => (
                   <span class="tag removable">
                     <span class="dot" style={{ background: labelColor(l) }} />
@@ -193,6 +209,10 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
                 ))}
               </div>
             </div>
+
+            {notesEnabled && (note || editingNote) && (
+              <StickyNote key={o.id} threadId={o.id} note={note} editing={editingNote} />
+            )}
 
             {inSpam && (
               <div class="notice warn" role="note">
@@ -234,6 +254,80 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
         )}
       </div>
     </section>
+  );
+}
+
+function StickyNote({ threadId, note, editing }: { threadId: string; note?: ThreadNote; editing: boolean }) {
+  const [text, setText] = useState(note?.text ?? '');
+  const area = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!editing) return;
+    setText(note?.text ?? '');
+    const el = area.current;
+    if (el) {
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+  }, [editing]);
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text, editing]);
+  const save = () => setNote(threadId, text);
+  const cancel = () => setState({ noteEditing: undefined });
+  const date = note ? new Date(note.updated).toLocaleDateString(locale(), { month: 'short', day: 'numeric', year: new Date(note.updated).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '';
+  return (
+    <aside class={`sticky ${editing ? 'editing' : ''}`} aria-label={t('note.title')}>
+      <div class="sticky-head">
+        <CIcon name="note" size={18} />
+        <span class="caps">{t('note.title')}</span>
+        <span class="sticky-meta">{editing ? t('note.hint') : note ? t('note.updated', { date }) : ''}</span>
+        {!editing && (
+          <>
+            <button class="ib sm" aria-label={t('note.edit')} title={t('note.edit')} onClick={() => setState({ noteEditing: threadId })}>
+              <Icon name="pencil" size={16} />
+            </button>
+            <button class="ib sm" aria-label={t('note.delete')} title={t('note.delete')} onClick={() => setNote(threadId, '')}>
+              <Icon name="trash" size={16} />
+            </button>
+          </>
+        )}
+      </div>
+      {editing ? (
+        <>
+          <label class="sr-only" for={`note-${threadId}`}>{t('note.title')}</label>
+          <textarea
+            id={`note-${threadId}`}
+            ref={area}
+            rows={2}
+            value={text}
+            placeholder={t('note.placeholder')}
+            onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                save();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                cancel();
+              }
+            }}
+          />
+          <div class="sticky-actions">
+            <span class="sticky-meta">{t('note.saveHint')}</span>
+            <button class="btn sm" onClick={cancel}>{t('note.cancel')}</button>
+            <button class="btn sm primary" onClick={save}>{t('note.save')}</button>
+          </div>
+        </>
+      ) : (
+        <button class="sticky-text" onClick={() => setState({ noteEditing: threadId })} aria-label={`${t('note.edit')}: ${note?.text ?? ''}`}>
+          {note?.text}
+        </button>
+      )}
+    </aside>
   );
 }
 

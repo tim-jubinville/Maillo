@@ -15,8 +15,8 @@ export type Category = 'primary' | 'promotions' | 'social' | 'updates' | 'forums
 export const FOLDERS: Folder[] = ['inbox', 'starred', 'snoozed', 'important', 'sent', 'scheduled', 'drafts', 'all', 'spam', 'trash'];
 export const CATEGORIES: Category[] = ['primary', 'promotions', 'social', 'updates', 'forums'];
 
-export type SettingsSection = 'general' | 'appearance' | 'labels' | 'filters' | 'accounts' | 'vacation' | 'forwarding' | 'shortcuts' | 'updates' | 'about';
-export const SETTINGS_SECTIONS: SettingsSection[] = ['general', 'appearance', 'labels', 'filters', 'accounts', 'vacation', 'forwarding', 'shortcuts', 'updates', 'about'];
+export type SettingsSection = 'general' | 'appearance' | 'labels' | 'filters' | 'accounts' | 'vacation' | 'forwarding' | 'shortcuts' | 'updates' | 'ai' | 'about';
+export const SETTINGS_SECTIONS: SettingsSection[] = ['general', 'appearance', 'labels', 'filters', 'accounts', 'vacation', 'forwarding', 'shortcuts', 'updates', 'ai', 'about'];
 
 export interface MailRoute {
   view: 'mail';

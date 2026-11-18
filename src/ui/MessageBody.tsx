@@ -76,10 +76,12 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     const style = imagesAllowed ? "'unsafe-inline' https:" : "'unsafe-inline'";
     const csp = `default-src 'none'; img-src ${img}; style-src ${style}; font-src data: ${imagesAllowed ? 'https:' : ''}; script-src 'none'; frame-src 'none'; form-action 'none'`;
     const hideQuote = hasQuote && !showQuoted ? '.gmail_quote,blockquote[type=cite]{display:none!important}' : '';
+    // The frame's colour scheme must match the page's, or the browser paints it with an opaque white backdrop.
+    const scheme = `:root{color-scheme:${dark && !m.html ? 'dark' : 'light'}}`;
     const darkText = dark && !m.html ? 'body{color:#e7ecf6}a{color:#c9d8ff;text-decoration-color:#5e7db4}blockquote{border-left-color:#2f3b58;color:#9aa6bd}' : '';
     const body = html.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '');
     const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? '';
-    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>${BASE_CSS}${hideQuote}${darkText}</style>${head}</head><body>${body}</body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>${BASE_CSS}${scheme}${hideQuote}${darkText}</style>${head}</head><body>${body}</body></html>`;
   }, [source, cids, imagesAllowed, showQuoted, dark]);
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import type {
   GThread,
   GVacation,
   MailBackend,
+  NotesMap,
   TaskItem
 } from './types';
 
@@ -38,7 +39,7 @@ const seeds: Seed[][] = [
     { from: 'Marcus Chen <marcus@studio.example>', subject: 'Invitation: Design crit @ Thursday 2pm', body: '<p>Bringing the latest checkout flows. Come with one thing you would cut.</p><p>Marcus</p>', ago: 1.3 * H, labels: ['INBOX', 'UNREAD', 'CATEGORY_PERSONAL', 'Label_work'], ics: { summary: 'Design crit', start: new Date(now + 2 * D), end: new Date(now + 2 * D + H), location: 'Video call' } }
   ],
   [
-    { from: 'Atlantica Air <noreply@air.example>', subject: 'Your trip is confirmed: K7Q2PX', body: '<table style="width:100%;max-width:560px;font-family:Arial,sans-serif"><tr><td style="background:#0b3a5b;color:#fff;padding:20px;font-size:20px"><b>Booking confirmed</b></td></tr><tr><td style="padding:20px">Thanks for booking with us. Your e-ticket and itinerary are attached.<br><br><img src="https://picsum.photos/seed/flight/520/160" alt="" width="520" height="160"></td></tr></table>', ago: 2.6 * H, labels: ['INBOX', 'CATEGORY_PERSONAL', 'Label_travel'], files: [{ name: 'E-ticket-K7Q2PX.pdf', type: 'application/pdf', size: 312_000 }] }
+    { from: 'Atlantica Air <noreply@air.example>', subject: 'Your trip is confirmed: K7Q2PX', body: '<table style="width:100%;max-width:560px;font-family:Arial,sans-serif"><tr><td style="background:#0b3a5b;color:#fff;padding:20px;font-size:20px"><b>Booking confirmed</b></td></tr><tr><td style="padding:20px">Thanks for booking with us. Your e-ticket and itinerary are attached.<br><br><img src="https://picsum.photos/seed/flight/520/160" alt="" width="520" height="160"></td></tr></table>', ago: 2.6 * H, labels: ['CATEGORY_PERSONAL', 'Label_travel', 'Label_aside'], files: [{ name: 'E-ticket-K7Q2PX.pdf', type: 'application/pdf', size: 312_000 }] }
   ],
   [
     { from: 'Sofia Reyes <sofia@mail.example>', subject: 'Dinner Friday?', body: 'Dinner Friday? It has been way too long.', ago: 3 * D, labels: ['INBOX', 'CATEGORY_PERSONAL', 'Label_personal'] },
@@ -46,10 +47,10 @@ const seeds: Seed[][] = [
     { from: 'Sofia Reyes <sofia@mail.example>', subject: 'Re: Dinner Friday?', body: 'Perfect, I will book for 7:30. Bringing Daniel if that is ok!\n\nS.', ago: 20 * H, labels: ['INBOX', 'STARRED', 'CATEGORY_PERSONAL', 'Label_personal'] }
   ],
   [
-    { from: 'Julien Roy <julien@law.example>', subject: 'Contract draft for review', body: 'Hi,\n\nAttaching the draft agreement. Let me know if clause 4 on usage rights works for you.\n\nJulien', ago: 3.2 * D, labels: ['INBOX', 'IMPORTANT', 'CATEGORY_PERSONAL', 'Label_work'], files: [{ name: 'Agreement-draft-v1.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 148_000 }] }
+    { from: 'Julien Roy <julien@law.example>', subject: 'Contract draft for review', body: 'Hi,\n\nAttaching the draft agreement. Let me know if clause 4 on usage rights works for you.\n\nJulien', ago: 3.2 * D, labels: ['IMPORTANT', 'CATEGORY_PERSONAL', 'Label_work', 'Label_action'], files: [{ name: 'Agreement-draft-v1.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 148_000 }] }
   ],
   [
-    { from: 'Priya Shah <priya@mail.example>', subject: 'Photos from the cottage', body: '12 photos from the weekend. The sunrise ones came out great.', ago: 5 * D, labels: ['INBOX', 'CATEGORY_PERSONAL', 'Label_personal'], files: [{ name: 'IMG_2041.jpg', type: 'image/jpeg', size: 4_200_000 }, { name: 'IMG_2044.jpg', type: 'image/jpeg', size: 3_800_000 }] }
+    { from: 'Priya Shah <priya@mail.example>', subject: 'Photos from the cottage', body: '12 photos from the weekend. The sunrise ones came out great.', ago: 5 * D, labels: ['CATEGORY_PERSONAL', 'Label_personal', 'Label_aside'], files: [{ name: 'IMG_2041.jpg', type: 'image/jpeg', size: 4_200_000 }, { name: 'IMG_2044.jpg', type: 'image/jpeg', size: 3_800_000 }] }
   ],
   [
     { from: 'Club de design <info@club.example>', subject: 'Soirée des membres : programme de décembre', body: '<p>Bonjour à tous,</p><p>Voici le programme de notre soirée des membres : trois courtes présentations, suivies d’un apéro.</p><p>Au plaisir de vous y voir,<br>L’équipe du Club</p>', ago: 6 * D, labels: ['INBOX', 'CATEGORY_PERSONAL'] }
@@ -132,7 +133,9 @@ const labels: GLabel[] = [
   { id: 'Label_personal', name: 'Personal', type: 'user', color: { backgroundColor: '#ff7537', textColor: '#ffffff' } },
   { id: 'Label_travel', name: 'Travel', type: 'user', color: { backgroundColor: '#2da2bb', textColor: '#ffffff' } },
   { id: 'Label_finance', name: 'Finance', type: 'user', color: { backgroundColor: '#8e63ce', textColor: '#ffffff' } },
-  { id: 'Label_receipts', name: 'Finance/Receipts', type: 'user', color: { backgroundColor: '#8e63ce', textColor: '#ffffff' } }
+  { id: 'Label_receipts', name: 'Finance/Receipts', type: 'user', color: { backgroundColor: '#8e63ce', textColor: '#ffffff' } },
+  { id: 'Label_aside', name: 'Set aside', type: 'user' },
+  { id: 'Label_action', name: 'Action required', type: 'user' }
 ];
 
 let sendAs: GSendAs[] = [{ sendAsEmail: ME, displayName: 'Demo User', isPrimary: true, isDefault: true, signature: '<div>Demo User</div>' }];
@@ -141,6 +144,7 @@ let filters: GFilter[] = [
   { id: 'f1', criteria: { from: '@studio.example' }, action: { addLabelIds: ['Label_work', 'IMPORTANT'] } },
   { id: 'f2', criteria: { subject: 'receipt OR invoice OR statement' }, action: { addLabelIds: ['Label_receipts'], removeLabelIds: ['INBOX'] } }
 ];
+let notes: NotesMap = {};
 let tasks: TaskItem[] = [
   { id: 'k1', title: 'Sign off Q1 budget split', status: 'needsAction', due: new Date(now + 3 * D).toISOString() },
   { id: 'k2', title: 'Send launch-week channel list', status: 'needsAction' }
@@ -381,5 +385,13 @@ export const demoBackend: MailBackend = {
   completeTask: (id, done) => {
     tasks = tasks.map((k) => (k.id === id ? { ...k, status: done ? 'completed' : 'needsAction' } : k));
     return wait(undefined);
+  },
+  loadNotes: () => wait(notes),
+  saveNotes: (n) => {
+    notes = structuredClone(n);
+    return wait(undefined);
   }
 };
+
+const bill = threads.find((x) => x.messages?.[0]?.payload?.headers?.some((h) => h.name === 'Subject' && h.value.startsWith('Your monthly statement')));
+if (bill) notes[bill.id] = { text: 'Paid Nov 14 by credit card. Confirmation #A-5521.', updated: now - 2 * D };

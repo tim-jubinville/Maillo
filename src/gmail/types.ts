@@ -135,6 +135,13 @@ export interface TaskItem {
   status?: 'needsAction' | 'completed';
 }
 
+export interface ThreadNote {
+  text: string;
+  updated: number;
+}
+
+export type NotesMap = Record<string, ThreadNote>;
+
 export interface ListThreadsParams {
   q?: string;
   labelIds?: string[];
@@ -179,4 +186,6 @@ export interface MailBackend {
   listTasks(): Promise<TaskItem[]>;
   addTask(title: string, notes?: string): Promise<TaskItem>;
   completeTask(id: string, done: boolean): Promise<void>;
+  loadNotes(): Promise<NotesMap>;
+  saveNotes(notes: NotesMap): Promise<void>;
 }

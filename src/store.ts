@@ -15,7 +15,7 @@ import {
   type OutgoingAttachment,
   type ParsedMessage
 } from './gmail/mime';
-import type { GLabel, GSendAs, MailBackend } from './gmail/types';
+import type { GLabel, GSendAs, MailBackend, NotesMap } from './gmail/types';
 import { t } from './i18n';
 import { listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs } from './prefs';
@@ -79,6 +79,16 @@ export interface OpenThread {
   labelIds: string[];
 }
 
+export type PileId = 'action' | 'aside';
+export const PILES: PileId[] = ['action', 'aside'];
+
+export interface Pile {
+  labelId?: string;
+  rows: ThreadRow[];
+}
+
+export const notesEnabled = config.demo || config.features.notes;
+
 export interface AppState {
   phase: 'boot' | 'signin' | 'denied' | 'ready';
   authError?: string;
@@ -100,6 +110,9 @@ export interface AppState {
   showKeys: boolean;
   sidebarOpen: boolean;
   recent: Address[];
+  piles: Record<PileId, Pile>;
+  notes: NotesMap;
+  noteEditing?: string;
 }
 
 let state: AppState = {
@@ -116,7 +129,9 @@ let state: AppState = {
   sendAs: [],
   showKeys: false,
   sidebarOpen: false,
-  recent: []
+  recent: [],
+  piles: { action: { rows: [] }, aside: { rows: [] } },
+  notes: {}
 };
 
 const listeners = new Set<() => void>();
@@ -225,8 +240,9 @@ async function start() {
     }
     if (!config.demo) rememberAccount(p.emailAddress);
     setState({ phase: 'ready', me: p.emailAddress, route: parseHash(), sessionExpired: false });
-    loadLabels();
+    loadLabels().then(() => loadPiles());
     loadSendAs();
+    loadNotes();
     await loadList(true);
     const r = state.route;
     if (r.view === 'mail' && r.thread) openThread(r.thread);
@@ -329,6 +345,101 @@ export async function loadList(reset = false, silent = false) {
   }
 }
 
+function pileLabelName(p: PileId): string {
+  return p === 'aside' ? config.setAsideLabel : config.actionLabel;
+}
+
+function setPile(p: PileId, pile: Pile) {
+  setState((st) => ({ piles: { ...st.piles, [p]: pile } }));
+}
+
+function findPileLabel(p: PileId, labels = state.labels): string | undefined {
+  const name = pileLabelName(p).toLowerCase();
+  return labels.find((l) => l.type === 'user' && l.name.toLowerCase() === name)?.id;
+}
+
+async function loadPile(p: PileId) {
+  const labelId = state.piles[p].labelId ?? findPileLabel(p);
+  if (!labelId) return setPile(p, { rows: [] });
+  try {
+    const res = await api.listThreads({ labelIds: [labelId], maxResults: 100 });
+    const rows = await pool(res.threads ?? [], 8, async (x) => {
+      const c = rowCache.get(x.id);
+      if (c && c.historyId === x.historyId) return c;
+      const row = rowFromThread(await api.getThread(x.id, 'metadata'), state.me);
+      rowCache.set(x.id, row);
+      return row;
+    });
+    setPile(p, { labelId, rows });
+  } catch (e) {
+    if (e instanceof AuthRequired) fail(e);
+  }
+}
+
+export function loadPiles() {
+  return Promise.all(PILES.map(loadPile));
+}
+
+async function ensurePileLabel(p: PileId): Promise<string> {
+  const known = state.piles[p].labelId ?? findPileLabel(p);
+  if (known) return known;
+  const l = await api.createLabel(pileLabelName(p));
+  setState((st) => ({ labels: [...st.labels, l], piles: { ...st.piles, [p]: { ...st.piles[p], labelId: l.id } } }));
+  return l.id;
+}
+
+export function pileOf(labelIds: string[]): PileId | undefined {
+  return PILES.find((p) => {
+    const id = state.piles[p].labelId;
+    return !!id && labelIds.includes(id);
+  });
+}
+
+export function pileLabelIds(): string[] {
+  return PILES.map((p) => state.piles[p].labelId).filter((x): x is string => !!x);
+}
+
+export async function loadNotes() {
+  if (!notesEnabled) return;
+  try {
+    setState({ notes: await api.loadNotes() });
+  } catch (e) {
+    if (e instanceof AuthRequired) return fail(e);
+    toast(t('note.loadFailed'));
+  }
+}
+
+let noteQueue: Promise<void> = Promise.resolve();
+
+// Re-reads the file before writing so a note saved on another device isn't overwritten.
+export function setNote(threadId: string, text: string, opts: { undo?: boolean } = {}) {
+  const prev = state.notes[threadId];
+  const clean = text.replace(/\s+$/, '');
+  const notes = { ...state.notes };
+  if (clean.trim()) notes[threadId] = { text: clean, updated: Date.now() };
+  else delete notes[threadId];
+  setState({ notes, noteEditing: undefined });
+  const entry = notes[threadId];
+  noteQueue = noteQueue.then(async () => {
+    try {
+      const remote = await api.loadNotes();
+      if (entry) remote[threadId] = entry;
+      else delete remote[threadId];
+      await api.saveNotes(remote);
+      setState({ notes: { ...remote } });
+      if (!entry && prev && opts.undo !== false)
+        toast(t('note.deleted'), { action: { label: t('toast.undo'), run: () => setNote(threadId, prev.text, { undo: false }) } });
+    } catch (e) {
+      if (e instanceof AuthRequired) return fail(e);
+      toast(t('note.saveFailed'));
+      const back = { ...state.notes };
+      if (prev) back[threadId] = prev;
+      else delete back[threadId];
+      setState({ notes: back });
+    }
+  });
+}
+
 function collectRecent(rows: ThreadRow[]): Address[] {
   const map = new Map(state.recent.map((a) => [a.email.toLowerCase(), a]));
   for (const r of rows) for (const a of [r.firstFrom, r.lastFrom, ...r.recipients]) {
@@ -353,6 +464,7 @@ export function prevPage() {
 
 export function refresh(silent = false) {
   loadList(false, silent);
+  loadPiles();
   loadCounts().catch(() => undefined);
   if (state.open && !silent) openThread(state.open.id, true);
 }
@@ -521,6 +633,52 @@ export const actions = {
     const r = state.route as MailRoute;
     const remove = r.label && r.label !== labelId ? [r.label, 'INBOX'] : ['INBOX'];
     run(ids, { add: [labelId], remove }, { drop: true, message: t('toast.moved', { name: l ? l.name : labelId }) });
+  },
+  // Piles are exclusive: moving a conversation to one pile takes it out of the other.
+  async pin(p: PileId, ids: string[]) {
+    if (!ids.length) return;
+    let labelId: string;
+    try {
+      labelId = await ensurePileLabel(p);
+    } catch (e) {
+      return fail(e);
+    }
+    const others = PILES.filter((x) => x !== p).map((x) => state.piles[x].labelId).filter((x): x is string => !!x);
+    const remove = ['INBOX', ...others];
+    const f = currentFolder();
+    const r = state.route as MailRoute;
+    const set = new Set(ids);
+    const known = new Set(state.piles[p].rows.map((x) => x.id));
+    const move = (row: ThreadRow) => ({ ...row, labelIds: [...row.labelIds.filter((l) => !remove.includes(l)), labelId] });
+    const adding = ids
+      .map((id) => state.list.rows.find((x) => x.id === id) ?? PILES.flatMap((x) => state.piles[x].rows).find((x) => x.id === id))
+      .filter((x): x is ThreadRow => !!x && !known.has(x.id))
+      .map(move);
+    const piles = { ...state.piles };
+    for (const x of PILES) piles[x] = x === p ? { labelId, rows: [...adding, ...piles[x].rows] } : { ...piles[x], rows: piles[x].rows.filter((row) => !set.has(row.id)) };
+    setState({ piles });
+    await run(ids, { add: [labelId], remove }, {
+      drop: f === 'inbox' || (!!r.label && r.label !== labelId) || f === undefined,
+      message: t(p === 'aside' ? 'toast.pin.aside' : 'toast.pin.action', { n: ids.length }),
+      patch: move
+    });
+    loadPiles();
+  },
+  async unpin(ids: string[], toInbox: boolean) {
+    const labels = pileLabelIds();
+    if (!labels.length || !ids.length) return;
+    const set = new Set(ids);
+    const piles = { ...state.piles };
+    for (const x of PILES) piles[x] = { ...piles[x], rows: piles[x].rows.filter((row) => !set.has(row.id)) };
+    setState({ piles });
+    const r = state.route as MailRoute;
+    await run(ids, { add: toInbox ? ['INBOX'] : [], remove: labels }, {
+      drop: (!!r.label && labels.includes(r.label)) || (toInbox ? false : currentFolder() === 'inbox'),
+      message: toInbox ? t('toast.backToInbox') : t('toast.asideDone'),
+      patch: (row) => ({ ...row, labelIds: [...row.labelIds.filter((l) => !labels.includes(l)), ...(toInbox ? ['INBOX'] : [])] })
+    });
+    loadPiles();
+    if (toInbox && currentFolder() === 'inbox') loadList(false, true);
   },
   async addTask(id: string) {
     const row = state.list.rows.find((r) => r.id === id);

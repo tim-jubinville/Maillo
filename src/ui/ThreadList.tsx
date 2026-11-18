@@ -2,12 +2,13 @@ import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type ThreadRow } from '../model';
 import { getPrefs } from '../prefs';
 import { CATEGORIES, go, listHash, type Category, type MailRoute } from '../route';
-import { actions, loadList, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
+import { actions, loadList, pileOf, PILES, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
 import { Avatar } from './common';
 import { InboxZero } from './InboxZero';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
+import { PILE_ICON } from './Piles';
 
 const CAT_ICON: Record<Category, ColorIconName> = {
   primary: 'inbox',
@@ -58,6 +59,9 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
                 <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(sel)}><CIcon name="archive" /></button>
                 <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(sel)}><CIcon name="spam" /></button>
                 <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(sel)}><CIcon name="trash" /></button>
+                {PILES.filter((p) => !(route.label && route.label === s.piles[p].labelId)).map((p) => (
+                  <button class="ib" aria-label={t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action')} title={t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action')} onClick={() => actions.pin(p, sel)}><CIcon name={PILE_ICON[p]} /></button>
+                ))}
               </>
             )}
             <span class="sep" />
@@ -170,6 +174,9 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
     ? `${t('compose.to')}: ${r.recipients.map((a) => a.name || a.email).join(', ')}`
     : r.senders.slice(-3).map((x) => x.name).join(', ');
   const nudge = nudgeDays(r, route.folder);
+  const hasNote = !!s.notes[r.id];
+  const pile = pileOf(r.labelIds);
+  const canAside = !r.labelIds.includes('SPAM') && !r.labelIds.includes('TRASH') && !(r.hasDraft && r.count <= 1 && !r.labelIds.includes('INBOX'));
   const cls = ['row', compact ? 'compact' : '', r.unread ? 'unread' : '', checked ? 'chk' : open ? 'sel' : '', focus ? 'focus' : ''].join(' ');
   return (
     <div class={cls} role="listitem" data-id={r.id} onClick={() => openRow(r.id)}>
@@ -200,6 +207,9 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
               {r.hasDraft && route.folder !== 'drafts' ? <><span class="draft-tag">{t('list.draft')}</span>{who ? `, ${who}` : ''}</> : who || r.lastFrom.email}
             </span>
             {r.count > 1 && <span class="row-count">{r.count}</span>}
+            {hasNote && (
+              <span class="row-note" role="img" aria-label={t('note.has')} title={s.notes[r.id].text}><CIcon name="note" size={15} /></span>
+            )}
             {r.important && <Icon name="important" size={14} style={{ color: 'var(--c-trash)' }} fill="#FFD84D" />}
             {!compact && <span class="row-time">{listDate(r.date)}</span>}
           </span>
@@ -222,6 +232,28 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
           )}
         </span>
       </button>
+      {canAside && (
+        <span class="row-acts">
+          {PILES.map((p) => {
+            const here = pile === p;
+            const label = here ? t('act.backToInbox') : t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action');
+            return (
+              <button
+                class="row-act"
+                aria-label={label}
+                title={label}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (here) actions.unpin([r.id], true);
+                  else actions.pin(p, [r.id]);
+                }}
+              >
+                <CIcon name={here ? 'inbox' : PILE_ICON[p]} size={17} />
+              </button>
+            );
+          })}
+        </span>
+      )}
     </div>
   );
 }
