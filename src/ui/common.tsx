@@ -1,11 +1,35 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { config } from '../config';
+import { config, defaultAppName } from '../config';
+import { WORDMARK_PATH, WORDMARK_RATIO, WORDMARK_VIEWBOX } from './wordmark';
 import type { Address } from '../gmail/mime';
 import { avatarColor, initials } from '../model';
 
+/** The built-in app icon. `dark` forces one variant; otherwise it follows the colour mode. */
+export function AppIcon({ size = 30, dark }: { size?: number; dark?: boolean }) {
+  const s = { width: `${size}px`, height: `${size}px` };
+  if (dark !== undefined) return <img class="app-icon" src={dark ? './icon-dark.svg' : './icon.svg'} alt="" style={s} />;
+  return (
+    <span class="app-icon" aria-hidden="true" style={s}>
+      <img class="only-light" src="./icon.svg" alt="" />
+      <img class="only-dark" src="./icon-dark.svg" alt="" />
+    </span>
+  );
+}
+
+/** The app name: the outlined Maillo wordmark for the default name, plain text for any other name. */
+export function AppName({ height = 20, color }: { height?: number; color?: string }) {
+  if (config.appName === defaultAppName) {
+    return (
+      <svg class="wordmark" viewBox={WORDMARK_VIEWBOX} aria-hidden="true" style={{ height: `${height}px`, width: `${Math.round(height * WORDMARK_RATIO)}px`, color }}>
+        <path d={WORDMARK_PATH} fill="currentColor" />
+      </svg>
+    );
+  }
+  return <span class="brand-name" style={{ color }}>{config.appName}</span>;
+}
+
 export function Brand({ compact }: { compact?: boolean }) {
-  const letter = (config.appName.trim()[0] || 'M').toUpperCase();
   if (config.logoUrl) {
     return (
       <a class="brand" href="#/inbox" aria-label={config.logoText ? `${config.appName} ${config.logoText}` : config.appName}>
@@ -16,8 +40,8 @@ export function Brand({ compact }: { compact?: boolean }) {
   }
   return (
     <a class="brand" href="#/inbox" aria-label={config.appName}>
-      <span class="brand-mark" aria-hidden="true">{letter}</span>
-      {!compact && <span class="brand-name">{config.appName}</span>}
+      <AppIcon />
+      {!compact && <AppName />}
     </a>
   );
 }

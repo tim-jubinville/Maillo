@@ -88,7 +88,7 @@ Open `config.js` on the server and set at least `googleClientId`:
 
 ```js
 window.MAILMAX_CONFIG = {
-  appName: "Mailmax",
+  appName: "Maillo",
   logoUrl: "",
   logoText: "",
   logoInvertDark: true,
@@ -108,8 +108,8 @@ window.MAILMAX_CONFIG = {
 
 | Option | What it does |
 |---|---|
-| `appName` | Name in the browser tab, and in the header when there is no logo (shown next to a monogram of its first letter). |
-| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the monogram and name. A logo uploaded in **Settings → Appearance** takes priority. |
+| `appName` | Name in the browser tab, and in the header when there is no logo. The default, `"Maillo"`, shows the Maillo icon and wordmark; any other name is shown as text next to the icon. |
+| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the Maillo icon and name. A logo uploaded in **Settings → Appearance** takes priority. |
 | `logoText` | Optional text shown after the logo, such as `"Mail"`. Empty (the default) shows the logo alone. |
 | `logoInvertDark` | SVG logos are recoloured to match the theme automatically. For PNG, JPG or WebP logos, `true` turns a dark single-colour logo white in dark mode. |
 | `googleClientId` | Required. The Client ID from step 3. |

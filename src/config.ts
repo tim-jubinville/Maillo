@@ -29,8 +29,10 @@ declare global {
   }
 }
 
+export const defaultAppName = 'Maillo';
+
 const defaults: AppConfig = {
-  appName: 'Mailmax',
+  appName: defaultAppName,
   logoUrl: '',
   logoText: '',
   logoInvertDark: true,

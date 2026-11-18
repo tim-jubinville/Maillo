@@ -11,7 +11,7 @@ import { THEMES, currentTheme } from '../theme';
 import { getPrefs, setPrefs } from '../prefs';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
-import { Logo, Seg, Switch, isSvgUrl } from './common';
+import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon } from './Icon';
 import { KeyList } from './Keys';
 
@@ -794,9 +794,13 @@ function Appearance() {
           <img src={preview} alt="" style={{ height: '24px', width: 'auto', maxWidth: '180px', filter: dark && invert ? 'brightness(0) invert(1)' : undefined }} />
         )
       ) : (
-        <span class="brand-mark" aria-hidden="true">{(config.appName[0] || 'M').toUpperCase()}</span>
+        <AppIcon dark={dark} />
       )}
-      {(preview ? text : config.appName) && <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{preview ? text : config.appName}</span>}
+      {preview ? (
+        text && <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{text}</span>
+      ) : (
+        <AppName color={dark ? '#e7ecf6' : '#14213d'} />
+      )}
     </div>
   );
 
