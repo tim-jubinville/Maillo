@@ -128,9 +128,6 @@ function Header({ s }: { s: AppState }) {
         <button class="ib" aria-label={t('header.help')} title={t('header.help')} onClick={() => setState({ showKeys: true })}>
           <Icon name="help" style={{ color: 'var(--c-sent)' }} />
         </button>
-        <a class="ib" href="#/settings/general" aria-label={t('header.settings')} title={t('header.settings')}>
-          <Icon name="gear" />
-        </a>
         <Menu
           label={t('header.account', { email: s.me })}
           class="avatar-btn"
@@ -158,7 +155,7 @@ function Header({ s }: { s: AppState }) {
 function Rail({ s }: { s: AppState }) {
   return (
     <nav class="rail" aria-label={t('nav.apps')}>
-      <a class="rl on" href="#/inbox" aria-current="page">
+      <a class={`rl ${s.route.view === 'mail' ? 'on' : ''}`} href="#/inbox" aria-current={s.route.view === 'mail' ? 'page' : undefined}>
         <span class="rl-i">
           <CIcon name="mail" size={26} />
           {(s.counts.INBOX ?? 0) > 0 && <span class="badge">{s.counts.INBOX > 99 ? '99+' : s.counts.INBOX}</span>}
@@ -172,6 +169,10 @@ function Rail({ s }: { s: AppState }) {
       <a class="rl" href={config.links.meet} target="_blank" rel="noopener noreferrer">
         <span class="rl-i"><CIcon name="meet" size={26} /></span>
         {t('nav.meet')}
+      </a>
+      <a class={`rl ${s.route.view === 'settings' ? 'on' : ''}`} href="#/settings/general" aria-current={s.route.view === 'settings' ? 'page' : undefined}>
+        <span class="rl-i"><CIcon name="settings" size={26} /></span>
+        {t('header.settings')}
       </a>
     </nav>
   );

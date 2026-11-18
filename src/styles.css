@@ -92,7 +92,7 @@ a:hover { color: var(--violet); }
 .btn.sm { height: 32px; padding: 0 14px; font-size: 13px; }
 .btn.primary {
   background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); color: #fff; border-color: transparent;
-  box-shadow: 0 8px 20px rgba(43, 89, 232, 0.28);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.08); color: #fff; }
 .btn.danger { color: var(--danger); }
@@ -126,7 +126,7 @@ a:hover { color: var(--violet); }
 .brand-mark {
   width: 28px; height: 28px; border-radius: 8px; flex: none; display: inline-flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, var(--accent-hi), var(--accent) 70%); color: #fff; font-weight: 800; font-size: 15px;
-  box-shadow: 0 4px 12px rgba(43, 89, 232, 0.35); overflow: hidden;
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 25%, transparent); overflow: hidden;
 }
 .brand-mark img { width: 100%; height: 100%; object-fit: cover; }
 .brand-name { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; white-space: nowrap; }
@@ -148,7 +148,8 @@ a:hover { color: var(--violet); }
 }
 
 .main { flex: 1; min-height: 0; display: flex; padding: 0 8px 10px 0; }
-.rail { width: 68px; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; gap: 16px; padding-top: 8px; }
+.rail { width: 68px; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0 12px; }
+.rail .rl:last-child { margin-top: auto; }
 .rl { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
 .rl-i { width: 48px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; position: relative; }
 .rl:hover { color: var(--ink); }
@@ -165,7 +166,7 @@ a:hover { color: var(--violet); }
 .compose-btn {
   display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px 0 18px; margin: 0 0 14px; border-radius: 999px;
   background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); color: #fff; font-size: 14px; font-weight: 600;
-  align-self: flex-start; box-shadow: 0 1px 2px rgba(20, 33, 61, 0.12), 0 10px 24px rgba(43, 89, 232, 0.32);
+  align-self: flex-start; box-shadow: 0 1px 2px rgba(20, 33, 61, 0.1), 0 5px 14px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .compose-btn:hover { filter: brightness(1.08); }
 .nav {
@@ -362,7 +363,7 @@ a:hover { color: var(--violet); }
 .compose-foot { display: flex; align-items: center; gap: 2px; padding: 10px 14px 14px; flex-wrap: wrap; }
 .sendbtn {
   height: 42px; padding: 0 24px; border-radius: 999px; margin-right: 10px; color: #fff; font-size: 14px; font-weight: 600;
-  background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); box-shadow: 0 8px 20px rgba(43, 89, 232, 0.3);
+  background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .sendbtn:hover { filter: brightness(1.08); }
 
