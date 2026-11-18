@@ -226,6 +226,12 @@ a:hover { color: var(--violet); }
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
 }
 .tab:hover { color: var(--ink); }
+.tabs { gap: 4px; }
+.tab { padding: 0 10px; gap: 7px; }
+.tab-ic { position: relative; display: inline-flex; }
+.tab:not(.on) .cic { opacity: 0.72; filter: saturate(0.75); }
+.tab:not(.on):hover .cic { opacity: 1; filter: none; }
+.tab-dot { position: absolute; top: -2px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
 .tab.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
 .chips { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid rgba(213, 218, 229, 0.7); overflow-x: auto; scrollbar-width: none; }
 .rows { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }

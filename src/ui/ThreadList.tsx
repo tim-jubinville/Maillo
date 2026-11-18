@@ -1,12 +1,20 @@
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type ThreadRow } from '../model';
 import { getPrefs } from '../prefs';
-import { CATEGORIES, go, listHash, type MailRoute } from '../route';
+import { CATEGORIES, go, listHash, type Category, type MailRoute } from '../route';
 import { actions, loadList, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
 import { Avatar } from './common';
-import { CIcon } from './ColorIcons';
+import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
+
+const CAT_ICON: Record<Category, ColorIconName> = {
+  primary: 'inbox',
+  promotions: 'label',
+  social: 'contacts',
+  updates: 'unread',
+  forums: 'chat'
+};
 
 export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute; split: boolean }) {
   const prefs = getPrefs();
@@ -79,10 +87,23 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
           {CATEGORIES.map((c) => {
             const on = route.category === c;
             const n = s.catNew[c] ?? 0;
+            const name = t(`cat.${c}` as StringKey);
+            const fresh = c !== 'primary' && n > 0;
+            const label = fresh ? `${name}, ${t('cat.new', { n })}` : name;
             return (
-              <button role="tab" aria-selected={on} class={`tab ${on ? 'on' : ''}`} onClick={() => go(listHash({ ...route, category: c, thread: undefined }))}>
-                {t(`cat.${c}` as StringKey)}
-                {c !== 'primary' && n > 0 && <span class="pill">{t('cat.new', { n })}</span>}
+              <button
+                role="tab"
+                aria-selected={on}
+                aria-label={label}
+                title={on ? undefined : label}
+                class={`tab ${on ? 'on' : ''}`}
+                onClick={() => go(listHash({ ...route, category: c, thread: undefined }))}
+              >
+                <span class="tab-ic">
+                  <CIcon name={CAT_ICON[c]} size={20} />
+                  {fresh && !on && <span class="tab-dot" aria-hidden="true" />}
+                </span>
+                {on && <span aria-hidden="true">{name}</span>}
               </button>
             );
           })}
