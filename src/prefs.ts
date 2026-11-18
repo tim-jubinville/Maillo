@@ -8,6 +8,8 @@ export interface Prefs {
   pageSize: number;
   tabs: boolean;
   sidebarCollapsed: boolean;
+  mode: 'system' | 'light' | 'dark';
+  theme: string;
 }
 
 const KEY = 'mailmax.prefs';
@@ -21,7 +23,9 @@ const defaults: Prefs = {
   shortcuts: true,
   pageSize: 50,
   tabs: true,
-  sidebarCollapsed: false
+  sidebarCollapsed: false,
+  mode: 'system',
+  theme: ''
 };
 
 function read(): Prefs {

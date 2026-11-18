@@ -1,6 +1,7 @@
 <?php
 /*
- * Updates this install from a release zip uploaded in Settings > Updates.
+ * Updates this install from a release zip uploaded in Settings > Updates,
+ * and stores the custom logo set in Settings > Appearance.
  * Only accounts listed in config.js (allowedAccounts or allowedDomains) can use it,
  * and the request must carry a valid Google access token issued to this install's
  * OAuth client. config.js and .htaccess are never replaced.
@@ -14,7 +15,8 @@ header('X-Content-Type-Options: nosniff');
 const MAX_UPLOAD = 30 * 1024 * 1024;
 const MAX_UNPACKED = 120 * 1024 * 1024;
 const KEEP_BACKUPS = 3;
-const PROTECTED_PATHS = ['config.js', '.htaccess', '.mailmax-backup', '.well-known'];
+const PROTECTED_PATHS = ['config.js', '.htaccess', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
+const MAX_LOGO = 1024 * 1024;
 const ALLOWED_EXT = ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'woff', 'woff2', 'txt', 'webmanifest', 'map', 'htaccess'];
 
 $root = __DIR__;
@@ -384,6 +386,65 @@ if ($action === 'rollback') {
     remove_stale($root, $files);
     rrmdir($dir);
     out(200, ['ok' => true, 'version' => installed_version($root)]);
+}
+
+if ($action === 'branding') {
+    $dir = $root . '/branding';
+    $jsonPath = $root . '/branding.json';
+    $existing = @json_decode((string) @file_get_contents($jsonPath), true);
+    $existing = is_array($existing) ? $existing : [];
+    $text = trim(preg_replace('/[<>"\\\\\x00-\x1F]/', '', (string) ($_POST['logoText'] ?? 'Mail')));
+    if (function_exists('mb_substr')) {
+        $text = mb_substr($text, 0, 40);
+    } else {
+        $text = substr($text, 0, 40);
+    }
+    $logoUrl = (string) ($existing['logoUrl'] ?? '');
+    $file = $_FILES['logo'] ?? null;
+    if (is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        if ((int) $file['size'] > MAX_LOGO) {
+            fail(400, 'logo_too_large');
+        }
+        $data = (string) file_get_contents($file['tmp_name']);
+        $ext = '';
+        if (preg_match('/<svg[\s>]/i', substr($data, 0, 4096))) {
+            $bad = '/<script|<foreignObject|<!ENTITY|<!DOCTYPE|<iframe|<embed|<object|<link|<meta|\bon[a-z]+\s*=|javascript:|data:text\/html|@import|(?:xlink:)?href\s*=\s*["\']\s*(?!#)/i';
+            if (preg_match($bad, $data)) {
+                fail(400, 'logo_unsafe');
+            }
+            $ext = 'svg';
+        } else {
+            $info = @getimagesizefromstring($data);
+            $map = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+            $ext = is_array($info) ? ($map[$info['mime'] ?? ''] ?? '') : '';
+            if ($ext === '') {
+                fail(400, 'logo_type');
+            }
+        }
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+            fail(500, 'not_writable');
+        }
+        foreach (glob($dir . '/logo.*') ?: [] as $old) {
+            @unlink($old);
+        }
+        $headers = "<IfModule mod_headers.c>\n  Header set Content-Security-Policy \"default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox\"\n  Header set X-Content-Type-Options \"nosniff\"\n</IfModule>\n";
+        put_file($dir . '/.htaccess', $headers);
+        put_file($dir . '/logo.' . $ext, $data);
+        $logoUrl = 'branding/logo.' . $ext . '?v=' . time();
+    }
+    $branding = [
+        'logoUrl' => $logoUrl,
+        'logoText' => $text,
+        'logoInvertDark' => ($_POST['logoInvertDark'] ?? '1') === '1',
+    ];
+    put_file($jsonPath, json_encode($branding, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n");
+    out(200, ['ok' => true, 'branding' => $branding]);
+}
+
+if ($action === 'branding_remove') {
+    rrmdir($root . '/branding');
+    @unlink($root . '/branding.json');
+    out(200, ['ok' => true]);
 }
 
 fail(400, 'unknown_action');

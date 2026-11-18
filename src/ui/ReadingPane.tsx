@@ -192,7 +192,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <h2 class="subject">{subject}</h2>
               <div class="labels-line">
-                {important && <span class="tag" style={{ background: '#fff6d6' }}>{t('list.important')}</span>}
+                {important && <span class="tag important" style={{ background: 'var(--warn-bg)' }}>{t('list.important')}</span>}
                 {inInbox && <span class="tag">{t('nav.inbox')}</span>}
                 {userLabels.map((l) => (
                   <span class="tag removable">

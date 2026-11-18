@@ -42,6 +42,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Vacation responder
 - Read-only status for forwarding, IMAP and POP
 - Display options: density, reading pane, inbox categories, images, page size, language, keyboard shortcuts
+- Appearance: light, dark or system mode, nine colour themes, and a custom logo upload
 - Updates: upload a newer release zip from Settings, with an automatic backup and one-click restore (PHP hosts)
 
 **Extras**

@@ -6,11 +6,17 @@ import { avatarColor, initials } from '../model';
 
 export function Brand({ compact }: { compact?: boolean }) {
   const letter = (config.appName.trim()[0] || 'M').toUpperCase();
+  if (config.logoUrl) {
+    return (
+      <a class="brand" href="#/inbox" aria-label={config.logoText ? `${config.appName} ${config.logoText}` : config.appName}>
+        <img class={`brand-logo ${config.logoInvertDark ? 'mono' : ''}`} src={config.logoUrl} alt="" />
+        {!compact && config.logoText && <span class="brand-name">{config.logoText}</span>}
+      </a>
+    );
+  }
   return (
     <a class="brand" href="#/inbox" aria-label={config.appName}>
-      <span class="brand-mark" aria-hidden="true">
-        {config.logoUrl ? <img src={config.logoUrl} alt="" /> : letter}
-      </span>
+      <span class="brand-mark" aria-hidden="true">{letter}</span>
       {!compact && <span class="brand-name">{config.appName}</span>}
     </a>
   );

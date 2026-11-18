@@ -87,11 +87,14 @@ Open `config.js` on the server and set at least `googleClientId`:
 window.MAILMAX_CONFIG = {
   appName: "Mailmax",
   logoUrl: "",
+  logoText: "Mail",
+  logoInvertDark: true,
   googleClientId: "1234567890-abc123.apps.googleusercontent.com",
   allowedAccounts: ["you@example.com"],
   allowedDomains: [],
   language: "auto",
-  accentColor: "#2B59E8",
+  theme: "sky",
+  accentColor: "",
   features: { calendar: false, tasks: false },
   links: { /* see below */ },
   demo: false
@@ -100,13 +103,16 @@ window.MAILMAX_CONFIG = {
 
 | Option | What it does |
 |---|---|
-| `appName` | Name in the header and browser tab. The logo is a monogram of the first letter unless `logoUrl` is set. |
-| `logoUrl` | Optional square image (path or URL). |
+| `appName` | Name in the browser tab, and in the header when there is no logo (shown next to a monogram of its first letter). |
+| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the monogram and name. A logo uploaded in **Settings → Appearance** takes priority. |
+| `logoText` | Text shown after the logo, such as `"Mail"`. Empty shows the logo alone. |
+| `logoInvertDark` | `true` turns a dark single-colour logo white in dark mode. |
 | `googleClientId` | Required. The Client ID from step 3. |
 | `allowedAccounts` | Email addresses allowed to use this install. Anyone else is signed out right away. |
 | `allowedDomains` | Domains allowed to use this install, such as `"example.com"`. |
 | `language` | `"auto"`, `"en"` or `"fr"`. People can also change it in Settings. |
-| `accentColor` | Main colour for buttons, as a hex code. |
+| `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
+| `accentColor` | Optional hex colour that replaces the default theme's accent. |
 | `features.calendar` | Shows today's events in the side panel. Adds the Calendar permission at sign-in. |
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
 | `links` | Addresses opened by Chat, Meet, Calendar, Keep, Contacts and Gmail settings. Change them if you use a different Google account index (`/u/1/`) or other apps. |
