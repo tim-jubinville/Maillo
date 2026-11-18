@@ -12,7 +12,7 @@ export interface Prefs {
   theme: string;
 }
 
-const KEY = 'mailmax.prefs';
+const KEY = 'maillo.prefs';
 
 const defaults: Prefs = {
   density: 'comfortable',

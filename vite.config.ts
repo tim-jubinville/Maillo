@@ -10,7 +10,7 @@ export default defineConfig({
     {
       name: 'version-file',
       generateBundle() {
-        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ name: 'mailmax', version: pkg.version }) + '\n' });
+        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ name: 'maillo', version: pkg.version }) + '\n' });
       }
     }
   ],

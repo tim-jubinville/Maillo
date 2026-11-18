@@ -1,13 +1,14 @@
 /*
- * Mailmax configuration.
+ * Maillo configuration.
  * Edit this file after uploading. No rebuild is needed.
  * See docs/INSTALL.md for every option.
  */
-window.MAILMAX_CONFIG = {
-  // Name shown in the header and the browser tab.
-  appName: "Mailmax",
+window.MAILLO_CONFIG = {
+  // Name shown in the header and the browser tab. With the default name the
+  // header shows the Maillo icon and wordmark; any other name is shown as text.
+  appName: "Maillo",
 
-  // Optional logo (URL or path), shown instead of the monogram and appName.
+  // Optional logo (URL or path), shown instead of the Maillo icon and appName.
   // You can also upload one in Settings > Appearance.
   logoUrl: "",
   // Optional text shown after the logo, for example "Mail".

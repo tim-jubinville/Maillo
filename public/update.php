@@ -15,16 +15,16 @@ header('X-Content-Type-Options: nosniff');
 const MAX_UPLOAD = 30 * 1024 * 1024;
 const MAX_UNPACKED = 120 * 1024 * 1024;
 const KEEP_BACKUPS = 3;
-const PROTECTED_PATHS = ['config.js', '.htaccess', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
+const PROTECTED_PATHS = ['config.js', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
 const MAX_LOGO = 1024 * 1024;
 // Server files shipped in the release; any other .php file in a package is refused.
-const SERVER_FILES = ['update.php', 'mailmax-common.php', 'ai.php'];
+const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php'];
 const ALLOWED_EXT = ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'woff', 'woff2', 'txt', 'webmanifest', 'map', 'htaccess'];
 
 $root = __DIR__;
-$backupRoot = $root . DIRECTORY_SEPARATOR . '.mailmax-backup';
+$backupRoot = $root . DIRECTORY_SEPARATOR . '.maillo-backup';
 
-require __DIR__ . '/mailmax-common.php';
+require __DIR__ . '/maillo-common.php';
 
 function installed_version(string $dir): string
 {
@@ -47,7 +47,7 @@ function bytes_from_ini(string $v): int
 function is_protected(string $rel): bool
 {
     $first = explode('/', $rel)[0];
-    return in_array($first, PROTECTED_PATHS, true) || strpos($first, '.mailmax-') === 0;
+    return in_array($first, PROTECTED_PATHS, true) || strpos($first, '.maillo-') === 0 || strpos($first, '.mailmax-') === 0;
 }
 
 function list_files(string $dir, string $base = ''): array
@@ -245,7 +245,7 @@ if ($action === 'update') {
     }
     $meta = json_decode((string) $zip->getFromIndex($entries['version.json']), true);
     $newVersion = is_array($meta) ? (string) ($meta['version'] ?? '') : '';
-    if (!is_array($meta) || ($meta['name'] ?? '') !== 'mailmax' || $newVersion === '') {
+    if (!is_array($meta) || !in_array($meta['name'] ?? '', ['maillo', 'mailmax'], true) || $newVersion === '') {
         fail(400, 'not_a_release');
     }
     $current = installed_version($root);
@@ -253,7 +253,7 @@ if ($action === 'update') {
         fail(409, 'downgrade', ['current' => $current, 'version' => $newVersion]);
     }
 
-    $tmp = $root . '/.mailmax-tmp-' . bin2hex(random_bytes(6));
+    $tmp = $root . '/.maillo-tmp-' . bin2hex(random_bytes(6));
     foreach ($entries as $rel => $i) {
         $data = $zip->getFromIndex($i);
         if ($data === false) {

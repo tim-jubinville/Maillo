@@ -1,6 +1,6 @@
-# Mailmax
+# Maillo
 
-A self-hosted web interface for Gmail. Your mail stays in your Google account; Mailmax is a set of static files you upload to your own web server. It talks to Gmail directly from your browser through Google's official API.
+A self-hosted web interface for Gmail. Your mail stays in your Google account; Maillo is a set of static files you upload to your own web server. It talks to Gmail directly from your browser through Google's official API.
 
 - No database and no third-party service in between; the only server-side files are an optional updater (`update.php`) and an optional Gemini relay (`ai.php`), both for PHP hosts
 - Sign in with Google; access tokens stay in the browser tab and are never stored on a server
@@ -60,9 +60,9 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 
 Some Gmail features are not available to third-party apps through the Gmail API:
 
-- **Snooze and schedule send** cannot be created. Mailmax shows the Snoozed and Scheduled folders that Gmail keeps, but new snoozes and scheduled sends have to be set in Gmail itself.
+- **Snooze and schedule send** cannot be created. Maillo shows the Snoozed and Scheduled folders that Gmail keeps, but new snoozes and scheduled sends have to be set in Gmail itself.
 - **Confidential mode**, **Smart Compose**, **Gemini summaries** and **mute** are not available.
-- **Delete forever** and **empty trash** need a broader permission than Mailmax asks for. Gmail empties Trash automatically after 30 days.
+- **Delete forever** and **empty trash** need a broader permission than Maillo asks for. Gmail empties Trash automatically after 30 days.
 - **Forwarding, IMAP and POP** settings are shown but must be changed in Gmail.
 - **Google Chat and Meet** open in their own apps.
 
@@ -98,7 +98,7 @@ public/config.js      runtime configuration, copied as-is into the build
 public/.htaccess      headers for Apache hosts
 public/update.php     optional in-browser updater for PHP hosts
 public/ai.php         optional Gemini relay for PHP hosts (key stays server-side)
-public/mailmax-common.php  sign-in check shared by the PHP files
+public/maillo-common.php  sign-in check shared by the PHP files
 src/ai.ts             client for ai.php
 src/auth.ts           Google sign-in (token flow, no server)
 src/gmail/api.ts      Gmail, Calendar and Tasks API calls

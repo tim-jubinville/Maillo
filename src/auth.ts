@@ -30,8 +30,8 @@ declare global {
   }
 }
 
-const SESSION_KEY = 'mailmax.session';
-const HINT_KEY = 'mailmax.hint';
+const SESSION_KEY = 'maillo.session';
+const HINT_KEY = 'maillo.hint';
 
 export const SCOPES = (() => {
   const s = [

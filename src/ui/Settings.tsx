@@ -11,7 +11,7 @@ import { THEMES, currentTheme } from '../theme';
 import { getPrefs, setPrefs } from '../prefs';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
-import { Logo, Seg, Switch, isSvgUrl } from './common';
+import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon } from './Icon';
 import { KeyList } from './Keys';
 
@@ -104,7 +104,7 @@ function Row({ title, help, children }: { title: string; help?: string; children
 
 function General() {
   const p = getPrefs();
-  const stored = localStorage.getItem('mailmax.lang');
+  const stored = localStorage.getItem('maillo.lang');
   return (
     <Section title={t('settings.general')} note={t('settings.syncNote')}>
       <Row title={t('settings.density')} help={t('settings.densityHelp')}>
@@ -741,7 +741,7 @@ function Appearance() {
 
   const saveLocal = async () => {
     const logoUrl = file ? await readDataUrl(file) : config.logoUrl;
-    localStorage.setItem('mailmax.branding', JSON.stringify({ logoUrl, logoText: text, logoInvertDark: invert }));
+    localStorage.setItem('maillo.branding', JSON.stringify({ logoUrl, logoText: text, logoInvertDark: invert }));
   };
 
   const save = async () => {
@@ -763,7 +763,7 @@ function Appearance() {
           setBusy('');
           return setError(updateError(r));
         }
-        if (r.ok) localStorage.removeItem('mailmax.branding');
+        if (r.ok) localStorage.removeItem('maillo.branding');
         else await saveLocal();
         setBusy(r.ok ? t('app.logoSaved') : t('app.logoLocal'));
       }
@@ -776,7 +776,7 @@ function Appearance() {
 
   const remove = async () => {
     setError('');
-    localStorage.removeItem('mailmax.branding');
+    localStorage.removeItem('maillo.branding');
     if (!config.demo) {
       const f = new FormData();
       f.append('action', 'branding_remove');
@@ -794,9 +794,13 @@ function Appearance() {
           <img src={preview} alt="" style={{ height: '24px', width: 'auto', maxWidth: '180px', filter: dark && invert ? 'brightness(0) invert(1)' : undefined }} />
         )
       ) : (
-        <span class="brand-mark" aria-hidden="true">{(config.appName[0] || 'M').toUpperCase()}</span>
+        <AppIcon dark={dark} />
       )}
-      {(preview ? text : config.appName) && <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{preview ? text : config.appName}</span>}
+      {preview ? (
+        text && <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{text}</span>
+      ) : (
+        <AppName color={dark ? '#e7ecf6' : '#14213d'} />
+      )}
     </div>
   );
 

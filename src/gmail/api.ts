@@ -80,14 +80,16 @@ const post = <T>(path: string, body?: unknown) =>
 
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
-const NOTES_FILE = 'mailmax-notes.json';
+const NOTES_FILE = 'maillo-notes.json';
+// Notes saved before the rename to Maillo keep their original file name.
+const LEGACY_NOTES_FILE = 'mailmax-notes.json';
 let notesFileId: string | undefined;
 
 // Notes live in Drive's hidden per-app folder: invisible in Drive and Gmail, synced across devices.
 async function findNotesFile(): Promise<string | undefined> {
   if (notesFileId) return notesFileId;
   const r = await request<{ files?: { id: string }[] }>(DRIVE, {
-    query: { spaces: 'appDataFolder', q: `name = '${NOTES_FILE}' and trashed = false`, fields: 'files(id)', pageSize: 1 }
+    query: { spaces: 'appDataFolder', q: `(name = '${NOTES_FILE}' or name = '${LEGACY_NOTES_FILE}') and trashed = false`, fields: 'files(id)', pageSize: 1 }
   });
   notesFileId = r.files?.[0]?.id;
   return notesFileId;

@@ -1,6 +1,6 @@
-# Installing Mailmax
+# Installing Maillo
 
-Mailmax is a static website. You need:
+Maillo is a static website. You need:
 
 - A web server or static host that serves files over **HTTPS** (Google sign-in requires it)
 - An address for it, such as `https://mail.example.com`
@@ -13,7 +13,7 @@ The setup takes about 20 minutes.
 ## 1. Create a Google Cloud project
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and sign in with the account that will own the project.
-2. Create a new project (any name, such as "Mailmax").
+2. Create a new project (any name, such as "Maillo").
 3. Go to **APIs & Services → Library** and enable:
    - **Gmail API** (required)
    - **Google Calendar API** (only if you turn on the calendar panel)
@@ -28,7 +28,7 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 **User type**
 
 - **Internal** (Google Workspace accounts only). Only accounts in your organisation can sign in. There is no app verification and no 7-day sign-out. Choose this if your mailbox is on Google Workspace.
-- **External** (personal @gmail.com accounts). Add your own address under **Test users**. While the app is in **Testing**, Google signs you out of Mailmax after 7 days. Mailmax works fully in the browser, so this only means signing in again when asked. You can also publish the app to **Production** without completing verification; Google then shows a "Google hasn't verified this app" warning at sign-in that you can click through.
+- **External** (personal @gmail.com accounts). Add your own address under **Test users**. While the app is in **Testing**, Google signs you out of Maillo after 7 days. Maillo works fully in the browser, so this only means signing in again when asked. You can also publish the app to **Production** without completing verification; Google then shows a "Google hasn't verified this app" warning at sign-in that you can click through.
 
 **App information**: any app name and your support email.
 
@@ -40,7 +40,7 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 | `https://www.googleapis.com/auth/gmail.settings.basic` | Filters, signatures, vacation responder, forwarding status |
 | `https://www.googleapis.com/auth/calendar.events.readonly` | Optional: today's agenda |
 | `https://www.googleapis.com/auth/tasks` | Optional: Tasks panel and "Add to Tasks" |
-| `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes. Only gives access to Mailmax's own hidden folder, not your Drive files |
+| `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes. Only gives access to Maillo's own hidden folder, not your Drive files |
 
 ## 3. Create the OAuth Client ID
 
@@ -48,11 +48,11 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 2. Application type: **Web application**.
 3. Under **Authorised JavaScript origins**, add the exact address of your install, with no trailing slash, for example `https://mail.example.com`.
 4. No redirect URI is needed.
-5. Create it and copy the **Client ID** (it ends in `.apps.googleusercontent.com`). There is no client secret to keep: Mailmax does not use one.
+5. Create it and copy the **Client ID** (it ends in `.apps.googleusercontent.com`). There is no client secret to keep: Maillo does not use one.
 
 ## 4. Upload the files
 
-Unzip the release and upload the contents of the `mailmax-x.y.z` folder to the folder your address points to. It should look like this:
+Unzip the release and upload the contents of the `maillo-x.y.z` folder to the folder your address points to. It should look like this:
 
 ```
 index.html
@@ -80,15 +80,15 @@ location = /config.js { add_header Cache-Control no-cache; }
 
 **Static hosts** (Cloudflare Pages, Netlify, GitHub Pages, and others). Upload the folder as the site root.
 
-Mailmax can also live in a sub-folder (for example `https://example.com/mail/`). The authorised origin is still just `https://example.com`.
+Maillo can also live in a sub-folder (for example `https://example.com/mail/`). The authorised origin is still just `https://example.com`.
 
 ## 5. Edit config.js
 
 Open `config.js` on the server and set at least `googleClientId`:
 
 ```js
-window.MAILMAX_CONFIG = {
-  appName: "Mailmax",
+window.MAILLO_CONFIG = {
+  appName: "Maillo",
   logoUrl: "",
   logoText: "",
   logoInvertDark: true,
@@ -108,8 +108,8 @@ window.MAILMAX_CONFIG = {
 
 | Option | What it does |
 |---|---|
-| `appName` | Name in the browser tab, and in the header when there is no logo (shown next to a monogram of its first letter). |
-| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the monogram and name. A logo uploaded in **Settings → Appearance** takes priority. |
+| `appName` | Name in the browser tab, and in the header when there is no logo. The default, `"Maillo"`, shows the Maillo icon and wordmark; any other name is shown as text next to the icon. |
+| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the Maillo icon and name. A logo uploaded in **Settings → Appearance** takes priority. |
 | `logoText` | Optional text shown after the logo, such as `"Mail"`. Empty (the default) shows the logo alone. |
 | `logoInvertDark` | SVG logos are recoloured to match the theme automatically. For PNG, JPG or WebP logos, `true` turns a dark single-colour logo white in dark mode. |
 | `googleClientId` | Required. The Client ID from step 3. |
@@ -122,7 +122,7 @@ window.MAILMAX_CONFIG = {
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
 | `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
 | `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
-| `setAsideLabel` | Gmail label used for the Set aside pile. Mailmax creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
+| `setAsideLabel` | Gmail label used for the Set aside pile. Maillo creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
 | `features.ai` | Turns on the Gemini relay (`ai.php`) and **Settings → AI**. Needs a PHP host. See "Optional: AI with Gemini". |
 | `aiModel` | Gemini model used by the relay. Empty uses `gemini-flash-latest`. |
 | `aiDailyLimit` | Maximum AI requests per account per day. `0` uses the default (300). |
@@ -141,33 +141,33 @@ Open your address and click **Continue with Google**. Allow pop-ups for the site
 
 ## Optional: put a login wall in front
 
-Mailmax only shows mail after a Google sign-in, but you can also hide the site itself from the public. A common option is **Cloudflare Access** (free for small teams):
+Maillo only shows mail after a Google sign-in, but you can also hide the site itself from the public. A common option is **Cloudflare Access** (free for small teams):
 
 1. Move your domain's DNS to Cloudflare (or add the subdomain to a Cloudflare zone) with the proxy turned on. Copy every existing DNS record first, especially mail (MX, SPF, DKIM) records, so email keeps working.
-2. In **Zero Trust → Access → Applications**, add a self-hosted application for your Mailmax address.
+2. In **Zero Trust → Access → Applications**, add a self-hosted application for your Maillo address.
 3. Add a policy that allows only your email address. Choose Google as the login method if you want one Google sign-in for both.
 
 Other options: HTTP basic authentication on your web server, or a VPN.
 
 ## Optional: AI with Gemini
 
-Mailmax can call the Gemini API through `ai.php`, a small relay on your server, so the API key is never sent to the browser. It uses the same sign-in check as the updater: only accounts in `allowedAccounts` or `allowedDomains` can use it.
+Maillo can call the Gemini API through `ai.php`, a small relay on your server, so the API key is never sent to the browser. It uses the same sign-in check as the updater: only accounts in `allowedAccounts` or `allowedDomains` can use it.
 
 1. In the same Google Cloud project, enable the **Generative Language API**.
 2. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) for that project. In Google Cloud, under **APIs & Services → Credentials**, restrict the key to the Generative Language API.
 3. Set `features.ai` to `true` in `config.js`.
-4. Open **Settings → AI**, paste the key and click **Save key**. Mailmax checks it with Google, then stores it in `.mailmax-ai.php` on the server. That file is never served, backed up or replaced by updates. If your host lets you set environment variables, you can set `GEMINI_API_KEY` instead.
+4. Open **Settings → AI**, paste the key and click **Save key**. Maillo checks it with Google, then stores it in `.maillo-ai.php` on the server. That file is never served, backed up or replaced by updates. If your host lets you set environment variables, you can set `GEMINI_API_KEY` instead.
 5. Click **Test the connection**.
 
 Use a paid Gemini API plan for email. On the free tier, Google may use what you send to improve its products. Each account is limited to `aiDailyLimit` requests per day (300 by default), and Google's own spending cap applies on top.
 
 ## Updating
 
-**From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Mailmax:
+**From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Maillo:
 
-- checks that the zip is a Mailmax release and refuses unexpected files
+- checks that the zip is a Maillo release and refuses unexpected files
 - keeps your `config.js` and `.htaccess`
-- backs up the current version to `.mailmax-backup/` (the last three are kept, and the folder is blocked from the web)
+- backs up the current version to `.maillo-backup/` (the last three are kept, and the folder is blocked from the web)
 - installs the new files and reloads
 
 **Restore previous version** in the same section puts the last backup back.
@@ -178,11 +178,19 @@ This needs PHP 7.4 or later with the zip extension, and write permission on the 
 
 If you do not want browser updates at all, delete `update.php` from the server.
 
-**Upgrading from 0.1.0.** Version 0.2.0 adds two server files (`mailmax-common.php` and `ai.php`) that the 0.1.0 updater does not accept. Upload 0.2.0 by hand once, keeping your `config.js`. Later versions install from the browser as usual.
+**Upgrading from Mailmax (0.2.x and earlier).** The app was renamed Maillo in 0.3.0, and the Mailmax updater does not accept a Maillo release. Upload 0.3.0 by hand once:
+
+1. Upload every file from the `maillo-0.3.0` folder, including `.htaccess`, and keep your `config.js`.
+2. Delete the old `mailmax-common.php` from the server.
+3. Your `config.js` keeps working as is (`window.MAILMAX_CONFIG` is still read). To match new installs, rename it to `window.MAILLO_CONFIG` and set `appName: "Maillo"`.
+
+Your settings in the browser, your private notes and your stored Gemini key carry over on their own. Later versions install from the browser as usual.
+
+**Upgrading from 0.1.0.** Version 0.2.0 added two server files that the 0.1.0 updater does not accept. Upload 0.2.0 or later by hand once, keeping your `config.js`.
 
 ## Security notes
 
-- Mailmax runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo) and `ai.php` (optional Gemini relay). Both check your Google sign-in and allowed account before doing anything, using `mailmax-common.php`.
+- Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo) and `ai.php` (optional Gemini relay). Both check your Google sign-in and allowed account before doing anything, using `maillo-common.php`.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
 - The content security policy only allows connections to Google's APIs.

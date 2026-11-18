@@ -3,7 +3,7 @@ Options -Indexes
 DirectoryIndex index.html
 
 <IfModule mod_alias.c>
-  RedirectMatch 404 /\.mailmax-
+  RedirectMatch 404 /\.(maillo|mailmax)-
 </IfModule>
 
 <IfModule mod_headers.c>
