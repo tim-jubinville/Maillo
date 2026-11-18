@@ -249,7 +249,7 @@ a:hover { color: var(--violet); }
 
 /* Reading */
 .readcol { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; position: relative; }
-.readscroll { position: absolute; inset: 0; overflow-y: auto; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px); mask-image: linear-gradient(to bottom, transparent 0, #000 14px); padding: calc(var(--rh, 76px) + 14px) 10px 40px; }
+.readscroll { position: absolute; inset: 0; overflow-y: auto; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px); mask-image: linear-gradient(to bottom, transparent 0, #000 14px); padding: calc(var(--rh, 76px) + 14px) 26px 40px; }
 .readinner { display: flex; flex-direction: column; gap: 20px; }
 .subject { margin: 0; font-size: 24px; line-height: 1.25; font-weight: 800; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .labels-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
