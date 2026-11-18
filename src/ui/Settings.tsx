@@ -1,10 +1,11 @@
 import DOMPurify from 'dompurify';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { currentToken } from '../auth';
 import { config } from '../config';
 import type { GFilter, GSendAs, GVacation } from '../gmail/types';
 import { setLanguage, t, type StringKey } from '../i18n';
-import { labelColor } from '../model';
+import { labelColor, sizeLabel } from '../model';
 import { getPrefs, setPrefs } from '../prefs';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
@@ -22,6 +23,7 @@ const ICONS: Record<SettingsSection, [string, string]> = {
   vacation: ['sun', 'var(--c-important)'],
   forwarding: ['forward', 'var(--c-tasks)'],
   shortcuts: ['keyboard', 'var(--c-trash)'],
+  updates: ['download', 'var(--c-inbox)'],
   about: ['info', 'var(--c-all)']
 };
 
@@ -57,6 +59,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
               <div style={{ padding: '0 24px 20px' }}><KeyList /></div>
             </Section>
           )}
+          {section === 'updates' && <Updates />}
           {section === 'about' && (
             <Section title={t('settings.about')} note={t('settings.syncNote')}>
               <div class="srow"><div class="slbl"><b>{config.appName}</b><span>{t('settings.version', { v: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '' })}</span></div></div>
@@ -457,6 +460,150 @@ function Forwarding() {
           <Row title={t('settings.autoForward')} help={data.fwd?.emailAddress}>{status(data.fwd?.enabled)}</Row>
           <Row title={t('settings.imap')}>{status(data.imap)}</Row>
           <Row title={t('settings.pop')}>{status(!!data.pop && data.pop !== 'disabled')}</Row>
+        </>
+      )}
+    </Section>
+  );
+}
+
+interface UpdaterStatus {
+  ok: boolean;
+  error?: string;
+  version?: string;
+  php?: string;
+  zip?: boolean;
+  writable?: boolean;
+  maxUpload?: number;
+  account?: string;
+  backups?: { id: string; version: string }[];
+  path?: string;
+  current?: string;
+}
+
+function callUpdater(form: FormData, onProgress?: (pct: number) => void): Promise<UpdaterStatus> {
+  return new Promise((resolve, reject) => {
+    const token = currentToken();
+    if (!token) return reject(new Error('invalid_token'));
+    form.append('token', token);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', './update.php');
+    xhr.responseType = 'text';
+    if (onProgress) xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      try {
+        const j = JSON.parse(xhr.responseText) as UpdaterStatus;
+        resolve(j);
+      } catch {
+        resolve({ ok: false, error: xhr.status === 404 ? 'unavailable' : 'unavailable' });
+      }
+    };
+    xhr.onerror = () => reject(new Error('network'));
+    xhr.send(form);
+  });
+}
+
+function updateError(r: UpdaterStatus): string {
+  const key = `upd.err.${r.error}` as StringKey;
+  const known = t(key);
+  return known === key ? t('upd.err.generic', { code: r.error ?? 'unknown' }) : t(key, { path: r.path ?? '' });
+}
+
+function Updates() {
+  const [status, setStatus] = useState<UpdaterStatus | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const current = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '';
+
+  const load = () => {
+    if (config.demo) return;
+    const f = new FormData();
+    f.append('action', 'status');
+    callUpdater(f).then(setStatus).catch(() => setStatus({ ok: false, error: 'unavailable' }));
+  };
+  useEffect(load, []);
+
+  const install = async (force = false) => {
+    if (!file) return;
+    setError('');
+    setBusy(t('upd.uploading', { pct: 0 }));
+    const f = new FormData();
+    f.append('action', 'update');
+    f.append('package', file);
+    if (force) f.append('force', '1');
+    try {
+      const r = await callUpdater(f, (pct) => setBusy(pct >= 100 ? t('upd.installing') : t('upd.uploading', { pct })));
+      if (r.ok) {
+        setBusy(t('upd.done', { v: r.version ?? '' }));
+        setTimeout(() => location.reload(), 1500);
+        return;
+      }
+      setBusy('');
+      if (r.error === 'downgrade' && confirm(t('upd.downgrade', { v: r.version ?? '', current: r.current ?? '' }))) return install(true);
+      setError(updateError(r));
+    } catch (e) {
+      setBusy('');
+      setError(updateError({ ok: false, error: e instanceof Error ? e.message : 'network' }));
+    }
+  };
+
+  const rollback = async () => {
+    const prev = status?.backups?.[0]?.version ?? '';
+    if (!confirm(t('upd.rollbackConfirm', { v: prev }))) return;
+    setError('');
+    setBusy(t('upd.installing'));
+    const f = new FormData();
+    f.append('action', 'rollback');
+    try {
+      const r = await callUpdater(f);
+      if (r.ok) {
+        setBusy(t('upd.rolledBack', { v: r.version ?? prev }));
+        setTimeout(() => location.reload(), 1500);
+        return;
+      }
+      setBusy('');
+      setError(updateError(r));
+    } catch (e) {
+      setBusy('');
+      setError(updateError({ ok: false, error: e instanceof Error ? e.message : 'network' }));
+    }
+  };
+
+  const ready = !!status?.ok && status.zip && status.writable;
+  return (
+    <Section title={t('settings.updates')} note={t('upd.help')}>
+      <Row title={t('upd.installed')} help={status?.ok ? t('upd.server', { php: status.php ?? '', email: status.account ?? '' }) : undefined}>
+        <span class="tag" style={{ fontSize: '13px', height: '26px' }}>{status?.version || current || '—'}</span>
+      </Row>
+      {config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.demo')}</div>}
+      {!config.demo && status === null && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.checking')}</div>}
+      {!config.demo && status && !status.ok && status.error === 'unavailable' && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.unavailable')}</div>}
+      {!config.demo && status && !status.ok && status.error !== 'unavailable' && <div class="frow err">{updateError(status)}</div>}
+      {!config.demo && status?.ok && !status.zip && <div class="frow err">{t('upd.err.zip_unavailable')}</div>}
+      {!config.demo && status?.ok && status.zip && !status.writable && <div class="frow err">{t('upd.err.not_writable')}</div>}
+      {ready && (
+        <>
+          <div class="srow">
+            <div class="slbl">
+              <b><label for="upd-file">{t('upd.choose')}</label></b>
+              {!!status?.maxUpload && <span>{t('upd.maxSize', { size: sizeLabel(status.maxUpload) })}</span>}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input id="upd-file" type="file" accept=".zip,application/zip" disabled={!!busy} onChange={(e) => { setFile((e.target as HTMLInputElement).files?.[0] ?? null); setError(''); }} />
+              <button class="btn primary sm" disabled={!file || !!busy} onClick={() => install()}>
+                <Icon name="download" size={16} />
+                {t('upd.install')}
+              </button>
+            </div>
+          </div>
+          {(busy || error) && (
+            <div class={`frow ${error ? 'err' : ''}`} role="status" aria-live="polite">{error || busy}</div>
+          )}
+          {!!status?.backups?.length && (
+            <Row title={t('upd.rollback')} help={t('upd.rollbackHelp', { v: status.backups[0].version || '?' })}>
+              <button class="btn sm" disabled={!!busy} onClick={rollback}>{t('upd.rollback')}</button>
+            </Row>
+          )}
         </>
       )}
     </Section>

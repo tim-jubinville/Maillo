@@ -5,7 +5,15 @@ import { readFileSync } from 'node:fs';
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [
+    preact(),
+    {
+      name: 'version-file',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ name: 'mailmax', version: pkg.version }) + '\n' });
+      }
+    }
+  ],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   base: './',
   build: {

@@ -134,11 +134,24 @@ Other options: HTTP basic authentication on your web server, or a VPN.
 
 ## Updating
 
-Upload the files from a newer release and keep your existing `config.js`. Browsers pick up the new version on the next load.
+**From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Mailmax:
+
+- checks that the zip is a Mailmax release and refuses unexpected files
+- keeps your `config.js` and `.htaccess`
+- backs up the current version to `.mailmax-backup/` (the last three are kept, and the folder is blocked from the web)
+- installs the new files and reloads
+
+**Restore previous version** in the same section puts the last backup back.
+
+This needs PHP 7.4 or later with the zip extension, and write permission on the install folder (standard on cPanel hosting). It only works for accounts listed in `allowedAccounts` or `allowedDomains`: the server checks your Google sign-in against your OAuth Client ID before changing anything. If the upload is refused as too large, raise `upload_max_filesize` and `post_max_size` in your host's PHP settings.
+
+**By hand (any host).** Upload the files from a newer release and keep your existing `config.js`. Browsers pick up the new version on the next load.
+
+If you do not want browser updates at all, delete `update.php` from the server.
 
 ## Security notes
 
-- Mailmax has no server component. Google access tokens are kept in the browser tab's session storage and are cleared when you sign out or close the tab.
+- Mailmax runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The only server-side file is `update.php`, which verifies your Google sign-in and allowed account before installing an update.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
 - The content security policy only allows connections to Google's APIs.
