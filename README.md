@@ -1,0 +1,101 @@
+# Mailmax
+
+A self-hosted web interface for Gmail. Your mail stays in your Google account; Mailmax is a set of static files you upload to your own web server. It talks to Gmail directly from your browser through Google's official API.
+
+- No server-side code, no database, no third-party service in between
+- Sign in with Google; access tokens stay in the browser tab and are never stored on a server
+- Works on any static host: shared hosting (Apache, cPanel), Nginx, Cloudflare Pages, Netlify, and others
+- English and French interface
+
+## Features
+
+**Mail**
+- Inbox with categories (Primary, Promotions, Social, Updates, Forums)
+- Starred, Snoozed, Important, Sent, Scheduled, Drafts, All mail, Spam, Trash
+- Labels, including nested labels and label colours
+- Full Gmail search syntax (`from:`, `has:attachment`, `newer_than:7d`, and so on) with quick filter chips
+- Threaded conversations with collapsed earlier messages and hidden quoted text
+- Bulk actions: archive, delete, spam, read/unread, star, important, move, label
+- Undo for archive, delete, spam, move and label changes
+- Reminders for important messages you have not answered ("Received 3 days ago. Reply?")
+
+**Reading**
+- Email content rendered in a sandboxed frame with scripts disabled
+- Remote images blocked until you allow them, per message or per sender
+- Attachments: preview images and PDFs, download anything
+- Calendar invitations shown as a card
+- One-click unsubscribe when the sender provides a link
+- Show original, print
+
+**Writing**
+- Compose, reply, reply all, forward (with the original attachments)
+- Rich text formatting, links, signatures, attachments (drag and drop works)
+- Send from any of your Gmail "Send mail as" addresses
+- Recipient suggestions from your recent conversations
+- Drafts save automatically and sync with Gmail
+- Undo send (0 to 30 seconds)
+
+**Settings**
+- Labels: create, rename, delete
+- Filters: list, create, delete
+- Signatures for each sending address
+- Vacation responder
+- Read-only status for forwarding, IMAP and POP
+- Display options: density, reading pane, inbox categories, images, page size, language, keyboard shortcuts
+
+**Extras**
+- Keyboard shortcuts (press `?`)
+- Optional side panels: today's Calendar agenda and Google Tasks
+- Responsive layout for phones and tablets
+- Demo mode with sample data
+
+## Limits
+
+Some Gmail features are not available to third-party apps through the Gmail API:
+
+- **Snooze and schedule send** cannot be created. Mailmax shows the Snoozed and Scheduled folders that Gmail keeps, but new snoozes and scheduled sends have to be set in Gmail itself.
+- **Confidential mode**, **Smart Compose**, **Gemini summaries** and **mute** are not available.
+- **Delete forever** and **empty trash** need a broader permission than Mailmax asks for. Gmail empties Trash automatically after 30 days.
+- **Forwarding, IMAP and POP** settings are shown but must be changed in Gmail.
+- **Google Chat and Meet** open in their own apps.
+
+## Install
+
+See [docs/INSTALL.md](docs/INSTALL.md). In short:
+
+1. Create an OAuth Client ID in Google Cloud.
+2. Upload the files from the release zip to your web server.
+3. Put your Client ID in `config.js`.
+
+## Try it without Google
+
+Open the app with `?demo` at the end of the address (for example `https://mail.example.com/?demo`), or set `demo: true` in `config.js`. Demo mode uses sample data and never contacts Google.
+
+## Develop
+
+Requires Node.js 20 or later.
+
+```sh
+npm install
+npm run dev        # local server at http://localhost:5173
+npm run build      # production files in dist/
+npm run package    # dist/ plus docs zipped into release/
+```
+
+Local development needs `http://localhost:5173` listed as an authorised JavaScript origin on your OAuth client, or use `?demo`.
+
+### Project layout
+
+```
+public/config.js      runtime configuration, copied as-is into the build
+public/.htaccess      headers for Apache hosts
+src/auth.ts           Google sign-in (token flow, no server)
+src/gmail/api.ts      Gmail, Calendar and Tasks API calls
+src/gmail/demo.ts     sample data for demo mode
+src/gmail/mime.ts     message parsing and MIME building
+src/store.ts          app state and actions
+src/ui/               interface components
+src/i18n.ts           English and French strings
+```
+
+To add a language, copy the `fr` dictionary in `src/i18n.ts`, translate it and add it to `dictionaries`.

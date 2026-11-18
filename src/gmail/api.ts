@@ -1,0 +1,190 @@
+import { currentToken, dropSession } from '../auth';
+import type {
+  CalendarEvent,
+  GDraft,
+  GFilter,
+  GLabel,
+  GMessage,
+  GProfile,
+  GSendAs,
+  GThread,
+  GThreadList,
+  GVacation,
+  ListThreadsParams,
+  MailBackend,
+  TaskItem
+} from './types';
+
+const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+export class AuthRequired extends Error {}
+
+type Query = Record<string, string | number | boolean | string[] | undefined>;
+
+function qs(q?: Query): string {
+  if (!q) return '';
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) {
+    if (v === undefined || v === '') continue;
+    if (Array.isArray(v)) v.forEach((x) => p.append(k, x));
+    else p.append(k, String(v));
+  }
+  const s = p.toString();
+  return s ? `?${s}` : '';
+}
+
+async function request<T>(url: string, init: RequestInit & { query?: Query } = {}, attempt = 0): Promise<T> {
+  const token = currentToken();
+  if (!token) throw new AuthRequired();
+  const res = await fetch(url + qs(init.query), {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers ?? {})
+    }
+  });
+  if (res.status === 401) {
+    dropSession();
+    throw new AuthRequired();
+  }
+  if ((res.status === 429 || res.status >= 500) && attempt < 3) {
+    await new Promise((r) => setTimeout(r, 400 * 2 ** attempt + Math.random() * 200));
+    return request<T>(url, init, attempt + 1);
+  }
+  if (!res.ok) {
+    let msg = res.statusText;
+    try {
+      const j = await res.json();
+      msg = j?.error?.message || msg;
+    } catch {
+      /* empty */
+    }
+    throw new ApiError(res.status, msg);
+  }
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+const get = <T>(path: string, query?: Query) => request<T>(GMAIL + path, { query });
+const post = <T>(path: string, body?: unknown) =>
+  request<T>(GMAIL + path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
+
+function startOfDay(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+export const gmailBackend: MailBackend = {
+  demo: false,
+  profile: () => get<GProfile>('/profile'),
+  listLabels: async () => (await get<{ labels?: GLabel[] }>('/labels')).labels ?? [],
+  getLabel: (id) => get<GLabel>(`/labels/${encodeURIComponent(id)}`),
+  createLabel: (name) =>
+    post<GLabel>('/labels', { name, labelListVisibility: 'labelShow', messageListVisibility: 'show' }),
+  updateLabel: (id, patch) =>
+    request<GLabel>(`${GMAIL}/labels/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteLabel: (id) => request<void>(`${GMAIL}/labels/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listThreads: (p: ListThreadsParams) =>
+    get<GThreadList>('/threads', {
+      q: p.q,
+      labelIds: p.labelIds,
+      pageToken: p.pageToken,
+      maxResults: p.maxResults ?? 50,
+      includeSpamTrash: p.includeSpamTrash || undefined
+    }),
+  getThread: (id, format) =>
+    get<GThread>(`/threads/${id}`, {
+      format,
+      metadataHeaders: format === 'metadata' ? ['From', 'To', 'Subject', 'Date'] : undefined
+    }),
+  modifyThread: async (id, add, remove) => {
+    await post(`/threads/${id}/modify`, { addLabelIds: add, removeLabelIds: remove });
+  },
+  trashThread: async (id) => {
+    await post(`/threads/${id}/trash`);
+  },
+  untrashThread: async (id) => {
+    await post(`/threads/${id}/untrash`);
+  },
+  getAttachment: async (mid, aid) => (await get<{ data: string }>(`/messages/${mid}/attachments/${aid}`)).data,
+  getRawMessage: async (mid) => (await get<GMessage>(`/messages/${mid}`, { format: 'raw' })).raw ?? '',
+  send: (raw, threadId) => post<GMessage>('/messages/send', { raw, threadId }),
+  listDrafts: async () => {
+    const out: GDraft[] = [];
+    let pageToken: string | undefined;
+    do {
+      const r = await get<{ drafts?: GDraft[]; nextPageToken?: string }>('/drafts', { pageToken, maxResults: 500 });
+      out.push(...(r.drafts ?? []));
+      pageToken = r.nextPageToken;
+    } while (pageToken && out.length < 2000);
+    return out;
+  },
+  getDraft: (id) => get<GDraft>(`/drafts/${id}`, { format: 'full' }),
+  createDraft: (raw, threadId) => post<GDraft>('/drafts', { message: { raw, threadId } }),
+  updateDraft: (id, raw, threadId) =>
+    request<GDraft>(`${GMAIL}/drafts/${id}`, { method: 'PUT', body: JSON.stringify({ id, message: { raw, threadId } }) }),
+  deleteDraft: (id) => request<void>(`${GMAIL}/drafts/${id}`, { method: 'DELETE' }),
+  sendDraft: (id) => post<GMessage>('/drafts/send', { id }),
+  listSendAs: async () => (await get<{ sendAs?: GSendAs[] }>('/settings/sendAs')).sendAs ?? [],
+  updateSendAs: (email, patch) =>
+    request<GSendAs>(`${GMAIL}/settings/sendAs/${encodeURIComponent(email)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch)
+    }),
+  getVacation: () => get<GVacation>('/settings/vacation'),
+  setVacation: (v) => request<GVacation>(`${GMAIL}/settings/vacation`, { method: 'PUT', body: JSON.stringify(v) }),
+  listFilters: async () => (await get<{ filter?: GFilter[] }>('/settings/filters')).filter ?? [],
+  createFilter: (f) => post<GFilter>('/settings/filters', f),
+  deleteFilter: (id) => request<void>(`${GMAIL}/settings/filters/${id}`, { method: 'DELETE' }),
+  getImap: () => get('/settings/imap'),
+  getPop: () => get('/settings/pop'),
+  getAutoForwarding: () => get('/settings/autoForwarding'),
+  todayEvents: async () => {
+    const from = startOfDay();
+    const to = new Date(from.getTime() + 86_400_000);
+    const r = await request<{ items?: CalendarEvent[] }>(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+      { query: { timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: true, orderBy: 'startTime', maxResults: 20 } }
+    );
+    return r.items ?? [];
+  },
+  listTasks: async () => {
+    const r = await request<{ items?: TaskItem[] }>('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
+      query: { showCompleted: false, maxResults: 50 }
+    });
+    return r.items ?? [];
+  },
+  addTask: (title, notes) =>
+    request<TaskItem>('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
+      method: 'POST',
+      body: JSON.stringify({ title, notes })
+    }),
+  completeTask: async (id, done) => {
+    await request(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: done ? 'completed' : 'needsAction' })
+    });
+  }
+};
+
+export async function pool<T, R>(items: T[], limit: number, fn: (x: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let i = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
