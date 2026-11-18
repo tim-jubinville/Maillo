@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { aiGenerate, aiRemoveKey, aiSetKey, aiStatus, AiError, type AiStatus } from '../ai';
 import { currentToken } from '../auth';
 import { config } from '../config';
 import type { GFilter, GSendAs, GVacation } from '../gmail/types';
@@ -26,6 +27,7 @@ const ICONS: Record<SettingsSection, [string, string]> = {
   forwarding: ['forward', 'var(--c-tasks)'],
   shortcuts: ['keyboard', 'var(--c-trash)'],
   updates: ['download', 'var(--c-inbox)'],
+  ai: ['bulb', 'var(--c-snooze)'],
   about: ['info', 'var(--c-all)']
 };
 
@@ -42,7 +44,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
             <Icon name="arrowLeft" />
             <span class="nav-t">{t('settings.back')}</span>
           </a>
-          {SETTINGS_SECTIONS.map((id) => (
+          {SETTINGS_SECTIONS.filter((id) => id !== 'ai' || config.features.ai).map((id) => (
             <a class={`nav ${id === section ? 'on' : ''}`} href={`#/settings/${id}`} aria-current={id === section ? 'page' : undefined}>
               <Icon name={ICONS[id][0]} style={{ color: ICONS[id][1] }} />
               <span class="nav-t">{t(`settings.${id}` as StringKey)}</span>
@@ -63,6 +65,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
             </Section>
           )}
           {section === 'updates' && <Updates />}
+          {section === 'ai' && <AiSettings />}
           {section === 'about' && (
             <Section title={t('settings.about')} note={t('settings.syncNote')}>
               <div class="srow"><div class="slbl"><b>{config.appName}</b><span>{t('settings.version', { v: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '' })}</span></div></div>
@@ -509,6 +512,103 @@ function updateError(r: UpdaterStatus): string {
   const key = `upd.err.${r.error}` as StringKey;
   const known = t(key);
   return known === key ? t('upd.err.generic', { code: r.error ?? 'unknown' }) : t(key, { path: r.path ?? '' });
+}
+
+function aiError(code?: string): string {
+  const key = `ai.err.${code}` as StringKey;
+  const known = t(key);
+  return known === key ? t('ai.err.generic', { code: code ?? 'unknown' }) : known;
+}
+
+function AiSettings() {
+  const [status, setStatus] = useState<AiStatus | null>(null);
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [test, setTest] = useState('');
+
+  const load = () => {
+    if (config.demo || !config.features.ai) return;
+    aiStatus().then(setStatus).catch((e) => setStatus({ ok: false, error: e instanceof AiError ? e.message : 'unavailable' }));
+  };
+  useEffect(load, []);
+
+  const run = async (fn: () => Promise<AiStatus>) => {
+    setBusy(true);
+    setError('');
+    setTest('');
+    try {
+      const r = await fn();
+      if (!r.ok) setError(aiError(r.error));
+      else {
+        setKey('');
+        load();
+      }
+    } catch (e) {
+      setError(aiError(e instanceof Error ? e.message : 'network'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runTest = async () => {
+    setBusy(true);
+    setError('');
+    setTest('');
+    try {
+      const reply = await aiGenerate('Reply with the single word OK.', 'ping');
+      setTest(t('ai.testOk', { reply: reply.trim().slice(0, 40) }));
+      load();
+    } catch (e) {
+      setError(aiError(e instanceof Error ? e.message : 'network'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const configured = !!status?.ok && status.configured;
+  return (
+    <Section title={t('settings.ai')} note={t('ai.help')}>
+      {!config.features.ai && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.off')}</div>}
+      {config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.demo')}</div>}
+      {!config.demo && config.features.ai && status === null && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.checking')}</div>}
+      {status && !status.ok && <div class="frow err">{aiError(status.error)}</div>}
+      {status?.ok && (
+        <>
+          <Row title={t('ai.key')} help={configured ? (status.source === 'environment' ? t('ai.keyEnv') : t('ai.keyStored')) : t('ai.keyMissing')}>
+            <span class="tag" style={{ fontSize: '13px', height: '26px' }}>{configured ? t('ai.keySet') : t('ai.keyNotSet')}</span>
+          </Row>
+          <Row title={t('ai.model')} help={t('ai.modelHelp')}>
+            <span class="tag" style={{ fontSize: '13px', height: '26px' }}>{status.model}</span>
+          </Row>
+          <Row title={t('ai.usage')}>
+            <span style={{ fontSize: '13px' }}>{t('ai.usageValue', { used: status.used ?? 0, limit: status.limit ?? 0 })}</span>
+          </Row>
+          {status.source !== 'environment' && (
+            <div class="srow">
+              <div class="slbl">
+                <b><label for="ai-key">{configured ? t('ai.replace') : t('ai.add')}</label></b>
+                <span>{t('ai.keyWhere')}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input id="ai-key" class="input" type="password" autoComplete="off" spellcheck={false} style={{ flex: '1 1 240px' }} value={key} disabled={busy} onInput={(e) => setKey((e.target as HTMLInputElement).value)} />
+                <button class="btn primary sm" disabled={!key.trim() || busy} onClick={() => run(() => aiSetKey(key.trim()))}>{t('ai.save')}</button>
+                {configured && <button class="btn sm danger" disabled={busy} onClick={() => confirm(t('ai.removeConfirm')) && run(aiRemoveKey)}>{t('ai.remove')}</button>}
+              </div>
+            </div>
+          )}
+          {configured && (
+            <div class="frow" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button class="btn sm" disabled={busy} onClick={runTest}>{t('ai.test')}</button>
+              {test && <span role="status" style={{ fontSize: '13px' }}>{test}</span>}
+            </div>
+          )}
+        </>
+      )}
+      {error && <div class="frow err" role="alert">{error}</div>}
+      <div class="frow" style={{ fontSize: '12.5px', color: 'var(--muted)' }}>{t('ai.privacy')}</div>
+    </Section>
+  );
 }
 
 function Updates() {

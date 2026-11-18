@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { t, type StringKey } from '../i18n';
 import { getPrefs } from '../prefs';
 import { go, listHash, threadHash, type MailRoute } from '../route';
-import { actions, closeThread, getState, openCompose, openRow, setState, targetIds, toggleSelect, type AppState } from '../store';
+import { actions, closeThread, getState, notesEnabled, pileOf, openCompose, openRow, setState, targetIds, toggleSelect, type AppState } from '../store';
 import { Icon } from './Icon';
 
 export const SEARCH_KEY = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl + K';
@@ -18,6 +18,9 @@ const MAP: [string, StringKey][] = [
   ['#', 'keys.delete'],
   ['!', 'keys.spam'],
   ['s', 'keys.star'],
+  ['p', 'keys.pin.aside'],
+  ['t', 'keys.pin.action'],
+  ['n', 'keys.note'],
   ['x', 'keys.select'],
   ['r', 'keys.reply'],
   ['a', 'keys.replyAll'],
@@ -97,7 +100,21 @@ export function useShortcuts(s: AppState) {
           case 'o':
           case 'Enter': if (cur && !st.open) openRow(cur); return !!cur;
           case 'u': if (st.open) closeThread(); else go(listHash(r)); return true;
-          case 'e': actions.archive(ids); return true;
+          case 'e':
+            if (st.open && !st.selected.size && pileOf(st.open.labelIds)) actions.unpin(ids, false);
+            else actions.archive(ids);
+            return true;
+          case 'p':
+          case 't': {
+            const p = e.key === 'p' ? 'aside' : 'action';
+            if (st.open && !st.selected.size && pileOf(st.open.labelIds) === p) actions.unpin(ids, true);
+            else actions.pin(p, ids);
+            return ids.length > 0;
+          }
+          case 'n':
+            if (!notesEnabled || !st.open) return false;
+            setState({ noteEditing: st.open.id });
+            return true;
           case '#': actions.trash(ids); return true;
           case '!': actions.spam(ids); return true;
           case 's': {

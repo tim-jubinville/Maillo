@@ -37,8 +37,22 @@ window.MAILMAX_CONFIG = {
   // Optional Google features. Each one adds a permission to the sign-in screen.
   features: {
     calendar: false,            // today's agenda in the side panel (read-only)
-    tasks: false                // Tasks side panel and "Add to Tasks"
+    tasks: false,               // Tasks side panel and "Add to Tasks"
+    notes: false,               // private sticky notes on conversations, synced through
+                                // a hidden app folder in Google Drive (needs the Drive API)
+    ai: false                   // Gemini relay (ai.php, PHP hosts). Add the API key in
+                                // Settings > AI; it is stored on the server, never here.
   },
+
+  // Gemini model used by the AI relay, and how many AI requests each account may
+  // make per day. Leave empty or 0 for the defaults.
+  aiModel: "",                  // default "gemini-flash-latest"
+  aiDailyLimit: 0,              // default 300
+
+  // Gmail labels used for the two piles at the bottom of the screen. Each is
+  // created the first time you use it. Rename them here if you rename them in Gmail.
+  setAsideLabel: "Set aside",
+  actionLabel: "Action required",
 
   // Links used by the app switcher and side panels.
   links: {

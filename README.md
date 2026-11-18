@@ -2,7 +2,7 @@
 
 A self-hosted web interface for Gmail. Your mail stays in your Google account; Mailmax is a set of static files you upload to your own web server. It talks to Gmail directly from your browser through Google's official API.
 
-- No database and no third-party service in between; the only server-side file is an optional updater (`update.php`) for PHP hosts
+- No database and no third-party service in between; the only server-side files are an optional updater (`update.php`) and an optional Gemini relay (`ai.php`), both for PHP hosts
 - Sign in with Google; access tokens stay in the browser tab and are never stored on a server
 - Works on any static host: shared hosting (Apache, cPanel), Nginx, Cloudflare Pages, Netlify, and others
 - English and French interface
@@ -18,6 +18,9 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Bulk actions: archive, delete, spam, read/unread, star, important, move, label
 - Undo for archive, delete, spam, move and label changes
 - Reminders for important messages you have not answered ("Received 3 days ago. Reply?")
+- **Set aside**: pin conversations out of the inbox into a small stack of cards at the bottom of the screen. Click the stack to fan the cards out and pick one. Stored as a regular Gmail label, so it syncs everywhere.
+- **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. A conversation lives in one pile at a time.
+- **Private notes**: stick a note on any conversation (for example "Paid on Nov 14"). Only you see it, it is never sent, and it syncs between devices through a hidden app folder in your Google Drive (optional, see `features.notes`).
 
 **Reading**
 - Email content rendered in a sandboxed frame with scripts disabled
@@ -47,7 +50,8 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Updates: upload a newer release zip from Settings, with an automatic backup and one-click restore (PHP hosts)
 
 **Extras**
-- Keyboard shortcuts (press `?`)
+- Optional Gemini relay (`ai.php`): the API key stays on your server, with a daily limit per account. Set it up in Settings → AI
+- Keyboard shortcuts (press `?`), including `p` to set aside, `t` for Action required and `n` to add a note
 - Optional side panels: today's Calendar agenda and Google Tasks
 - Responsive layout for phones and tablets
 - Demo mode with sample data
@@ -93,6 +97,9 @@ Local development needs `http://localhost:5173` listed as an authorised JavaScri
 public/config.js      runtime configuration, copied as-is into the build
 public/.htaccess      headers for Apache hosts
 public/update.php     optional in-browser updater for PHP hosts
+public/ai.php         optional Gemini relay for PHP hosts (key stays server-side)
+public/mailmax-common.php  sign-in check shared by the PHP files
+src/ai.ts             client for ai.php
 src/auth.ts           Google sign-in (token flow, no server)
 src/gmail/api.ts      Gmail, Calendar and Tasks API calls
 src/gmail/demo.ts     sample data for demo mode

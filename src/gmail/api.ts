@@ -12,6 +12,7 @@ import type {
   GVacation,
   ListThreadsParams,
   MailBackend,
+  NotesMap,
   TaskItem
 } from './types';
 
@@ -76,6 +77,31 @@ async function request<T>(url: string, init: RequestInit & { query?: Query } = {
 const get = <T>(path: string, query?: Query) => request<T>(GMAIL + path, { query });
 const post = <T>(path: string, body?: unknown) =>
   request<T>(GMAIL + path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
+
+const DRIVE = 'https://www.googleapis.com/drive/v3/files';
+const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+const NOTES_FILE = 'mailmax-notes.json';
+let notesFileId: string | undefined;
+
+// Notes live in Drive's hidden per-app folder: invisible in Drive and Gmail, synced across devices.
+async function findNotesFile(): Promise<string | undefined> {
+  if (notesFileId) return notesFileId;
+  const r = await request<{ files?: { id: string }[] }>(DRIVE, {
+    query: { spaces: 'appDataFolder', q: `name = '${NOTES_FILE}' and trashed = false`, fields: 'files(id)', pageSize: 1 }
+  });
+  notesFileId = r.files?.[0]?.id;
+  return notesFileId;
+}
+
+function cleanNotes(v: unknown): NotesMap {
+  const raw = (v as { notes?: unknown } | null)?.notes;
+  const out: NotesMap = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [id, n] of Object.entries(raw as Record<string, { text?: unknown; updated?: unknown }>)) {
+    if (typeof n?.text === 'string' && n.text.trim()) out[id] = { text: n.text, updated: Number(n.updated) || 0 };
+  }
+  return out;
+}
 
 function startOfDay(d = new Date()) {
   const x = new Date(d);
@@ -172,6 +198,26 @@ export const gmailBackend: MailBackend = {
     await request(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: done ? 'completed' : 'needsAction' })
+    });
+  },
+  loadNotes: async () => {
+    const id = await findNotesFile();
+    if (!id) return {};
+    return cleanNotes(await request<unknown>(`${DRIVE}/${id}`, { query: { alt: 'media' } }));
+  },
+  saveNotes: async (notes) => {
+    let id = await findNotesFile();
+    if (!id) {
+      const f = await request<{ id: string }>(DRIVE, {
+        method: 'POST',
+        body: JSON.stringify({ name: NOTES_FILE, parents: ['appDataFolder'], mimeType: 'application/json' })
+      });
+      id = notesFileId = f.id;
+    }
+    await request(`${DRIVE_UPLOAD}/${id}`, {
+      method: 'PATCH',
+      query: { uploadType: 'media' },
+      body: JSON.stringify({ version: 1, notes })
     });
   }
 };

@@ -18,6 +18,8 @@ The setup takes about 20 minutes.
    - **Gmail API** (required)
    - **Google Calendar API** (only if you turn on the calendar panel)
    - **Google Tasks API** (only if you turn on the tasks panel)
+   - **Google Drive API** (only if you turn on private notes)
+   - **Generative Language API** (only if you turn on AI; see "Optional: AI with Gemini" below)
 
 ## 2. Configure the consent screen
 
@@ -38,6 +40,7 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 | `https://www.googleapis.com/auth/gmail.settings.basic` | Filters, signatures, vacation responder, forwarding status |
 | `https://www.googleapis.com/auth/calendar.events.readonly` | Optional: today's agenda |
 | `https://www.googleapis.com/auth/tasks` | Optional: Tasks panel and "Add to Tasks" |
+| `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes. Only gives access to Mailmax's own hidden folder, not your Drive files |
 
 ## 3. Create the OAuth Client ID
 
@@ -95,7 +98,9 @@ window.MAILMAX_CONFIG = {
   language: "auto",
   theme: "sky",
   accentColor: "",
-  features: { calendar: false, tasks: false },
+  features: { calendar: false, tasks: false, notes: false },
+  setAsideLabel: "Set aside",
+  actionLabel: "Action required",
   links: { /* see below */ },
   demo: false
 };
@@ -115,6 +120,12 @@ window.MAILMAX_CONFIG = {
 | `accentColor` | Optional hex colour that replaces the default theme's accent. |
 | `features.calendar` | Shows today's events in the side panel. Adds the Calendar permission at sign-in. |
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
+| `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
+| `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
+| `setAsideLabel` | Gmail label used for the Set aside pile. Mailmax creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
+| `features.ai` | Turns on the Gemini relay (`ai.php`) and **Settings → AI**. Needs a PHP host. See "Optional: AI with Gemini". |
+| `aiModel` | Gemini model used by the relay. Empty uses `gemini-flash-latest`. |
+| `aiDailyLimit` | Maximum AI requests per account per day. `0` uses the default (300). |
 | `links` | Addresses opened by Chat, Meet, Calendar, Keep, Contacts and Gmail settings. Change them if you use a different Google account index (`/u/1/`) or other apps. |
 | `demo` | `true` shows sample data and never contacts Google. |
 
@@ -138,6 +149,18 @@ Mailmax only shows mail after a Google sign-in, but you can also hide the site i
 
 Other options: HTTP basic authentication on your web server, or a VPN.
 
+## Optional: AI with Gemini
+
+Mailmax can call the Gemini API through `ai.php`, a small relay on your server, so the API key is never sent to the browser. It uses the same sign-in check as the updater: only accounts in `allowedAccounts` or `allowedDomains` can use it.
+
+1. In the same Google Cloud project, enable the **Generative Language API**.
+2. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) for that project. In Google Cloud, under **APIs & Services → Credentials**, restrict the key to the Generative Language API.
+3. Set `features.ai` to `true` in `config.js`.
+4. Open **Settings → AI**, paste the key and click **Save key**. Mailmax checks it with Google, then stores it in `.mailmax-ai.php` on the server. That file is never served, backed up or replaced by updates. If your host lets you set environment variables, you can set `GEMINI_API_KEY` instead.
+5. Click **Test the connection**.
+
+Use a paid Gemini API plan for email. On the free tier, Google may use what you send to improve its products. Each account is limited to `aiDailyLimit` requests per day (300 by default), and Google's own spending cap applies on top.
+
 ## Updating
 
 **From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Mailmax:
@@ -155,9 +178,11 @@ This needs PHP 7.4 or later with the zip extension, and write permission on the 
 
 If you do not want browser updates at all, delete `update.php` from the server.
 
+**Upgrading from 0.1.0.** Version 0.2.0 adds two server files (`mailmax-common.php` and `ai.php`) that the 0.1.0 updater does not accept. Upload 0.2.0 by hand once, keeping your `config.js`. Later versions install from the browser as usual.
+
 ## Security notes
 
-- Mailmax runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The only server-side file is `update.php`, which verifies your Google sign-in and allowed account before installing an update.
+- Mailmax runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo) and `ai.php` (optional Gemini relay). Both check your Google sign-in and allowed account before doing anything, using `mailmax-common.php`.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
 - The content security policy only allows connections to Google's APIs.
@@ -171,5 +196,8 @@ If you do not want browser updates at all, delete `update.php` from the server.
 | `access_denied` | Your account is not a test user (External, Testing) or not in the organisation (Internal). |
 | "… is not allowed on this install" | The account is not listed in `allowedAccounts` or `allowedDomains`. |
 | Sign-in window does not appear | Allow pop-ups for the site. |
+| Notes say they could not be saved or loaded | Enable the Google Drive API, add the `drive.appdata` scope, set `features.notes` to `true`, then sign out and in again. |
+| Settings → AI says ai.php is not reachable | The host does not run PHP, or `ai.php` was not uploaded. |
+| "Google rejected this key" | Enable the Generative Language API in the key's project, and check the key's API restrictions. |
 | Calendar or Tasks panel is empty | Enable the API in Google Cloud, add the scope, set the feature to `true`, then sign out and in again. |
 | Asked to sign in again every week | External app in Testing mode. Publish it to Production, or use an Internal app on Workspace. |

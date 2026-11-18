@@ -4,13 +4,14 @@ import { t } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
 import { getPrefs } from '../prefs';
 import { go, listHash, type Folder, type MailRoute } from '../route';
-import { dismissToast, openCompose, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
+import { dismissToast, openCompose, pileLabelIds, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
 import { Brand, Menu } from './common';
 import { Compose } from './Compose';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { KeyHelp, SEARCH_KEY, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
+import { PileBar } from './Piles';
 import { Settings } from './Settings';
 import { SidePanel } from './SidePanel';
 import { ThreadList } from './ThreadList';
@@ -21,7 +22,7 @@ export function App() {
   if (s.phase === 'boot') return <div class="center"><p>{t('app.loading')}</p></div>;
   if (s.phase === 'signin' || s.phase === 'denied') return <SignIn s={s} />;
   return (
-    <div class="app">
+    <div class={`app ${s.piles.aside.rows.length || s.piles.action.rows.length ? 'has-pile' : ''}`}>
       <ColorSprite />
       <Header s={s} />
       {s.sessionExpired && (
@@ -43,6 +44,7 @@ export function App() {
         )}
         <SideIcons s={s} />
       </div>
+      <PileBar s={s} />
       {s.compose && <Compose key={s.compose.key} s={s} c={s.compose} />}
       <Toasts s={s} />
       {s.showKeys && <KeyHelp />}
@@ -197,8 +199,9 @@ function Sidebar({ s }: { s: AppState }) {
   const active = (f: Folder) => r.view === 'mail' && r.q === undefined && !r.label && (r.folder ?? 'inbox') === f;
   const primary: Folder[] = ['inbox', 'starred', 'snoozed', 'important', 'sent', 'scheduled', 'drafts'];
   const secondary: Folder[] = ['all', 'spam', 'trash'];
+  const pileIds = pileLabelIds();
   const userLabels = s.labels
-    .filter((l) => l.type === 'user' && l.labelListVisibility !== 'labelHide')
+    .filter((l) => l.type === 'user' && l.labelListVisibility !== 'labelHide' && !pileIds.includes(l.id))
     .sort((a, b) => a.name.localeCompare(b.name));
   const count = (f: Folder) => (f === 'inbox' ? s.counts.INBOX : f === 'drafts' ? s.counts.DRAFT : f === 'spam' ? s.counts.SPAM : 0) ?? 0;
   const item = (f: Folder) => {

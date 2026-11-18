@@ -9,7 +9,9 @@ export interface AppConfig {
   allowedDomains: string[];
   language: 'auto' | 'en' | 'fr';
   accentColor: string;
-  features: { calendar: boolean; tasks: boolean };
+  setAsideLabel: string;
+  actionLabel: string;
+  features: { calendar: boolean; tasks: boolean; notes: boolean; ai: boolean };
   links: {
     chat: string;
     meet: string;
@@ -38,7 +40,9 @@ const defaults: AppConfig = {
   allowedDomains: [],
   language: 'auto',
   accentColor: '',
-  features: { calendar: false, tasks: false },
+  setAsideLabel: 'Set aside',
+  actionLabel: 'Action required',
+  features: { calendar: false, tasks: false, notes: false, ai: false },
   links: {
     chat: 'https://mail.google.com/chat/',
     meet: 'https://meet.google.com/',
@@ -85,9 +89,13 @@ function load(): AppConfig {
     allowedDomains: list(raw.allowedDomains).map((d) => d.replace(/^@/, '')),
     language: raw.language === 'en' || raw.language === 'fr' ? raw.language : 'auto',
     accentColor: color(raw.accentColor, defaults.accentColor),
+    setAsideLabel: typeof raw.setAsideLabel === 'string' && raw.setAsideLabel.trim() ? raw.setAsideLabel.trim() : defaults.setAsideLabel,
+    actionLabel: typeof raw.actionLabel === 'string' && raw.actionLabel.trim() ? raw.actionLabel.trim() : defaults.actionLabel,
     features: {
       calendar: !!raw.features?.calendar,
-      tasks: !!raw.features?.tasks
+      tasks: !!raw.features?.tasks,
+      notes: !!raw.features?.notes,
+      ai: !!raw.features?.ai
     },
     links: { ...defaults.links, ...(raw.links ?? {}) },
     demo: !!raw.demo || params.has('demo')
