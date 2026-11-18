@@ -6,6 +6,7 @@ import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
 import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, api, closeThread, openCompose, openDraft, senderName, toast, type AppState } from '../store';
 import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
+import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
 import { MessageBody } from './MessageBody';
@@ -118,21 +119,21 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
         ) : inTrash ? (
           <button class="btn sm" onClick={() => actions.restore(id)}>{t('act.restore')}</button>
         ) : inInbox ? (
-          <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(id)}><Icon name="archive" /></button>
+          <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(id)}><CIcon name="archive" /></button>
         ) : (
-          <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={t('act.moveInbox')} title={t('act.moveInbox')} onClick={() => actions.moveToInbox(id)}><Icon name="inbox" /></button>
+          <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={t('act.moveInbox')} title={t('act.moveInbox')} onClick={() => actions.moveToInbox(id)}><CIcon name="inbox" /></button>
         )}
-        {!inSpam && <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(id)}><Icon name="spam" /></button>}
-        {!inTrash && <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(id)}><Icon name="trash" /></button>}
+        {!inSpam && <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(id)}><CIcon name="spam" /></button>}
+        {!inTrash && <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(id)}><CIcon name="trash" /></button>}
         <span class="sep" />
-        <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={t('act.markUnread')} title={t('act.markUnread')} onClick={() => actions.read(id, false)}><Icon name="mail" /></button>
+        <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={t('act.markUnread')} title={t('act.markUnread')} onClick={() => actions.read(id, false)}><CIcon name="unread" /></button>
         {config.features.tasks && (
-          <button class="ib" style={{ color: 'var(--c-tasks)' }} aria-label={t('act.addTask')} title={t('act.addTask')} onClick={() => actions.addTask(o.id)}><Icon name="check" /></button>
+          <button class="ib" style={{ color: 'var(--c-tasks)' }} aria-label={t('act.addTask')} title={t('act.addTask')} onClick={() => actions.addTask(o.id)}><CIcon name="tasks" /></button>
         )}
         <span class="sep" />
         <MoveMenu s={s} ids={id} />
         <LabelMenu s={s} ids={id} current={o.labelIds} />
-        <Menu label={t('act.more')} button={<Icon name="more" />}>
+        <Menu label={t('act.more')} button={<CIcon name="more" />}>
           {(close) => (
             <>
               <button class="mi" onClick={() => { actions.important(id, !important); close(); }}>
@@ -230,7 +231,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
               ) : (
                 last && (
                   <>
-                    <button class="btn" onClick={() => openCompose('reply', last)}><Icon name="reply" style={{ color: 'var(--c-inbox)' }} />{t('act.reply')}</button>
+                    <button class="btn" onClick={() => openCompose('reply', last)}><CIcon name="reply" size={18} />{t('act.reply')}</button>
                     {last.to.length + last.cc.length > 1 && (
                       <button class="btn" onClick={() => openCompose('replyAll', last)}><Icon name="replyAll" style={{ color: 'var(--c-snooze)' }} />{t('act.replyAll')}</button>
                     )}

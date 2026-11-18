@@ -4,6 +4,7 @@ import { getPrefs } from '../prefs';
 import { CATEGORIES, go, listHash, type MailRoute } from '../route';
 import { actions, loadList, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
 import { Avatar } from './common';
+import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelMenu, MoveMenu } from './Menus';
 
@@ -45,17 +46,17 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
               <button class="btn sm" onClick={() => actions.restore(sel)}>{t('act.restore')}</button>
             ) : (
               <>
-                <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(sel)}><Icon name="archive" /></button>
-                <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(sel)}><Icon name="spam" /></button>
-                <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(sel)}><Icon name="trash" /></button>
+                <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(sel)}><CIcon name="archive" /></button>
+                <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(sel)}><CIcon name="spam" /></button>
+                <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(sel)}><CIcon name="trash" /></button>
               </>
             )}
             <span class="sep" />
             <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={anyUnread ? t('act.markRead') : t('act.markUnread')} title={anyUnread ? t('act.markRead') : t('act.markUnread')} onClick={() => actions.read(sel, anyUnread)}>
-              <Icon name={anyUnread ? 'mailOpen' : 'mail'} />
+              <CIcon name={anyUnread ? 'mail' : 'unread'} />
             </button>
-            <button class="ib" style={{ color: 'var(--c-star)' }} aria-label={t('list.star')} title={t('list.star')} onClick={() => actions.star(sel, true)}><Icon name="star" /></button>
-            <button class="ib" style={{ color: 'var(--c-important)' }} aria-label={t('act.markImportant')} title={t('act.markImportant')} onClick={() => actions.important(sel, true)}><Icon name="important" /></button>
+            <button class="ib" style={{ color: 'var(--c-star)' }} aria-label={t('list.star')} title={t('list.star')} onClick={() => actions.star(sel, true)}><CIcon name="starred" /></button>
+            <button class="ib" style={{ color: 'var(--c-important)' }} aria-label={t('act.markImportant')} title={t('act.markImportant')} onClick={() => actions.important(sel, true)}><CIcon name="important" /></button>
             <span class="sep" />
             <MoveMenu s={s} ids={sel} />
             <LabelMenu s={s} ids={sel} />

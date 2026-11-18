@@ -7,6 +7,7 @@ import { go, listHash, type Folder, type MailRoute } from '../route';
 import { dismissToast, openCompose, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
 import { Brand, Menu } from './common';
 import { Compose } from './Compose';
+import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { KeyHelp, SEARCH_KEY, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
@@ -21,6 +22,7 @@ export function App() {
   if (s.phase === 'signin' || s.phase === 'denied') return <SignIn s={s} />;
   return (
     <div class="app">
+      <ColorSprite />
       <Header s={s} />
       {s.sessionExpired && (
         <div class="banner" role="alert">
@@ -157,35 +159,35 @@ function Rail({ s }: { s: AppState }) {
   return (
     <nav class="rail" aria-label={t('nav.apps')}>
       <a class="rl on" href="#/inbox" aria-current="page">
-        <span class="rl-i" style={{ color: 'var(--c-inbox)' }}>
-          <Icon name="mail" />
+        <span class="rl-i">
+          <CIcon name="mail" size={26} />
           {(s.counts.INBOX ?? 0) > 0 && <span class="badge">{s.counts.INBOX > 99 ? '99+' : s.counts.INBOX}</span>}
         </span>
         {t('nav.mail')}
       </a>
       <a class="rl" href={config.links.chat} target="_blank" rel="noopener noreferrer">
-        <span class="rl-i" style={{ color: 'var(--c-tasks)' }}><Icon name="chat" /></span>
+        <span class="rl-i"><CIcon name="chat" size={26} /></span>
         {t('nav.chat')}
       </a>
       <a class="rl" href={config.links.meet} target="_blank" rel="noopener noreferrer">
-        <span class="rl-i" style={{ color: 'var(--c-important)' }}><Icon name="video" /></span>
+        <span class="rl-i"><CIcon name="meet" size={26} /></span>
         {t('nav.meet')}
       </a>
     </nav>
   );
 }
 
-const FOLDER_ICON: Record<Folder, [string, string]> = {
-  inbox: ['inbox', 'var(--c-inbox)'],
-  starred: ['star', 'var(--c-star)'],
-  snoozed: ['clock', 'var(--c-snooze)'],
-  important: ['important', 'var(--c-important)'],
-  sent: ['send', 'var(--c-sent)'],
-  scheduled: ['scheduled', 'var(--c-scheduled)'],
-  drafts: ['file', 'var(--c-drafts)'],
-  all: ['layers', 'var(--c-all)'],
-  spam: ['spam', 'var(--c-spam)'],
-  trash: ['trash', 'var(--c-trash)']
+const FOLDER_ICON: Record<Folder, ColorIconName> = {
+  inbox: 'inbox',
+  starred: 'starred',
+  snoozed: 'snoozed',
+  important: 'important',
+  sent: 'sent',
+  scheduled: 'scheduled',
+  drafts: 'drafts',
+  all: 'all',
+  spam: 'spam',
+  trash: 'trash'
 };
 
 function Sidebar({ s }: { s: AppState }) {
@@ -199,11 +201,11 @@ function Sidebar({ s }: { s: AppState }) {
     .sort((a, b) => a.name.localeCompare(b.name));
   const count = (f: Folder) => (f === 'inbox' ? s.counts.INBOX : f === 'drafts' ? s.counts.DRAFT : f === 'spam' ? s.counts.SPAM : 0) ?? 0;
   const item = (f: Folder) => {
-    const [icon, color] = FOLDER_ICON[f];
+    const icon = FOLDER_ICON[f];
     const n = count(f);
     return (
       <a class={`nav ${active(f) ? 'on' : ''}`} href={`#/${f}`} aria-current={active(f) ? 'page' : undefined}>
-        <Icon name={icon} style={{ color }} fill={f === 'starred' ? '#FFD84D' : undefined} />
+        <CIcon name={icon} size={24} />
         <span class="nav-t">{t(`nav.${f}`)}</span>
         {n > 0 && <span class={`nav-c ${f === 'inbox' ? '' : 'quiet'}`}>{n}</span>}
       </a>
@@ -259,24 +261,23 @@ function MailCard({ s, route }: { s: AppState; route: MailRoute }) {
 }
 
 function SideIcons({ s }: { s: AppState }) {
-  const items: { id: NonNullable<AppState['panel']>; icon: string; color: string; label: string }[] = [
-    { id: 'calendar', icon: 'calendar', color: 'var(--c-inbox)', label: t('panel.calendar') },
-    { id: 'keep', icon: 'bulb', color: 'var(--c-star)', label: t('panel.keep') },
-    { id: 'tasks', icon: 'check', color: 'var(--c-sent)', label: t('panel.tasks') },
-    { id: 'contacts', icon: 'user', color: 'var(--c-snooze)', label: t('panel.contacts') }
+  const items: { id: NonNullable<AppState['panel']>; icon: ColorIconName; label: string }[] = [
+    { id: 'calendar', icon: 'calendar', label: t('panel.calendar') },
+    { id: 'keep', icon: 'keep', label: t('panel.keep') },
+    { id: 'tasks', icon: 'tasks', label: t('panel.tasks') },
+    { id: 'contacts', icon: 'contacts', label: t('panel.contacts') }
   ];
   return (
     <div class="side-icons">
       {items.map((i) => (
         <button
           class={`sp ${s.panel === i.id ? 'on' : ''}`}
-          style={{ color: i.color }}
           aria-label={i.label}
           title={i.label}
           aria-pressed={s.panel === i.id}
           onClick={() => setState({ panel: s.panel === i.id ? undefined : i.id })}
         >
-          <Icon name={i.icon} />
+          <CIcon name={i.icon} size={26} />
         </button>
       ))}
     </div>

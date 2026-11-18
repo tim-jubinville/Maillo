@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { labelColor, SYSTEM_LABELS } from '../model';
 import { actions, type AppState } from '../store';
 import { Menu } from './common';
+import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
 
 function userLabels(s: AppState) {
@@ -17,7 +18,7 @@ export function LabelMenu({ s, ids, current }: { s: AppState; ids: string[]; cur
     return rows.length > 0 && rows.every((r) => r.labelIds.includes(id));
   };
   return (
-    <Menu label={t('act.labelAs')} style={{ color: 'var(--c-drafts)' }} button={<Icon name="tag" />}>
+    <Menu label={t('act.labelAs')} button={<CIcon name="label" />}>
       {(close) => (
         <>
           <div class="pop-h">{t('act.labelAs')}</div>
@@ -51,7 +52,7 @@ export function LabelMenu({ s, ids, current }: { s: AppState; ids: string[]; cur
 
 export function MoveMenu({ s, ids }: { s: AppState; ids: string[] }) {
   return (
-    <Menu label={t('act.moveTo')} style={{ color: 'var(--c-scheduled)' }} button={<Icon name="folderMove" />}>
+    <Menu label={t('act.moveTo')} button={<CIcon name="move" />}>
       {(close) => (
         <>
           <div class="pop-h">{t('act.moveTo')}</div>
