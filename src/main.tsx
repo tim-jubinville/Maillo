@@ -1,13 +1,23 @@
 import './migrate';
 import { render } from 'preact';
 import { applyBranding, config, type Branding } from './config';
-import { boot } from './store';
+import { unlockAudioOnGesture } from './chime';
+import { handleOpenFromNotification, initNotifier } from './notify';
+import { initPwa } from './pwa';
+import { boot, getState, openCompose } from './store';
 import { initTheme } from './theme';
 import { App } from './ui/App';
 import './styles.css';
 
 document.title = config.appName;
 initTheme();
+initPwa(handleOpenFromNotification);
+initNotifier();
+unlockAudioOnGesture();
+
+// The installed app's "Compose" shortcut opens #/compose.
+const wantsCompose = location.hash === '#/compose';
+if (wantsCompose) history.replaceState(null, '', '#/inbox');
 
 async function loadBranding() {
   try {
@@ -26,5 +36,7 @@ async function loadBranding() {
 
 loadBranding().finally(() => {
   render(<App />, document.getElementById('app')!);
-  boot();
+  boot().then(() => {
+    if (wantsCompose && getState().phase === 'ready') openCompose();
+  });
 });

@@ -146,6 +146,13 @@ export function setState(patch: Partial<AppState> | ((s: AppState) => Partial<Ap
   listeners.forEach((l) => l());
 }
 
+export function onState(fn: () => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
 export function useApp(): AppState {
   const [, force] = useState(0);
   useEffect(() => {

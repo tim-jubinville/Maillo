@@ -58,6 +58,8 @@ Unzip the release and upload the contents of the `maillo-x.y.z` folder to the fo
 index.html
 config.js
 .htaccess
+manifest.webmanifest
+sw.js
 assets/
 ```
 
@@ -75,7 +77,7 @@ location / {
   add_header X-Frame-Options DENY;
   add_header Cross-Origin-Opener-Policy same-origin-allow-popups;
 }
-location = /config.js { add_header Cache-Control no-cache; }
+location ~ ^/(config\.js|sw\.js|manifest\.webmanifest)$ { add_header Cache-Control no-cache; }
 ```
 
 **Static hosts** (Cloudflare Pages, Netlify, GitHub Pages, and others). Upload the folder as the site root.
@@ -149,6 +151,17 @@ Maillo only shows mail after a Google sign-in, but you can also hide the site it
 
 Other options: HTTP basic authentication on your web server, or a VPN.
 
+## Optional: install as an app and get notifications
+
+Maillo is an installable web app. It needs HTTPS (or `localhost`).
+
+- **Install:** open **Settings → Install app**. In Chrome and Edge there is an **Install** button; Safari on a Mac uses **File → Add to Dock**, and iPhone and iPad use **Share → Add to Home Screen**.
+- **Notifications:** open **Settings → Notifications**, turn them on and allow them when the browser asks. Choose which mail notifies, people and labels that always notify, a chime, quiet hours, and what happens while Maillo is in front. **Send a test notification** checks that everything works.
+
+Maillo checks for new mail about once a minute while it is open, in a tab or an installed app window, even in the background. Nothing arrives once it is closed. Browsers only let a page play sound after a click, so click once anywhere in Maillo after opening it for chimes to play in the background. If you sign in through Cloudflare Access, nothing else is needed: the app manifest is requested with your Access cookie.
+
+The installed app is named "Maillo". To use another name, edit `name` and `short_name` in `manifest.webmanifest`; note that updates replace that file.
+
 ## Optional: AI with Gemini
 
 Maillo can call the Gemini API through `ai.php`, a small relay on your server, so the API key is never sent to the browser. It uses the same sign-in check as the updater: only accounts in `allowedAccounts` or `allowedDomains` can use it.
@@ -177,6 +190,8 @@ This needs PHP 7.4 or later with the zip extension, and write permission on the 
 **By hand (any host).** Upload the files from a newer release and keep your existing `config.js`. Browsers pick up the new version on the next load.
 
 If you do not want browser updates at all, delete `update.php` from the server.
+
+**Upgrading to 0.4.0.** The browser updater installs 0.4.0 as usual, but it never replaces `.htaccess`. On Apache, upload the new `.htaccess` by hand once (it fixes `config.js` being cached for too long and makes sure `sw.js` and the app manifest are always fresh), or add the same lines to yours.
 
 **Upgrading from Mailmax (0.2.x and earlier).** The app was renamed Maillo in 0.3.0, and the Mailmax updater does not accept a Maillo release. Upload 0.3.0 by hand once:
 
@@ -208,4 +223,8 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 | Settings → AI says ai.php is not reachable | The host does not run PHP, or `ai.php` was not uploaded. |
 | "Google rejected this key" | Enable the Generative Language API in the key's project, and check the key's API restrictions. |
 | Calendar or Tasks panel is empty | Enable the API in Google Cloud, add the scope, set the feature to `true`, then sign out and in again. |
+| No Install button in Settings | The browser doesn't offer one (Safari, Firefox), the site isn't on HTTPS, or Maillo is already installed. Follow the steps shown on the page. |
+| Notifications don't appear | Check that the site is allowed to notify in the browser's site settings and in your system's notification settings (macOS: System Settings → Notifications → your browser; Windows: Settings → System → Notifications), and that Focus or Do Not Disturb is off. |
+| No chime in the background | Click once anywhere in Maillo after opening it; browsers block sound until then. |
+| "Notifications paused" | Your Google session ended while Maillo was in the background. Open it and sign in again. |
 | Asked to sign in again every week | External app in Testing mode. Publish it to Production, or use an Internal app on Workspace. |

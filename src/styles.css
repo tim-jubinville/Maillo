@@ -672,3 +672,20 @@ a:hover { color: var(--violet); }
 @media print {
   .pile-wrap, .sticky { display: none !important; }
 }
+
+/* Notification and install settings */
+.nset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.nset:disabled .srow { opacity: 0.5; }
+.nset-wide { width: min(360px, 100%); }
+.nset-chips { display: flex; flex-wrap: wrap; gap: 6px; max-width: 420px; }
+.nset-empty { font-size: 13px; color: var(--muted); }
+.nset-vol { display: flex; align-items: center; gap: 8px; }
+.nset-vol input[type='range'] { width: 200px; accent-color: var(--accent); }
+.nset-quiet { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nset-quiet label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.nset-quiet .input { width: 120px; }
+.app-hero { display: flex; align-items: center; gap: 20px; padding: 20px 24px 24px; border-top: 1px solid var(--row-line); flex-wrap: wrap; }
+.app-hero img { border-radius: 16px; box-shadow: 0 6px 18px rgba(20, 33, 61, 0.18); flex: none; }
+.app-hero .for-dark { display: none; }
+[data-mode='dark'] .app-hero .for-dark { display: block; }
+[data-mode='dark'] .app-hero .for-light { display: none; }

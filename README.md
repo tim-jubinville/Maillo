@@ -49,6 +49,12 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Appearance: light, dark or system mode, nine colour themes, and a custom logo upload
 - Updates: upload a newer release zip from Settings, with an automatic backup and one-click restore (PHP hosts)
 
+**App and notifications**
+- Install Maillo as an app (Chrome, Edge, Safari on Mac, and Add to Home Screen on iPhone and Android) for its own window, a dock or taskbar icon, a "Compose" shortcut and an unread count on the icon
+- Desktop notifications for new mail, with rules: all inbox mail, Primary only, Important only, or none, plus people, domains and labels that always notify
+- A choice of four calm chimes (Mellow, Droplet, Breeze, Glass) made in the browser, with volume, quiet hours, a preview on/off switch and what to do while Maillo is in front
+- Click a notification to open the conversation
+
 **Extras**
 - Optional Gemini relay (`ai.php`): the API key stays on your server, with a daily limit per account. Set it up in Settings → AI
 - Keyboard shortcuts (press `?`), including `p` to set aside, `t` for Action required and `n` to add a note
@@ -65,6 +71,8 @@ Some Gmail features are not available to third-party apps through the Gmail API:
 - **Delete forever** and **empty trash** need a broader permission than Maillo asks for. Gmail empties Trash automatically after 30 days.
 - **Forwarding, IMAP and POP** settings are shown but must be changed in Gmail.
 - **Google Chat and Meet** open in their own apps.
+- **Notifications only arrive while Maillo is open** (in a tab or as an installed app, even in the background). Getting them when it is closed needs Gmail push through a server, planned for later. Google's browser sign-in also lasts about an hour and can't be renewed without a click, so after a long time in the background Maillo shows one "Notifications paused" notice and waits for you to sign in again.
+- **iPhone and iPad** only allow notifications from apps added to the Home Screen, and only through web push, so Maillo can't notify there yet.
 
 ## Install
 
@@ -96,6 +104,8 @@ Local development needs `http://localhost:5173` listed as an authorised JavaScri
 ```
 public/config.js      runtime configuration, copied as-is into the build
 public/.htaccess      headers for Apache hosts
+public/manifest.webmanifest  web app manifest (installable app)
+sw/sw.js              service worker template; the build fills in the version and file list
 public/update.php     optional in-browser updater for PHP hosts
 public/ai.php         optional Gemini relay for PHP hosts (key stays server-side)
 public/maillo-common.php  sign-in check shared by the PHP files

@@ -395,3 +395,23 @@ export const demoBackend: MailBackend = {
 
 const bill = threads.find((x) => x.messages?.[0]?.payload?.headers?.some((h) => h.name === 'Subject' && h.value.startsWith('Your monthly statement')));
 if (bill) notes[bill.id] = { text: 'Paid Nov 14 by credit card. Confirmation #A-5521.', updated: now - 2 * D };
+
+let delivered = false;
+
+/** Demo only: one new message "arrives", so notifications can be tried without a real mailbox. */
+export function deliverDemoMail(): boolean {
+  if (delivered) return false;
+  delivered = true;
+  const s: Seed = {
+    from: 'Noor Haddad <noor@studio.example>',
+    subject: 'Coffee on Friday?',
+    body: '<p>Hi! I’m around the office on Friday morning. Coffee at 10 by the window, if you’re free?</p><p>Noor</p>',
+    ago: 0,
+    labels: ['INBOX', 'UNREAD', 'IMPORTANT', 'CATEGORY_PERSONAL']
+  };
+  const tid = `t${seq++}`;
+  const id = `m${seq++}`;
+  const msg: GMessage = { id, threadId: tid, labelIds: [...s.labels], snippet: 'Hi! I’m around the office on Friday morning. Coffee at 10 by the window, if you’re free?', internalDate: String(Date.now()), historyId: '1', payload: payloadFor(s, id) };
+  threads.push({ id: tid, messages: [msg], historyId: '1', snippet: msg.snippet });
+  return true;
+}
