@@ -98,6 +98,8 @@ export interface AppState {
   me: string;
   /** Google profile photo URL for the signed-in account, when available. */
   mePhoto?: string;
+  /** Contact photo URLs by lower-case email (empty unless features.contactPhotos is on). */
+  contactPhotos: Record<string, string>;
   route: Route;
   labels: GLabel[];
   counts: Record<string, number>;
@@ -122,11 +124,15 @@ export interface AppState {
   celebrate?: string;
 }
 
+const PHOTO_CACHE = 'maillo.contactPhotos';
+const PHOTO_TTL = 12 * 60 * 60 * 1000;
+
 let state: AppState = {
   phase: 'boot',
   sessionExpired: false,
   me: '',
   panel: getPrefs().panel || undefined,
+  contactPhotos: readPhotoCache(),
   route: parseHash(),
   labels: [],
   counts: {},
@@ -231,6 +237,10 @@ export async function boot() {
 
 export async function signInClick(switchAccount = false) {
   setState({ authError: undefined });
+  if (switchAccount) {
+    sessionStorage.removeItem(PHOTO_CACHE);
+    setState({ contactPhotos: {} });
+  }
   try {
     await signIn({ switchAccount });
     if (state.phase === 'ready') {
@@ -247,6 +257,7 @@ export async function signInClick(switchAccount = false) {
 
 export function signOutClick() {
   signOut();
+  sessionStorage.removeItem(PHOTO_CACHE);
   location.hash = '';
   location.reload();
 }
@@ -264,6 +275,7 @@ async function start() {
     loadLabels().then(() => loadPiles());
     loadSendAs();
     loadUserInfo();
+    loadContactPhotos();
     loadNotes();
     await loadList(true);
     const r = state.route;
@@ -276,6 +288,37 @@ async function start() {
 }
 
 // Optional: installs or sessions without the profile scope keep the initial.
+// Kept for the browser session only, like the sign-in token, so a reload doesn't refetch every contact.
+function readPhotoCache(): Record<string, string> {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(PHOTO_CACHE) || 'null') as { at: number; photos: Record<string, string> } | null;
+    return c && typeof c.photos === 'object' ? c.photos : {};
+  } catch {
+    return {};
+  }
+}
+
+async function loadContactPhotos() {
+  if (!config.features.contactPhotos) return;
+  try {
+    const c = JSON.parse(sessionStorage.getItem(PHOTO_CACHE) || 'null') as { at: number } | null;
+    if (c && Date.now() - c.at < PHOTO_TTL) return;
+  } catch {
+    /* refetch */
+  }
+  try {
+    const photos = await api.contactPhotos();
+    setState({ contactPhotos: photos });
+    try {
+      sessionStorage.setItem(PHOTO_CACHE, JSON.stringify({ at: Date.now(), photos }));
+    } catch {
+      /* storage full: keep them in memory */
+    }
+  } catch {
+    /* initials stay */
+  }
+}
+
 async function loadUserInfo() {
   try {
     const u = await api.userInfo();

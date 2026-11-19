@@ -25,6 +25,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - **Set aside**: pin conversations out of the inbox into a small stack of cards at the bottom of the screen. Click the stack to fan the cards out and pick one. Stored as a regular Gmail label, so it syncs everywhere.
 - **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. A conversation lives in one pile at a time. Take one out with the ✕ on its card, or with "Remove from…" on the row, the ribbon or the bulk ribbon; it goes back to the Inbox.
 - **Private notes**: stick a note on any conversation (for example "Paid on Nov 14"). Only you see it, it is never sent, and it syncs between devices through a hidden app folder in your Google Drive (optional, see `features.notes`).
+- **Contact photos**: people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory (optional, see `features.contactPhotos`).
 
 **Reading**
 - Email content rendered in a sandboxed frame with scripts disabled

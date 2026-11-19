@@ -41,8 +41,11 @@ window.MAILLO_CONFIG = {
     tasks: false,               // Tasks side panel and "Add to Tasks"
     notes: false,               // private sticky notes on conversations, synced through
                                 // a hidden app folder in Google Drive (needs the Drive API)
-    ai: false                   // Gemini relay (ai.php, PHP hosts). Add the API key in
+    ai: false,                  // Gemini relay (ai.php, PHP hosts). Add the API key in
                                 // Settings > AI; it is stored on the server, never here.
+    contactPhotos: false        // senders' photos from Google Contacts, "other contacts" and,
+                                // on Workspace, your organisation's directory (read-only;
+                                // needs the People API)
   },
 
   // Gemini model used by the AI relay, and how many AI requests each account may

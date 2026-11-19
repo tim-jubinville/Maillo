@@ -112,10 +112,53 @@ function startOfDay(d = new Date()) {
   return x;
 }
 
+const PEOPLE = 'https://people.googleapis.com/v1';
+
+interface GPerson {
+  emailAddresses?: { value?: string }[];
+  photos?: { url?: string; default?: boolean; metadata?: { primary?: boolean } }[];
+}
+
+// Reads every page of one People API listing (capped), keeping each person's real photo.
+async function collectPhotos(url: string, query: Query, key: 'connections' | 'otherContacts' | 'people', into: Record<string, string>) {
+  let pageToken: string | undefined;
+  for (let page = 0; page < 20; page++) {
+    const r = await request<Record<string, unknown> & { nextPageToken?: string }>(url, { query: { ...query, pageSize: 1000, pageToken } });
+    for (const p of (r[key] as GPerson[] | undefined) ?? []) {
+      const photo = p.photos?.find((x) => !x.default && x.metadata?.primary) ?? p.photos?.find((x) => !x.default);
+      if (!photo?.url || !/^https:\/\//.test(photo.url)) continue;
+      for (const e of p.emailAddresses ?? []) {
+        const k = e.value?.trim().toLowerCase();
+        if (k && !into[k]) into[k] = photo.url;
+      }
+    }
+    pageToken = r.nextPageToken;
+    if (!pageToken) break;
+  }
+}
+
 export const gmailBackend: MailBackend = {
   demo: false,
   profile: () => get<GProfile>('/profile'),
   userInfo: () => request<GUserInfo>('https://www.googleapis.com/oauth2/v3/userinfo'),
+  // Your own contacts win over the directory, which wins over "other contacts". Each source is optional:
+  // personal accounts have no directory, and a missing permission just leaves that source out.
+  contactPhotos: async () => {
+    const out: Record<string, string> = {};
+    const sources: [string, Query, 'connections' | 'otherContacts' | 'people'][] = [
+      [`${PEOPLE}/people/me/connections`, { personFields: 'emailAddresses,photos' }, 'connections'],
+      [`${PEOPLE}/people:listDirectoryPeople`, { readMask: 'emailAddresses,photos', sources: 'DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE' }, 'people'],
+      [`${PEOPLE}/otherContacts`, { readMask: 'emailAddresses,photos' }, 'otherContacts']
+    ];
+    for (const [url, query, key] of sources) {
+      try {
+        await collectPhotos(url, query, key, out);
+      } catch (e) {
+        if (e instanceof AuthRequired) throw e;
+      }
+    }
+    return out;
+  },
   listLabels: async () => (await get<{ labels?: GLabel[] }>('/labels')).labels ?? [],
   getLabel: (id) => get<GLabel>(`/labels/${encodeURIComponent(id)}`),
   createLabel: (name) =>

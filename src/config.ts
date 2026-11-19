@@ -11,7 +11,7 @@ export interface AppConfig {
   accentColor: string;
   setAsideLabel: string;
   actionLabel: string;
-  features: { calendar: boolean; tasks: boolean; notes: boolean; ai: boolean };
+  features: { calendar: boolean; tasks: boolean; notes: boolean; ai: boolean; contactPhotos: boolean };
   links: {
     chat: string;
     meet: string;
@@ -46,7 +46,7 @@ const defaults: AppConfig = {
   accentColor: '',
   setAsideLabel: 'Set aside',
   actionLabel: 'Action required',
-  features: { calendar: false, tasks: false, notes: false, ai: false },
+  features: { calendar: false, tasks: false, notes: false, ai: false, contactPhotos: false },
   links: {
     chat: 'https://mail.google.com/chat/',
     meet: 'https://meet.google.com/',
@@ -102,7 +102,8 @@ function load(): AppConfig {
       calendar: !!raw.features?.calendar,
       tasks: !!raw.features?.tasks,
       notes: !!raw.features?.notes,
-      ai: !!raw.features?.ai
+      ai: !!raw.features?.ai,
+      contactPhotos: !!raw.features?.contactPhotos
     },
     links: { ...defaults.links, ...(raw.links ?? {}) },
     demo: !!raw.demo || params.has('demo')
