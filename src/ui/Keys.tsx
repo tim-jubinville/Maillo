@@ -38,7 +38,8 @@ const MAP: [string, StringKey][] = [
 
 function typing(el: EventTarget | null) {
   const e = el as HTMLElement | null;
-  return !!e && (e.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName));
+  // Keys inside an open menu belong to the menu (Enter picks the focused item).
+  return !!e && (e.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName) || !!e.closest?.('[role="menu"]'));
 }
 
 export function useShortcuts(s: AppState) {
