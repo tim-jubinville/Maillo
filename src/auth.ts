@@ -41,7 +41,11 @@ export const SCOPES = (() => {
     'https://www.googleapis.com/auth/userinfo.profile'
   ];
   if (config.features.calendar) {
-    s.push('https://www.googleapis.com/auth/calendar.events.readonly', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly');
+    s.push(
+      'https://www.googleapis.com/auth/calendar.events.readonly',
+      'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+      'https://www.googleapis.com/auth/calendar.calendars.readonly'
+    );
   }
   if (config.features.tasks) s.push('https://www.googleapis.com/auth/tasks');
   if (config.features.notes) s.push('https://www.googleapis.com/auth/drive.appdata');
