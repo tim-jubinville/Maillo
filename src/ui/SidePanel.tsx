@@ -48,6 +48,17 @@ function time(e: CalendarEvent) {
   return `${f(s)} – ${f(en)}`;
 }
 
+const CALL_LINK = /https:\/\/(?:[\w-]+\.)*(?:zoom\.us\/(?:j|my|w)\/|teams\.microsoft\.com\/l\/meetup-join\/|teams\.live\.com\/meet\/|meet\.google\.com\/|[\w-]+\.webex\.com\/)[^\s"'<>)]*/i;
+
+/** The event's video-call link: Google Meet, or a Meet/Zoom/Teams/Webex link in its conference data, location or description. */
+function joinLink(e: CalendarEvent): string | undefined {
+  const fromConf = e.conferenceData?.entryPoints?.find((x) => x.entryPointType === 'video')?.uri;
+  const link = e.hangoutLink || fromConf || e.location?.match(CALL_LINK)?.[0] || e.description?.match(CALL_LINK)?.[0];
+  // Links pulled from text can end with sentence punctuation.
+  const clean = link?.replace(/[.,;:!?]+$/, '');
+  return clean && /^https:\/\//.test(clean) ? clean : undefined;
+}
+
 function Calendar() {
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   useEffect(() => {
@@ -61,15 +72,25 @@ function Calendar() {
       <span class="caps">{t('panel.today')} · {today}</span>
       {events === null && <div class="skeleton" style={{ margin: 0 }} />}
       {events?.length === 0 && <p style={{ margin: 0, color: 'var(--muted)' }}>{t('panel.noEvents')}</p>}
-      {events?.map((e) => (
-        <a class="pcard" href={e.htmlLink ?? config.links.calendar} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-          <span class="bar" />
-          <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <b style={{ fontSize: '13px' }}>{e.summary}</b>
-            <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{time(e)}</span>
-          </span>
-        </a>
-      ))}
+      {events?.map((e) => {
+        const join = joinLink(e);
+        const ended = !!e.end?.dateTime && new Date(e.end.dateTime).getTime() < Date.now();
+        return (
+          <div class={`pcard ev ${ended ? 'past' : ''}`} style={{ '--ec': e.color ?? 'var(--c-inbox)' }}>
+            <span class="bar" />
+            <a class="ev-main" href={e.htmlLink ?? config.links.calendar} target="_blank" rel="noopener noreferrer">
+              <b>{e.summary || t('panel.noTitle')}</b>
+              <span>{time(e)}</span>
+            </a>
+            {join && !ended && (
+              <a class="ev-join" href={join} target="_blank" rel="noopener noreferrer" aria-label={t('panel.joinCall', { name: e.summary || t('panel.noTitle') })}>
+                <Icon name="video" size={14} />
+                {t('panel.join')}
+              </a>
+            )}
+          </div>
+        );
+      })}
       <OpenLink name={t('panel.calendar')} href={config.links.calendar} />
     </>
   );

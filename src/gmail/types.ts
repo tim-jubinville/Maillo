@@ -130,6 +130,12 @@ export interface CalendarEvent {
   end?: { dateTime?: string; date?: string };
   htmlLink?: string;
   colorId?: string;
+  location?: string;
+  description?: string;
+  hangoutLink?: string;
+  conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] };
+  /** Display colour: the event's own colour, or its calendar's. Filled by the backend. */
+  color?: string;
 }
 
 export interface TaskItem {

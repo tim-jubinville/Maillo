@@ -79,6 +79,22 @@ const get = <T>(path: string, query?: Query) => request<T>(GMAIL + path, { query
 const post = <T>(path: string, body?: unknown) =>
   request<T>(GMAIL + path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
 
+// Google Calendar's event colours as its interface shows them (the API's own colour list is an older, paler palette).
+const EVENT_COLORS: Record<string, string> = {
+  '1': '#7986cb', // Lavender
+  '2': '#33b679', // Sage
+  '3': '#8e24aa', // Grape
+  '4': '#e67c73', // Flamingo
+  '5': '#f6bf26', // Banana
+  '6': '#f4511e', // Tangerine
+  '7': '#039be5', // Peacock
+  '8': '#616161', // Graphite
+  '9': '#3f51b5', // Blueberry
+  '10': '#0b8043', // Basil
+  '11': '#d50000' // Tomato
+};
+const CALENDAR_DEFAULT = '#039be5';
+
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 const NOTES_FILE = 'maillo-notes.json';
@@ -224,11 +240,15 @@ export const gmailBackend: MailBackend = {
   todayEvents: async () => {
     const from = startOfDay();
     const to = new Date(from.getTime() + 86_400_000);
-    const r = await request<{ items?: CalendarEvent[] }>(
-      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-      { query: { timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: true, orderBy: 'startTime', maxResults: 20 } }
-    );
-    return r.items ?? [];
+    const [r, cal] = await Promise.all([
+      request<{ items?: CalendarEvent[] }>('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+        query: { timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: true, orderBy: 'startTime', maxResults: 20 }
+      }),
+      // The calendar's own colour, for events without one. Needs the calendar-list permission; falls back to Google's default.
+      request<{ backgroundColor?: string }>('https://www.googleapis.com/calendar/v3/users/me/calendarList/primary').catch(() => ({ backgroundColor: undefined }))
+    ]);
+    const base = cal.backgroundColor && /^#[0-9a-f]{6}$/i.test(cal.backgroundColor) ? cal.backgroundColor : CALENDAR_DEFAULT;
+    return (r.items ?? []).map((e) => ({ ...e, color: (e.colorId && EVENT_COLORS[e.colorId]) || base }));
   },
   listTasks: async () => {
     const r = await request<{ items?: TaskItem[] }>('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
