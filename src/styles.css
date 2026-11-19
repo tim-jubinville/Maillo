@@ -753,6 +753,25 @@ body.resizing iframe { pointer-events: none; }
 .sticky textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .sticky-actions { display: flex; align-items: center; gap: 8px; }
 .row-note { display: inline-flex; align-items: center; flex: none; }
+/* One line per conversation, used when the reading pane is off. */
+.row.line { align-items: center; padding: 8px 14px 8px 6px; }
+.row.line.compact { padding: 3px 14px 3px 6px; }
+.row.line .cb { margin-top: 0; }
+.row.line .row-main { padding: 0; align-items: center; }
+.row-line { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.row-who { flex: 0 0 clamp(140px, 17%, 220px); min-width: 0; display: flex; align-items: baseline; gap: 6px; }
+.row-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-text .tag { display: inline-flex; vertical-align: 1px; margin-right: 6px; max-width: 160px; }
+.row-line .row-snippet { font-size: calc(14px * var(--ts, 1)); }
+.row-imp { flex: 0 0 14px; display: inline-flex; margin: 0 -4px; }
+@media (max-width: 700px) {
+  .row-line { flex-wrap: wrap; gap: 2px 8px; }
+  .row-who { flex: 1 1 0; }
+  .row-text { order: 2; flex-basis: 100%; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+}
+.row-att { display: inline-flex; color: var(--muted); flex: none; }
+.row-line .row-time { margin-left: 0; min-width: 56px; text-align: right; }
+.row.line .row-acts { right: 10px; }
 .row-acts {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 0; padding-left: 28px;
   background: linear-gradient(90deg, transparent, var(--row-bg, var(--surface-2)) 28px);

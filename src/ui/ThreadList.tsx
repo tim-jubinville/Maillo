@@ -159,7 +159,8 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
   const hasNote = !!s.notes[r.id];
   const pile = pileOf(r.labelIds);
   const canAside = !r.labelIds.includes('SPAM') && !r.labelIds.includes('TRASH') && !(r.hasDraft && r.count <= 1 && !r.labelIds.includes('INBOX'));
-  const cls = ['row', compact ? 'compact' : '', r.unread ? 'unread' : '', checked ? 'chk' : open ? 'sel' : '', focus ? 'focus' : ''].join(' ');
+  const line = !split;
+  const cls = ['row', line ? 'line' : '', compact ? 'compact' : '', r.unread ? 'unread' : '', checked ? 'chk' : open ? 'sel' : '', focus ? 'focus' : ''].join(' ');
   return (
     <div
       class={`${cls} ${s.dragging === 'label' ? 'drop-ok' : ''}`}
@@ -191,6 +192,30 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
         <Icon name="star" fill={r.starred ? '#FFD84D' : undefined} />
       </button>
       <button class="row-main" onClick={(e) => { e.stopPropagation(); openRow(r.id); }}>
+        {line ? (
+          <span class="row-line">
+            <span class="row-who">
+              <span class="row-from ell">
+                {r.hasDraft && route.folder !== 'drafts' ? <><span class="draft-tag">{t('list.draft')}</span>{who ? `, ${who}` : ''}</> : who || r.lastFrom.email}
+              </span>
+              {r.count > 1 && <span class="row-count">{r.count}</span>}
+            </span>
+            <span class="row-imp">{r.important && <Icon name="important" size={14} style={{ color: 'var(--c-trash)' }} fill="#FFD84D" />}</span>
+            <span class="row-text">
+              {labels.slice(0, 3).map((l) => (
+                <span class="tag lbl" style={{ '--lc': labelColor(l) }}><span class="dot" /><span class="ell">{labelDisplayName(l)}</span></span>
+              ))}
+              <span class="row-subject">{r.subject || t('list.noSubject')}</span>
+              {r.snippet && <span class="row-snippet"> — {r.snippet}</span>}
+            </span>
+            {nudge > 0 && <span class="nudge">{t('list.nudge', { n: nudge })}</span>}
+            {hasNote && (
+              <span class="row-note" role="img" aria-label={t('note.has')} title={s.notes[r.id].text}><CIcon name="note" size={15} /></span>
+            )}
+            {r.attachment && <span class="row-att" role="img" aria-label={t('read.attachments', { n: 1 })}><Icon name="clip" size={14} /></span>}
+            <span class="row-time">{listDate(r.date)}</span>
+          </span>
+        ) : (<>
         {!compact && <Avatar a={sentView && r.recipients[0] ? r.recipients[0] : r.lastFrom} />}
         <span class="row-body">
           <span class="row-top">
@@ -222,6 +247,7 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
             </span>
           )}
         </span>
+        </>)}
       </button>
       <span class="row-acts">
         {r.labelIds.includes('INBOX') && <RowAct label={t('act.archive')} icon="archive" run={() => actions.archive([r.id])} />}
