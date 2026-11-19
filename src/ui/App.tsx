@@ -158,10 +158,6 @@ function Rail({ s }: { s: AppState }) {
         <span class="rl-i"><CIcon name="meet" size={26} /></span>
         {t('nav.meet')}
       </a>
-      <a class={`rl ${s.route.view === 'settings' ? 'on' : ''}`} href="#/settings/general" aria-current={s.route.view === 'settings' ? 'page' : undefined}>
-        <span class="rl-i"><CIcon name="settings" size={26} /></span>
-        {t('header.settings')}
-      </a>
     </nav>
   );
 }
