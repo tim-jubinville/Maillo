@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { config, configMissing } from '../config';
 import { t } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
-import { getPrefs } from '../prefs';
+import { getPrefs, setPrefs } from '../prefs';
 import { go, listHash, type Folder, type MailRoute } from '../route';
 import { actions, dismissToast, openCompose, pileLabelIds, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
 import { Brand, Menu, Photo } from './common';
 import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
+import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { KeyHelp, SEARCH_KEY, useShortcuts } from './Keys';
@@ -100,7 +101,15 @@ function Header({ s }: { s: AppState }) {
   return (
     <header class="header">
       <div class="brandbox">
-        <button class="ib" aria-label={t('nav.menu')} onClick={() => setState({ sidebarOpen: !s.sidebarOpen })}>
+        <button
+          class="ib"
+          aria-label={t('nav.menu')}
+          onClick={() => {
+            // Narrow screens slide the sidebar over the content; wider ones hide or show it, and remember.
+            if (window.innerWidth <= 900) setState({ sidebarOpen: !s.sidebarOpen });
+            else setPrefs({ sidebarCollapsed: !getPrefs().sidebarCollapsed });
+          }}
+        >
           <Icon name="menu" />
         </button>
         <Brand />
@@ -281,15 +290,19 @@ function Sidebar({ s }: { s: AppState }) {
 }
 
 function MailCard({ s, route }: { s: AppState; route: MailRoute }) {
-  const pane = getPrefs().pane;
+  const prefs = getPrefs();
+  const pane = prefs.pane;
   const reading = !!route.thread;
   const showList = pane === 'right' || !reading;
   const showRead = pane === 'right' || reading;
   return (
-    <div class={`card glass ${reading ? 'reading' : ''}`}>
+    <div class={`card glass ${reading ? 'reading' : ''} ${prefs.sidebarCollapsed ? 'no-sidebar' : ''}`} style={layoutVars()}>
       <Sidebar s={s} />
+      {!prefs.sidebarCollapsed && <Splitter col="sidebar" />}
       {showList && <ThreadList s={s} route={route} split={pane === 'right'} />}
+      {showList && showRead && pane === 'right' && <Splitter col="list" />}
       {showRead && <ReadingPane s={s} route={route} showBack={pane === 'off' || window.innerWidth <= 900} />}
+      {s.panel && <Splitter col="panel" side="left" />}
       {s.panel && <SidePanel s={s} />}
     </div>
   );
