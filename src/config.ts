@@ -79,6 +79,9 @@ export function applyBranding(b: Branding | null | undefined) {
   if (typeof b.logoInvertDark === 'boolean') config.logoInvertDark = b.logoInvertDark;
 }
 
+/** True when config.js is missing or has a syntax error, so the sign-in screen can say so. */
+export const configMissing = !window.MAILLO_CONFIG && !window.MAILMAX_CONFIG;
+
 function load(): AppConfig {
   const raw = (window.MAILLO_CONFIG ?? window.MAILMAX_CONFIG ?? {}) as Partial<AppConfig>;
   const params = new URLSearchParams(location.search);

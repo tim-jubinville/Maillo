@@ -155,10 +155,13 @@ export function onState(fn: () => void) {
 
 export function useApp(): AppState {
   const [, force] = useState(0);
+  const rendered = state;
   useEffect(() => {
     const fn = () => force((n) => n + 1);
     listeners.add(fn);
     const off = onPrefs(fn);
+    // State can change between the first render and this effect (boot() may finish synchronously).
+    if (state !== rendered) fn();
     return () => {
       listeners.delete(fn);
       off();
