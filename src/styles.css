@@ -208,6 +208,12 @@ a:hover { color: var(--violet); }
 .ribbon .ib:hover:not(:disabled) { background: var(--surface); box-shadow: 0 1px 2px rgba(20, 33, 61, 0.12); }
 .ribbon .pop { z-index: 45; }
 .ribbon:has(.pop) { overflow: visible; }
+.ribbon.bottom { top: auto; bottom: 12px; animation: ribbon-up 160ms ease-out; }
+.ribbon.bottom .pop { top: auto; bottom: calc(100% + 6px); }
+.ribbon .sel-n { font-size: 13px; font-weight: 600; white-space: nowrap; padding: 0 8px 0 6px; flex: none; }
+.ribbon .clear-sel { flex: none; }
+@keyframes ribbon-up { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .ribbon.bottom { animation: none; } }
 
 .settings-card { display: flex; }
 .settings-card .settings { flex: 1; }
@@ -243,7 +249,7 @@ a:hover { color: var(--violet); }
 .tab-dot { position: absolute; top: -2px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
 .tab.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
 .chips { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid rgba(213, 218, 229, 0.7); overflow-x: auto; scrollbar-width: none; }
-.rows { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+.rows { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: calc(var(--rhb, 0px) + 12px); }
 .rows.in { animation: rows-in 220ms ease-out; }
 .rows.in.from-right { --rows-from: 14px; }
 .rows.in.from-left { --rows-from: -14px; }
@@ -589,6 +595,9 @@ a:hover { color: var(--violet); }
 /* Set aside pile */
 .pile-wrap { position: fixed; left: 0; right: 0; bottom: 14px; z-index: 48; display: flex; justify-content: center; gap: 18px; pointer-events: none; }
 .pile-wrap.is-open { z-index: 58; }
+.pile-wrap { transition: transform 180ms ease, opacity 180ms ease; }
+.pile-wrap.tucked { transform: translateY(90px); opacity: 0; pointer-events: none; }
+.pile-wrap.tucked > * { pointer-events: none; }
 .pile-wrap > * { pointer-events: auto; }
 .pile { position: relative; width: 272px; height: 54px; display: block; border-radius: 16px; }
 .pile-card {

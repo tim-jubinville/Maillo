@@ -8,9 +8,10 @@ import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, api, closeThread, expandQuickReply, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
 import type { ThreadNote } from '../gmail/types';
 import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
-import { CIcon, type ColorIconName } from './ColorIcons';
+import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
-import { LabelItems, LabelMenu, MoveItems, MoveMenu } from './Menus';
+import { BarButtons, fitItems, MoreMenu, useWidth, type BarItem } from './BarItems';
+import { LabelList, LabelMenu, MoveList, MoveMenu } from './Menus';
 import { MessageBody } from './MessageBody';
 import { PILE_ICON, pileKey } from './Piles';
 
@@ -142,8 +143,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
           ...(notesEnabled && !note ? [{ id: 'note', group: 2, prio: 7.5, w: 38, label: t('act.addNote'), icon: 'note' as const, run: () => setState({ noteEditing: o.id }) }] : []),
           { id: 'unread', group: 2, prio: 7, w: 38, label: t('act.markUnread'), icon: 'unread' as const, run: () => actions.read(id, false) },
           ...(config.features.tasks ? [{ id: 'tasks', group: 2, prio: 3, w: 38, label: t('act.addTask'), icon: 'tasks' as const, run: () => actions.addTask(o.id) }] : []),
-          { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move' as const, menu: <MoveMenu s={s} ids={id} />, sub: () => <MoveItems s={s} ids={id} /> },
-          { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label' as const, menu: <LabelMenu s={s} ids={id} current={o.labelIds} />, sub: () => <LabelItems s={s} ids={id} current={o.labelIds} /> }
+          { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move' as const, menu: <MoveMenu s={s} ids={id} />, sub: (close) => <MoveList s={s} ids={id} onDone={close} /> },
+          { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label' as const, menu: <LabelMenu s={s} ids={id} current={o.labelIds} />, sub: (close) => <LabelList s={s} ids={id} current={o.labelIds} onDone={close} /> }
         ]}
         more={(close) => (
           <>
@@ -460,19 +461,6 @@ function Invite({ m }: { m: ParsedMessage }) {
 }
 
 
-interface BarItem {
-  id: string;
-  group: number;
-  prio: number;
-  w: number;
-  label: string;
-  icon: ColorIconName;
-  text?: boolean;
-  run?: () => void;
-  menu?: ComponentChildren;
-  sub?: () => ComponentChildren;
-}
-
 function RibbonBar({
   items,
   more,
@@ -493,33 +481,13 @@ function RibbonBar({
   onNext: () => void;
 }) {
   const bar = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(2000);
-  useLayoutEffect(() => {
-    const el = bar.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
-    ro.observe(el);
-    setWidth(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
-
+  const width = useWidth(bar);
   const fixed = 18 + 38 + 76 + (showBack ? 52 : 0);
-  let room = width - fixed;
   const posW = position ? 72 : 0;
-  const shown = new Set<string>();
-  const groupsUsed = new Set<number>();
-  for (const it of [...items].sort((a, b) => b.prio - a.prio)) {
-    const sep = groupsUsed.size > 0 && !groupsUsed.has(it.group) ? 14 : 0;
-    if (it.w + sep <= room) {
-      shown.add(it.id);
-      groupsUsed.add(it.group);
-      room -= it.w + sep;
-    }
-  }
+  const { shown, room } = fitItems(items, width - fixed);
   const showPos = !!position && room >= posW && shown.size === items.length;
   const hidden = items.filter((i) => !shown.has(i.id));
 
-  let lastGroup = -1;
   return (
     <div class="toolbar nowrap" ref={bar}>
       {showBack && (
@@ -528,42 +496,8 @@ function RibbonBar({
           <span class="sep" />
         </>
       )}
-      {items.filter((i) => shown.has(i.id)).map((i) => {
-        const sep = lastGroup !== -1 && i.group !== lastGroup;
-        lastGroup = i.group;
-        return (
-          <>
-            {sep && <span class="sep" />}
-            {i.menu ?? (i.text ? (
-              <button class="btn sm" onClick={i.run}>{i.label}</button>
-            ) : (
-              <button class="ib" aria-label={i.label} title={i.label} onClick={i.run}><CIcon name={i.icon} /></button>
-            ))}
-          </>
-        );
-      })}
-      <Menu label={t('act.more')} button={<CIcon name="more" />}>
-        {(close) => (
-          <>
-            {hidden.map((i) =>
-              i.sub ? (
-                <>
-                  <div class="pop-h">{i.label}</div>
-                  <div onClick={close}>{i.sub()}</div>
-                  <hr />
-                </>
-              ) : (
-                <button class="mi" onClick={() => { close(); i.run?.(); }}>
-                  <CIcon name={i.icon} size={18} />
-                  {i.label}
-                </button>
-              )
-            )}
-            {hidden.some((i) => !i.sub) && <hr />}
-            {more(close)}
-          </>
-        )}
-      </Menu>
+      <BarButtons items={items} shown={shown} />
+      <MoreMenu hidden={hidden} more={more} />
       <span class="range">{showPos ? position : ''}</span>
       <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={!canPrev} onClick={onPrev}><Icon name="chevLeft" /></button>
       <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!canNext} onClick={onNext}><Icon name="chevRight" /></button>
