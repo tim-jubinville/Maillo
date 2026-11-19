@@ -1,8 +1,12 @@
 name: Release
 
+# Builds the install zip and attaches it to the release, whether the release
+# comes from pushing a v* tag or is created by hand on GitHub.
 on:
   push:
     tags: ['v*']
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -16,9 +20,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Check tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$tag" == v* && "$tag" != "v$version" ]]; then
+            echo "::error::Tag $tag does not match package.json version $version. Bump the version or fix the tag."
+            exit 1
+          fi
       - run: npm ci
       - run: npm run package
+      # Same zip under a fixed name, so /releases/latest/download/maillo.zip always works.
+      - run: cp release/maillo-*.zip release/maillo.zip
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: release/*.zip
-          generate_release_notes: true
+          generate_release_notes: ${{ github.event_name == 'push' }}
