@@ -16,6 +16,7 @@ import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
 import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon } from './Icon';
+import { SignatureEditor } from './SignatureEditor';
 import { KeyList } from './Keys';
 
 declare const __APP_VERSION__: string;
@@ -356,6 +357,7 @@ function Accounts() {
   const [list, setList] = useState<GSendAs[] | null>(null);
   const [error, setError] = useState('');
   const [sigs, setSigs] = useState<Record<string, string>>({});
+  const [dash, setDash] = useState(getPrefs().signatureDash);
   useEffect(() => {
     api.listSendAs().then((l) => {
       setList(l);
@@ -365,6 +367,9 @@ function Accounts() {
   return (
     <Section title={t('settings.accounts')} note={t('settings.signatureHelp')}>
       {error && <div class="frow err">{t('settings.loadError')} {error}</div>}
+      <Row title={t('settings.signatureDash')} help={t('settings.signatureDashHelp')}>
+        <Switch label={t('settings.signatureDash')} on={dash} onChange={(v) => { setPrefs({ signatureDash: v }); setDash(v); }} />
+      </Row>
       {list === null && !error && <div class="skeleton" />}
       {list?.map((x) => (
         <div class="srow" style={{ alignItems: 'flex-start' }}>
@@ -373,8 +378,13 @@ function Accounts() {
             <span>{x.isDefault ? t('settings.default') : t('settings.sendAs')}</span>
           </div>
           <div style={{ flex: '2 1 360px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label class="caps" for={`sig-${x.sendAsEmail}`}>{t('settings.signature')}</label>
-            <textarea id={`sig-${x.sendAsEmail}`} class="textarea" value={sigs[x.sendAsEmail] ?? ''} onInput={(e) => setSigs({ ...sigs, [x.sendAsEmail]: (e.target as HTMLTextAreaElement).value })} />
+            <span class="caps" aria-hidden="true">{t('settings.signature')}</span>
+            <SignatureEditor
+              id={`sig-${x.sendAsEmail}`}
+              label={`${t('settings.signature')}: ${x.sendAsEmail}`}
+              value={sigs[x.sendAsEmail] ?? ''}
+              onChange={(html) => setSigs((prev) => ({ ...prev, [x.sendAsEmail]: html }))}
+            />
             <button
               class="btn sm primary"
               style={{ alignSelf: 'flex-start' }}
