@@ -1,0 +1,109 @@
+import type { ComponentChildren, RefObject } from 'preact';
+import { useLayoutEffect, useState } from 'preact/hooks';
+import { t } from '../i18n';
+import { CIcon, type ColorIconName } from './ColorIcons';
+import { Menu } from './common';
+import { Icon } from './Icon';
+
+/** One ribbon action. Items that don't fit move into the "…" menu, lowest `prio` first. */
+export interface BarItem {
+  id: string;
+  group: number;
+  prio: number;
+  /** Width in the bar, in pixels. */
+  w: number;
+  label: string;
+  icon: ColorIconName;
+  text?: boolean;
+  run?: () => void;
+  menu?: ComponentChildren;
+  /** Content shown when this item is opened from the "…" menu. */
+  sub?: (close: () => void) => ComponentChildren;
+}
+
+export function useWidth(ref: RefObject<HTMLElement | null>): number {
+  const [width, setWidth] = useState(2000);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.offsetWidth));
+    ro.observe(el);
+    setWidth(el.offsetWidth);
+    return () => ro.disconnect();
+  }, []);
+  return width;
+}
+
+/** Picks the items that fit in `room` pixels, by priority, counting a separator between groups. */
+export function fitItems(items: BarItem[], room: number): { shown: Set<string>; room: number } {
+  const shown = new Set<string>();
+  const groupsUsed = new Set<number>();
+  for (const it of [...items].sort((a, b) => b.prio - a.prio)) {
+    const sep = groupsUsed.size > 0 && !groupsUsed.has(it.group) ? 14 : 0;
+    if (it.w + sep <= room) {
+      shown.add(it.id);
+      groupsUsed.add(it.group);
+      room -= it.w + sep;
+    }
+  }
+  return { shown, room };
+}
+
+export function BarButtons({ items, shown }: { items: BarItem[]; shown: Set<string> }) {
+  let lastGroup = -1;
+  return (
+    <>
+      {items.filter((i) => shown.has(i.id)).map((i) => {
+        const sep = lastGroup !== -1 && i.group !== lastGroup;
+        lastGroup = i.group;
+        return (
+          <>
+            {sep && <span class="sep" />}
+            {i.menu ?? (i.text ? (
+              <button class="btn sm" onClick={i.run}>{i.label}</button>
+            ) : (
+              <button class="ib" aria-label={i.label} title={i.label} onClick={i.run}><CIcon name={i.icon} /></button>
+            ))}
+          </>
+        );
+      })}
+    </>
+  );
+}
+
+export function MoreMenu({ hidden, more, align }: { hidden: BarItem[]; more?: (close: () => void) => ComponentChildren; align?: 'left' | 'right' }) {
+  return (
+    <Menu label={t('act.more')} button={<CIcon name="more" />} align={align}>
+      {(close) => <MoreItems hidden={hidden} more={more} close={close} />}
+    </Menu>
+  );
+}
+
+function MoreItems({ hidden, more, close }: { hidden: BarItem[]; more?: (close: () => void) => ComponentChildren; close: () => void }) {
+  // Items with their own list (Move to, Label as) open in place, with a way back.
+  const [drill, setDrill] = useState<BarItem | null>(null);
+  if (drill?.sub) {
+    return (
+      <>
+        <button class="mi pop-back" onClick={() => setDrill(null)}>
+          <Icon name="arrowLeft" size={16} />
+          <b>{drill.label}</b>
+        </button>
+        {drill.sub(close)}
+      </>
+    );
+  }
+  return (
+    <>
+      {hidden.map((i) => (
+        <button class="mi" onClick={() => (i.sub ? setDrill(i) : (close(), i.run?.()))}>
+          <CIcon name={i.icon} size={18} />
+          <span class="ell">{i.label}</span>
+          {i.sub && <Icon name="chevRight" size={14} style={{ marginLeft: 'auto', color: 'var(--muted)' }} />}
+        </button>
+      ))}
+      {more && hidden.length > 0 && <hr />}
+      {more?.(close)}
+    </>
+  );
+}

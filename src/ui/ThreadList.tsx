@@ -4,11 +4,12 @@ import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type 
 import { getPrefs } from '../prefs';
 import { CATEGORIES, go, listHash, type Category, type MailRoute } from '../route';
 import { actions, loadList, pileOf, PILES, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
-import { Avatar } from './common';
+import { Avatar, Ribbon } from './common';
+import { BarButtons, fitItems, MoreMenu, useWidth, type BarItem } from './BarItems';
 import { InboxZero } from './InboxZero';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
-import { LabelMenu, MoveMenu } from './Menus';
+import { LabelList, LabelMenu, MoveList, MoveMenu } from './Menus';
 import { PILE_ICON } from './Piles';
 
 const CAT_ICON: Record<Category, ColorIconName> = {
@@ -34,9 +35,6 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
   const showTabs = folder === 'inbox' && route.q === undefined && !route.label && prefs.tabs;
   const start = s.list.page * prefs.pageSize;
   const compact = prefs.density === 'compact';
-  const inSpam = folder === 'spam';
-  const inTrash = folder === 'trash';
-  const anyUnread = rows.some((r) => s.selected.has(r.id) && r.unread);
   const addChip = (token: string) => {
     const q = route.q ?? '';
     const next = q.includes(token) ? q.replace(token, '').replace(/\s+/g, ' ').trim() : `${q} ${token}`.trim();
@@ -57,34 +55,6 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
       <div class="listhead">
       <div class="toolbar">
         <input type="checkbox" class="cb" aria-label={t('list.selectAll')} checked={all} indeterminate={sel.length > 0 && !all} onChange={() => selectAll(!all)} />
-        {sel.length > 0 ? (
-          <>
-            <span style={{ fontSize: '13px', fontWeight: 600, marginRight: '8px' }}>{t('list.selected', { n: sel.length })}</span>
-            {inSpam ? (
-              <button class="btn sm" onClick={() => actions.notSpam(sel)}>{t('act.notSpam')}</button>
-            ) : inTrash ? (
-              <button class="btn sm" onClick={() => actions.restore(sel)}>{t('act.restore')}</button>
-            ) : (
-              <>
-                <button class="ib" style={{ color: 'var(--c-sent)' }} aria-label={t('act.archive')} title={t('act.archive')} onClick={() => actions.archive(sel)}><CIcon name="archive" /></button>
-                <button class="ib" style={{ color: 'var(--c-spam)' }} aria-label={t('act.spam')} title={t('act.spam')} onClick={() => actions.spam(sel)}><CIcon name="spam" /></button>
-                <button class="ib" style={{ color: 'var(--c-trash)' }} aria-label={t('act.delete')} title={t('act.delete')} onClick={() => actions.trash(sel)}><CIcon name="trash" /></button>
-                {PILES.filter((p) => !(route.label && route.label === s.piles[p].labelId)).map((p) => (
-                  <button class="ib" aria-label={t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action')} title={t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action')} onClick={() => actions.pin(p, sel)}><CIcon name={PILE_ICON[p]} /></button>
-                ))}
-              </>
-            )}
-            <span class="sep" />
-            <button class="ib" style={{ color: 'var(--c-inbox)' }} aria-label={anyUnread ? t('act.markRead') : t('act.markUnread')} title={anyUnread ? t('act.markRead') : t('act.markUnread')} onClick={() => actions.read(sel, anyUnread)}>
-              <CIcon name={anyUnread ? 'mail' : 'unread'} />
-            </button>
-            <button class="ib" style={{ color: 'var(--c-star)' }} aria-label={t('list.star')} title={t('list.star')} onClick={() => actions.star(sel, true)}><CIcon name="starred" /></button>
-            <button class="ib" style={{ color: 'var(--c-important)' }} aria-label={t('act.markImportant')} title={t('act.markImportant')} onClick={() => actions.important(sel, true)}><CIcon name="important" /></button>
-            <span class="sep" />
-            <MoveMenu s={s} ids={sel} />
-            <LabelMenu s={s} ids={sel} />
-          </>
-        ) : (
           <>
             <button class="ib" style={{ color: 'var(--c-scheduled)' }} aria-label={t('list.refresh')} title={t('list.refresh')} onClick={() => refresh()}><Icon name="refresh" /></button>
             <h1 class="ell">{title}</h1>
@@ -94,7 +64,6 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
             <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={s.list.page === 0} onClick={prevPage}><Icon name="chevLeft" /></button>
             <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!s.list.next} onClick={nextPage}><Icon name="chevRight" /></button>
           </>
-        )}
       </div>
 
       {showTabs && (
@@ -170,6 +139,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
           <Row s={s} r={r} route={route} compact={compact} split={split} />
         ))}
       </div>
+      {sel.length > 0 && <BulkRibbon s={s} route={route} sel={sel} />}
     </section>
   );
 }
@@ -265,5 +235,47 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
         </span>
       )}
     </div>
+  );
+}
+
+function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: string[] }) {
+  const bar = useRef<HTMLDivElement>(null);
+  const count = useRef<HTMLSpanElement>(null);
+  const width = useWidth(bar);
+  const countW = useWidth(count);
+  const folder = route.folder;
+  const anyUnread = s.list.rows.some((r) => s.selected.has(r.id) && r.unread);
+  const items: BarItem[] = [
+    ...(folder === 'spam'
+      ? [{ id: 'notspam', group: 1, prio: 10, w: 104, label: t('act.notSpam'), icon: 'spam' as const, text: true, run: () => actions.notSpam(sel) }]
+      : folder === 'trash'
+        ? [{ id: 'restore', group: 1, prio: 10, w: 96, label: t('act.restore'), icon: 'inbox' as const, text: true, run: () => actions.restore(sel) }]
+        : [
+            { id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, run: () => actions.archive(sel) },
+            { id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, run: () => actions.spam(sel) },
+            { id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, run: () => actions.trash(sel) },
+            ...PILES.filter((p) => !(route.label && route.label === s.piles[p].labelId)).map((p, i) => ({
+              id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], run: () => actions.pin(p, sel)
+            }))
+          ]),
+    { id: 'read', group: 2, prio: 7, w: 38, label: anyUnread ? t('act.markRead') : t('act.markUnread'), icon: anyUnread ? 'mail' : 'unread', run: () => actions.read(sel, anyUnread) },
+    { id: 'star', group: 2, prio: 5.5, w: 38, label: t('list.star'), icon: 'starred', run: () => actions.star(sel, true) },
+    { id: 'important', group: 2, prio: 3, w: 38, label: t('act.markImportant'), icon: 'important', run: () => actions.important(sel, true) },
+    { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move', menu: <MoveMenu s={s} ids={sel} />, sub: (close) => <MoveList s={s} ids={sel} onDone={close} /> },
+    { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label', menu: <LabelMenu s={s} ids={sel} />, sub: (close) => <LabelList s={s} ids={sel} onDone={close} /> }
+  ];
+  // Padding, the count, "…" and the clear button.
+  const fixed = 20 + (countW > 1000 ? 110 : countW + 14) + 38 + 38;
+  const { shown } = fitItems(items, width - fixed);
+  const hidden = items.filter((i) => !shown.has(i.id));
+  return (
+    <Ribbon label={t('list.selected', { n: sel.length })} bottom>
+      <div class="toolbar nowrap" ref={bar}>
+        <span class="sel-n" ref={count}>{t('list.selected', { n: sel.length })}</span>
+        <BarButtons items={items} shown={shown} />
+        <MoreMenu hidden={hidden} align="right" />
+        <button class="ib clear-sel" aria-label={t('list.clearSelection')} title={t('list.clearSelection')} onClick={() => selectAll(false)}><Icon name="x" /></button>
+      </div>
+    </Ribbon>
   );
 }

@@ -15,7 +15,8 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Labels, including nested labels and label colours
 - Full Gmail search syntax (`from:`, `has:attachment`, `newer_than:7d`, and so on) with quick filter chips
 - Threaded conversations with collapsed earlier messages and hidden quoted text
-- Bulk actions: archive, delete, spam, read/unread, star, important, move, label
+- Bulk actions from a ribbon at the bottom of the list: archive, delete, spam, read/unread, star, important, move, label (extra actions fold into "…")
+- Move to and Label as open with a search field ready to type in; Enter picks the first match
 - Undo for archive, delete, spam, move and label changes
 - Reminders for important messages you have not answered ("Received 3 days ago. Reply?")
 - **Set aside**: pin conversations out of the inbox into a small stack of cards at the bottom of the screen. Click the stack to fan the cards out and pick one. Stored as a regular Gmail label, so it syncs everywhere.

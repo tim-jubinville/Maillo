@@ -37,8 +37,10 @@ export function PileBar({ s }: { s: AppState }) {
   }, [open && s.piles[open].rows.length]);
   const visible = PILES.filter((p) => s.piles[p].rows.length > 0);
   if (!visible.length) return null;
+  // Out of the way while the bulk-action ribbon is showing.
+  const tucked = s.selected.size > 0;
   return (
-    <div ref={wrap} class={`pile-wrap ${open ? 'is-open' : ''}`}>
+    <div ref={wrap} class={`pile-wrap ${open ? 'is-open' : ''} ${tucked ? 'tucked' : ''}`} {...(tucked ? { inert: true } : {})}>
       {visible.map((p) => {
         const rows = s.piles[p].rows;
         const top = rows.slice(0, 3);
