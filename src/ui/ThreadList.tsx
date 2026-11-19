@@ -127,6 +127,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
           <InboxZero
             title={!showTabs || route.category === 'primary' ? t('zero.title') : t('zero.cat', { name: t(`cat.${route.category}` as StringKey) })}
             sub={t('zero.sub')}
+            celebrate={s.celebrate === s.list.key}
           />
         )}
         {!s.list.loading && !s.list.error && !rows.length && !(folder === 'inbox' && route.q === undefined && !route.label) && (

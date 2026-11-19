@@ -118,6 +118,8 @@ export interface AppState {
   noteEditing?: string;
   /** What is being dragged, so drop targets can show themselves. */
   dragging?: DragKind;
+  /** Key of the list the user just emptied themselves, so Inbox Zero can celebrate once. */
+  celebrate?: string;
 }
 
 let state: AppState = {
@@ -553,7 +555,8 @@ function dropRows(ids: string[]) {
   const idx = rows.findIndex((r) => set.has(r.id));
   const remaining = rows.filter((r) => !set.has(r.id));
   const selected = new Set([...state.selected].filter((x) => !set.has(x)));
-  setState({ list: { ...state.list, rows: remaining }, selected });
+  const emptied = rows.length > 0 && remaining.length === 0 && !state.list.next && state.list.page === 0;
+  setState({ list: { ...state.list, rows: remaining }, selected, ...(emptied ? { celebrate: state.list.key } : {}) });
   if (state.open && set.has(state.open.id)) {
     const nextRow = remaining[Math.min(idx, remaining.length - 1)];
     const r = state.route as MailRoute;
