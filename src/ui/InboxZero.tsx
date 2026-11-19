@@ -1,8 +1,15 @@
-import { useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import { setState } from '../store';
 
 const COLORS = ['var(--accent)', '#FFD24D', '#FF8A70', '#4FD1C2', '#9C85FF', '#6FD898', '#FFA45E', '#D08AEB'];
 
-export function InboxZero({ title, sub }: { title: string; sub: string }) {
+/** `celebrate` drops confetti, only when the user's own action just emptied the list. */
+export function InboxZero({ title, sub, celebrate }: { title: string; sub: string; celebrate?: boolean }) {
+  // Play once: keep it for this showing, and clear the flag so a reload or revisit stays calm.
+  const [play] = useState(!!celebrate);
+  useEffect(() => {
+    if (play) setState({ celebrate: undefined });
+  }, []);
   const pieces = useMemo(
     () =>
       Array.from({ length: 34 }, (_, i) => {
@@ -31,11 +38,13 @@ export function InboxZero({ title, sub }: { title: string; sub: string }) {
   );
   return (
     <div class="zero" role="status">
-      <div class="confetti" aria-hidden="true">
-        {pieces.map((p) => (
-          <i style={p.style} />
-        ))}
-      </div>
+      {play && (
+        <div class="confetti" aria-hidden="true">
+          {pieces.map((p) => (
+            <i style={p.style} />
+          ))}
+        </div>
+      )}
       <svg class="zero-art" viewBox="0 0 240 180" width="240" height="180" aria-hidden="true">
         <defs>
           <linearGradient id="zz-tray" x1="0" y1="0" x2="0.3" y2="1">
