@@ -18,7 +18,7 @@ import {
 import type { GLabel, GSendAs, MailBackend, NotesMap } from './gmail/types';
 import { t } from './i18n';
 import { listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
-import { getPrefs, onPrefs } from './prefs';
+import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
 import { CATEGORIES, go, listHash, parseHash, threadHash, type Category, type MailRoute, type Route } from './route';
 
@@ -108,7 +108,7 @@ export interface AppState {
   open?: OpenThread;
   compose?: ComposeState;
   toasts: Toast[];
-  panel?: 'calendar' | 'tasks' | 'keep' | 'contacts';
+  panel?: PanelId;
   sendAs: GSendAs[];
   showKeys: boolean;
   sidebarOpen: boolean;
@@ -124,6 +124,7 @@ let state: AppState = {
   phase: 'boot',
   sessionExpired: false,
   me: '',
+  panel: getPrefs().panel || undefined,
   route: parseHash(),
   labels: [],
   counts: {},
@@ -147,7 +148,10 @@ export function getState() {
 
 export function setState(patch: Partial<AppState> | ((s: AppState) => Partial<AppState>)) {
   const p = typeof patch === 'function' ? patch(state) : patch;
+  const panelBefore = state.panel;
   state = { ...state, ...p };
+  // Remember the open side panel for next time.
+  if ('panel' in p && state.panel !== panelBefore) setPrefs({ panel: state.panel ?? '' });
   listeners.forEach((l) => l());
 }
 

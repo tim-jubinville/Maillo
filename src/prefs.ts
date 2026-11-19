@@ -22,6 +22,17 @@ export interface NotifyPrefs {
   badge: boolean;
 }
 
+export type PanelId = 'calendar' | 'tasks' | 'keep' | 'contacts';
+
+/** Column widths in pixels. */
+export interface LayoutPrefs {
+  sidebar: number;
+  list: number;
+  panel: number;
+}
+
+export const DEFAULT_LAYOUT: LayoutPrefs = { sidebar: 236, list: 460, panel: 300 };
+
 export interface Prefs {
   density: 'comfortable' | 'compact';
   pane: 'right' | 'off';
@@ -37,6 +48,9 @@ export interface Prefs {
   /** Put a "-- " line above the signature, like Gmail does by default. */
   signatureDash: boolean;
   notify: NotifyPrefs;
+  layout: LayoutPrefs;
+  /** Side panel left open last time. */
+  panel: PanelId | '';
 }
 
 const KEY = 'maillo.prefs';
@@ -54,6 +68,8 @@ const defaults: Prefs = {
   mode: 'system',
   theme: '',
   signatureDash: true,
+  layout: { ...DEFAULT_LAYOUT },
+  panel: '',
   notify: {
     enabled: false,
     scope: 'primary',
@@ -74,9 +90,9 @@ const defaults: Prefs = {
 function read(): Prefs {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<Prefs>;
-    return { ...defaults, ...stored, notify: { ...defaults.notify, ...(stored.notify ?? {}) } };
+    return { ...defaults, ...stored, notify: { ...defaults.notify, ...(stored.notify ?? {}) }, layout: { ...defaults.layout, ...(stored.layout ?? {}) } };
   } catch {
-    return { ...defaults, notify: { ...defaults.notify } };
+    return { ...defaults, notify: { ...defaults.notify }, layout: { ...defaults.layout } };
   }
 }
 

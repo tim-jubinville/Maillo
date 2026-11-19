@@ -525,6 +525,9 @@ const en = {
   'header.help': 'Keyboard shortcuts',
   'header.account': 'Account {email}',
   'header.synced': 'Up to date',
+  'layout.resize.sidebar': 'Resize the folder list (double-click to reset)',
+  'layout.resize.list': 'Resize the message list (double-click to reset)',
+  'layout.resize.panel': 'Resize the side panel (double-click to reset)',
   'header.offline': 'Offline',
   'header.demo': 'Demo data',
 
@@ -1062,6 +1065,9 @@ const fr: Record<StringKey, string> = {
   'header.help': 'Raccourcis clavier',
   'header.account': 'Compte {email}',
   'header.synced': 'À jour',
+  'layout.resize.sidebar': 'Redimensionner la liste des dossiers (double-clic pour rétablir)',
+  'layout.resize.list': 'Redimensionner la liste des messages (double-clic pour rétablir)',
+  'layout.resize.panel': 'Redimensionner le panneau latéral (double-clic pour rétablir)',
   'header.offline': 'Hors ligne',
   'header.demo': 'Données de démo',
 
