@@ -4,6 +4,7 @@ import { config, defaultAppName } from '../config';
 import { WORDMARK_PATH, WORDMARK_RATIO, WORDMARK_VIEWBOX } from './wordmark';
 import type { Address } from '../gmail/mime';
 import { avatarColor, initials } from '../model';
+import { getState } from '../store';
 
 /** The built-in app icon. `dark` forces one variant; otherwise it follows the colour mode. */
 export function AppIcon({ size = 30, dark }: { size?: number; dark?: boolean }) {
@@ -83,7 +84,34 @@ export function Logo({ src, invert, height = 24, color }: { src: string; invert?
   );
 }
 
+/** A profile photo that falls back to `fallback` if it fails to load. */
+export function Photo({ src, fallback }: { src?: string; fallback: ComponentChildren }) {
+  const [broken, setBroken] = useState<string>();
+  if (!src || broken === src) return <>{fallback}</>;
+  // Google photo URLs can refuse requests that carry a referrer.
+  return <img class="photo" src={src} alt="" referrerpolicy="no-referrer" onError={() => setBroken(src)} />;
+}
+
+function ownPhoto(email: string): string | undefined {
+  const s = getState();
+  if (!s.mePhoto) return undefined;
+  const e = email.toLowerCase();
+  return e === s.me.toLowerCase() || s.sendAs.some((x) => x.sendAsEmail.toLowerCase() === e) ? s.mePhoto : undefined;
+}
+
 export function Avatar({ a, size = '' }: { a: Address; size?: '' | 'sm' | 'lg' | 'xl' }) {
+  const photo = ownPhoto(a.email);
+  if (photo) {
+    return (
+      <span class={`av ${size}`} aria-hidden="true">
+        <Photo src={photo} fallback={<AvatarInitials a={a} size={size} />} />
+      </span>
+    );
+  }
+  return <AvatarInitials a={a} size={size} />;
+}
+
+function AvatarInitials({ a, size }: { a: Address; size: string }) {
   return (
     <span
       class={`av ${size}`}

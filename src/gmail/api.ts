@@ -6,6 +6,7 @@ import type {
   GLabel,
   GMessage,
   GProfile,
+  GUserInfo,
   GSendAs,
   GThread,
   GThreadList,
@@ -114,6 +115,7 @@ function startOfDay(d = new Date()) {
 export const gmailBackend: MailBackend = {
   demo: false,
   profile: () => get<GProfile>('/profile'),
+  userInfo: () => request<GUserInfo>('https://www.googleapis.com/oauth2/v3/userinfo'),
   listLabels: async () => (await get<{ labels?: GLabel[] }>('/labels')).labels ?? [],
   getLabel: (id) => get<GLabel>(`/labels/${encodeURIComponent(id)}`),
   createLabel: (name) =>
