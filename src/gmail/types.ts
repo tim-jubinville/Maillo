@@ -124,6 +124,23 @@ export interface PersonHit {
   photo?: string;
 }
 
+/** A person from Google Contacts, the Workspace directory or "Other contacts". */
+export interface ContactCard {
+  /** People API resource name (people/…, otherContacts/…), or '' when unknown. */
+  id: string;
+  source: 'contact' | 'directory' | 'other';
+  name: string;
+  emails: string[];
+  phones: { value: string; type?: string }[];
+  photo?: string;
+  org?: string;
+  title?: string;
+  addresses: string[];
+  birthday?: string;
+  urls: string[];
+  note?: string;
+}
+
 export interface GUserInfo {
   name?: string;
   picture?: string;
@@ -177,6 +194,10 @@ export interface MailBackend {
   contactPhotos(): Promise<Record<string, string>>;
   /** As-you-type people search (contacts, Workspace directory, other contacts). Empty without the contacts feature. */
   searchPeople(q: string): Promise<PersonHit[]>;
+  /** Your Google Contacts, sorted by first name. */
+  listContacts(): Promise<ContactCard[]>;
+  /** Full details for one address, from your contacts, the directory or other contacts. */
+  findContact(email: string): Promise<ContactCard | null>;
   listLabels(): Promise<GLabel[]>;
   getLabel(id: string): Promise<GLabel>;
   createLabel(name: string): Promise<GLabel>;

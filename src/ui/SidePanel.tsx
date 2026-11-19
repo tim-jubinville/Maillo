@@ -2,8 +2,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { config } from '../config';
 import type { CalendarEvent, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
-import { api, openCompose, setState, toast, type AppState } from '../store';
-import { Avatar } from './common';
+import { api, setState, toast, type AppState } from '../store';
+import { ContactsPanel } from './ContactsPanel';
 import { Icon } from './Icon';
 
 export function SidePanel({ s }: { s: AppState }) {
@@ -21,7 +21,7 @@ export function SidePanel({ s }: { s: AppState }) {
         {p === 'calendar' && <Calendar />}
         {p === 'tasks' && <Tasks />}
         {p === 'keep' && <OpenLink name={t('panel.keep')} href={config.links.keep} />}
-        {p === 'contacts' && <Contact s={s} />}
+        {p === 'contacts' && <ContactsPanel s={s} />}
       </div>
     </aside>
   );
@@ -140,23 +140,3 @@ function Tasks() {
   );
 }
 
-function Contact({ s }: { s: AppState }) {
-  const m = s.open?.messages.find((x) => x.from.email.toLowerCase() !== s.me.toLowerCase()) ?? s.open?.messages[0];
-  if (!m) return <OpenLink name={t('panel.contacts')} href={config.links.contacts} />;
-  const a = m.from;
-  return (
-    <>
-      <span class="caps">{t('panel.contactFrom')}</span>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '12px 0', textAlign: 'center' }}>
-        <Avatar a={a} size="xl" />
-        <b style={{ fontSize: 'calc(16px * var(--ts, 1))' }}>{a.name || a.email}</b>
-        <span style={{ fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)', overflowWrap: 'anywhere' }}>{a.email}</span>
-        <button class="btn sm" onClick={() => openCompose('new', undefined, { to: [a] })}>
-          <Icon name="mail" size={16} />
-          {t('panel.email')}
-        </button>
-      </div>
-      <OpenLink name={t('panel.contacts')} href={config.links.contacts} />
-    </>
-  );
-}

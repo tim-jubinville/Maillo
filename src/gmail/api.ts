@@ -1,7 +1,9 @@
+import { locale } from '../i18n';
 import { config } from '../config';
 import { currentToken, dropSession } from '../auth';
 import type {
   CalendarEvent,
+  ContactCard,
   GDraft,
   GFilter,
   GLabel,
@@ -171,6 +173,43 @@ function toHits(people: (GPerson & { names?: { displayName?: string }[] })[], in
   }
 }
 
+interface GFullPerson extends GPerson {
+  resourceName?: string;
+  names?: { displayName?: string }[];
+  phoneNumbers?: { value?: string; formattedType?: string }[];
+  organizations?: { name?: string; title?: string }[];
+  addresses?: { formattedValue?: string }[];
+  birthdays?: { date?: { year?: number; month?: number; day?: number }; text?: string }[];
+  urls?: { value?: string }[];
+  biographies?: { value?: string }[];
+}
+
+const CARD_FIELDS = 'names,emailAddresses,phoneNumbers,photos,organizations,addresses,birthdays,urls,biographies';
+// "Other contacts" only expose these.
+const OTHER_FIELDS = 'names,emailAddresses,phoneNumbers,photos';
+
+function toCard(p: GFullPerson, source: ContactCard['source']): ContactCard {
+  const photo = p.photos?.find((x) => !x.default)?.url;
+  const b = p.birthdays?.find((x) => x.date?.month && x.date?.day);
+  const birthday = b?.date
+    ? new Date(b.date.year ?? 2000, (b.date.month ?? 1) - 1, b.date.day ?? 1).toLocaleDateString(locale(), { month: 'long', day: 'numeric', ...(b.date.year ? { year: 'numeric' } : {}) })
+    : p.birthdays?.[0]?.text;
+  return {
+    id: p.resourceName ?? '',
+    source,
+    name: p.names?.[0]?.displayName ?? '',
+    emails: [...new Set((p.emailAddresses ?? []).map((e) => e.value?.trim() ?? '').filter(Boolean))],
+    phones: (p.phoneNumbers ?? []).filter((x) => x.value).map((x) => ({ value: x.value!, type: x.formattedType })),
+    photo: photo && /^https:\/\//.test(photo) ? photo : undefined,
+    org: p.organizations?.[0]?.name,
+    title: p.organizations?.[0]?.title,
+    addresses: (p.addresses ?? []).map((a) => a.formattedValue ?? '').filter(Boolean),
+    birthday,
+    urls: (p.urls ?? []).map((u) => u.value ?? '').filter((u) => /^https?:\/\//i.test(u)),
+    note: p.biographies?.[0]?.value
+  };
+}
+
 let peopleWarm = false;
 
 export const gmailBackend: MailBackend = {
@@ -200,6 +239,42 @@ export const gmailBackend: MailBackend = {
     if (dir.status === 'fulfilled') toHits(dir.value.people ?? [], out);
     if (other.status === 'fulfilled') toHits((other.value.results ?? []).map((r) => r.person ?? {}), out);
     return [...out.values()];
+  },
+  listContacts: async () => {
+    if (!config.features.contactPhotos) return [];
+    const out: ContactCard[] = [];
+    let pageToken: string | undefined;
+    for (let page = 0; page < 5; page++) {
+      const r = await request<{ connections?: GFullPerson[]; nextPageToken?: string }>(`${PEOPLE}/people/me/connections`, {
+        query: { personFields: 'names,emailAddresses,phoneNumbers,photos,organizations', sortOrder: 'FIRST_NAME_ASCENDING', pageSize: 1000, pageToken }
+      });
+      for (const p of r.connections ?? []) {
+        const c = toCard(p, 'contact');
+        if (c.name || c.emails.length) out.push(c);
+      }
+      pageToken = r.nextPageToken;
+      if (!pageToken) break;
+    }
+    return out;
+  },
+  findContact: async (email) => {
+    if (!config.features.contactPhotos) return null;
+    const want = email.trim().toLowerCase();
+    const match = (people: GFullPerson[]) => people.find((p) => p.emailAddresses?.some((e) => e.value?.trim().toLowerCase() === want));
+    const tries: [() => Promise<GFullPerson[]>, ContactCard['source']][] = [
+      [async () => ((await request<{ results?: { person?: GFullPerson }[] }>(`${PEOPLE}/people:searchContacts`, { query: { query: email, readMask: CARD_FIELDS, pageSize: 10 } })).results ?? []).map((r) => r.person ?? {}), 'contact'],
+      [async () => (await request<{ people?: GFullPerson[] }>(`${PEOPLE}/people:searchDirectoryPeople`, { query: { query: email, readMask: CARD_FIELDS, sources: 'DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE', pageSize: 10 } })).people ?? [], 'directory'],
+      [async () => ((await request<{ results?: { person?: GFullPerson }[] }>(`${PEOPLE}/otherContacts:search`, { query: { query: email, readMask: OTHER_FIELDS, pageSize: 10 } })).results ?? []).map((r) => r.person ?? {}), 'other']
+    ];
+    for (const [run, source] of tries) {
+      try {
+        const p = match(await run());
+        if (p) return toCard(p, source);
+      } catch (e) {
+        if (e instanceof AuthRequired) throw e;
+      }
+    }
+    return null;
   },
   contactPhotos: async () => {
     const out: Record<string, string> = {};
