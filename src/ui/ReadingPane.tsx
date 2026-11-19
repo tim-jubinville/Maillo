@@ -225,7 +225,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
 
             <div class="msgs">
               {msgs.map((m, i) => (
-                <Message key={m.id} m={m} me={s.me} defaultOpen={i === msgs.length - 1 || m.labelIds.includes('UNREAD')} last={i === msgs.length - 1} />
+                <Message key={m.id} m={m} me={s.me} defaultOpen={i === msgs.length - 1 || m.labelIds.includes('UNREAD')} />
               ))}
             </div>
 
@@ -332,7 +332,7 @@ function StickyNote({ threadId, note, editing }: { threadId: string; note?: Thre
   );
 }
 
-function Message({ m, me, defaultOpen, last }: { m: ParsedMessage; me: string; defaultOpen: boolean; last: boolean }) {
+function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [details, setDetails] = useState(false);
   const files = m.attachments.filter((a) => !a.inline && a.mimeType !== 'text/calendar');
@@ -396,7 +396,7 @@ function Message({ m, me, defaultOpen, last }: { m: ParsedMessage; me: string; d
           </Menu>
         </div>
         <div class="msg-body">
-          <MessageBody m={m} showQuotedDefault={!last} />
+          <MessageBody m={m} showQuotedDefault={false} />
           {files.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '18px' }}>
               <span class="caps">{t('read.attachments', { n: files.length })}</span>

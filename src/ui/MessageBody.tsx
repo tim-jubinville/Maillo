@@ -16,8 +16,55 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 
 const REMOTE = /<img[^>]+src\s*=\s*["']?\s*(https?:)?\/\/|url\(\s*["']?\s*(https?:)?\/\//i;
 
+// Quoted earlier messages: Gmail, Apple Mail, Yahoo, Thunderbird, Proton, and Outlook's reply header (which starts a tail).
+const QUOTE_BLOCKS = '.mm-textquote, .gmail_quote, blockquote[type=cite], .yahoo_quoted, .protonmail_quote, div[name="messageReplySection"], div[id^="mail-editor-reference-message-container"]';
+const QUOTE_TAILS = '#divRplyFwdMsg, #appendonsend, .moz-cite-prefix';
+const FORWARD = /^\s*(-{3,}\s*forwarded message|begin forwarded message|-{3,}\s*message transf[ée]r[ée]|d[ée]but du message r[ée]exp[ée]di[ée])/i;
+const TEXT_QUOTE_START = /^(on .{3,200} wrote:|le .{3,200} a [ée]crit\s?:|-{2,}\s*original message\s*-{2,}|-{2,}\s*message d'origine\s*-{2,}|from: .+|de\s?: .+)\s*$/i;
+
+/**
+ * Marks quoted earlier messages with data-mq so they can be hidden. Forwarded messages, and
+ * messages that are nothing but a quote, are left alone.
+ */
+function markQuotes(bodyHtml: string): { html: string; found: boolean } {
+  const doc = new DOMParser().parseFromString(`<body>${bodyHtml}</body>`, 'text/html');
+  const marked: Element[] = [];
+  doc.body.querySelectorAll(QUOTE_BLOCKS).forEach((el) => {
+    if (!marked.some((m) => m.contains(el)) && !FORWARD.test(el.textContent ?? '')) marked.push(el);
+  });
+  const tail = doc.body.querySelector(QUOTE_TAILS);
+  if (tail && !marked.some((m) => m.contains(tail))) {
+    // Outlook: the header block and everything after it at the same level (plus a separator line just before it).
+    const prev = tail.previousElementSibling;
+    if (prev?.tagName === 'HR') marked.push(prev);
+    for (let el: Element | null = tail; el; el = el.nextElementSibling) marked.push(el);
+  }
+  if (!marked.length) return { html: bodyHtml, found: false };
+  marked.forEach((el) => el.setAttribute('data-mq', ''));
+  const clone = doc.body.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('[data-mq]').forEach((el) => el.remove());
+  if (!(clone.textContent ?? '').trim() && !clone.querySelector('img')) return { html: bodyHtml, found: false };
+  return { html: doc.body.innerHTML, found: true };
+}
+
+/** Plain-text emails: split off the quoted tail ("On … wrote:" followed by "> " lines, or an original-message header). */
+function splitTextQuote(text: string): { main: string; quoted: string } {
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
+    const next = lines.slice(i + 1).find((x) => x.trim());
+    const startsQuote = (TEXT_QUOTE_START.test(l) && (/^(-|from|de)/i.test(l) || next?.trim().startsWith('>'))) || (l.startsWith('>') && lines.slice(i).every((x) => !x.trim() || x.trim().startsWith('>')));
+    if (startsQuote && lines.slice(0, i).join('\n').trim() && !FORWARD.test(lines.slice(i).join('\n'))) {
+      return { main: lines.slice(0, i).join('\n').replace(/\s+$/, ''), quoted: lines.slice(i).join('\n') };
+    }
+  }
+  return { main: text, quoted: '' };
+}
+
 const BASE_CSS = `
-html,body{margin:0;padding:0;background:transparent}
+html,body{margin:0;padding:0;background:transparent;height:auto!important;min-height:0!important}
+html{overflow-y:hidden;overflow-x:auto}
+#mm-root{display:flow-root}
 body{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#1b2945;overflow-wrap:anywhere;word-break:break-word}
 img{max-width:100%;height:auto}
 table{max-width:100%}
@@ -32,6 +79,7 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
   const [allowOnce, setAllowOnce] = useState(false);
   const [height, setHeight] = useState(60);
   const frame = useRef<HTMLIFrameElement>(null);
+  const quoteFound = useRef(false);
   const prefs = getPrefs();
   const sender = m.from.email.toLowerCase();
   const imagesAllowed = prefs.images === 'always' || allowOnce || prefs.imageSenders.includes(sender);
@@ -58,9 +106,13 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     };
   }, [m.id]);
 
-  const source = m.html || textToHtml(m.text || m.snippet);
+  const source = useMemo(() => {
+    if (m.html) return m.html;
+    const { main, quoted } = splitTextQuote(m.text || m.snippet);
+    return quoted ? `${textToHtml(main)}<div class="mm-textquote">${textToHtml(quoted)}</div>` : textToHtml(main);
+  }, [m.id]);
   const hasRemote = REMOTE.test(source);
-  const hasQuote = /class=["']?gmail_quote|<blockquote[^>]+type=["']?cite/i.test(source);
+  const [hasQuote, setHasQuote] = useState(false);
 
   const doc = useMemo(() => {
     let html = source.replace(/(["'(])cid:([^"')\s]+)/gi, (all, q: string, id: string) => (cids[id] ? `${q}${cids[id]}` : all));
@@ -75,37 +127,55 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     const img = imagesAllowed ? "data: blob: https: http:" : 'data: blob:';
     const style = imagesAllowed ? "'unsafe-inline' https:" : "'unsafe-inline'";
     const csp = `default-src 'none'; img-src ${img}; style-src ${style}; font-src data: ${imagesAllowed ? 'https:' : ''}; script-src 'none'; frame-src 'none'; form-action 'none'`;
-    const hideQuote = hasQuote && !showQuoted ? '.gmail_quote,blockquote[type=cite]{display:none!important}' : '';
+    const hideQuote = showQuoted ? '' : '[data-mq]{display:none!important}';
     // The frame's colour scheme must match the page's, or the browser paints it with an opaque white backdrop.
     const scheme = `:root{color-scheme:${dark && !m.html ? 'dark' : 'light'}}`;
     const darkText = dark && !m.html ? 'body{color:#e7ecf6}a{color:#c9d8ff;text-decoration-color:#5e7db4}blockquote{border-left-color:#2f3b58;color:#9aa6bd}' : '';
-    const body = html.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '');
+    const rawBody = html.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '');
     const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? '';
-    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>${BASE_CSS}${scheme}${hideQuote}${darkText}</style>${head}</head><body>${body}</body></html>`;
+    const { html: body, found } = markQuotes(rawBody);
+    quoteFound.current = found;
+    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>${BASE_CSS}${scheme}${hideQuote}${darkText}</style>${head}</head><body><div id="mm-root">${body}</div></body></html>`;
   }, [source, cids, imagesAllowed, showQuoted, dark]);
 
+  useEffect(() => setHasQuote(quoteFound.current), [doc]);
+
+  // Size the frame to its content. Measure the wrapper, not the page: many emails set html/body to 100%
+  // height, which would only ever report the frame's own height. Re-measure as images, fonts and width change.
   useEffect(() => {
     const f = frame.current;
     if (!f) return;
     let ro: ResizeObserver | undefined;
+    const timers: number[] = [];
     const measure = () => {
       const d = f.contentDocument;
-      if (!d?.documentElement) return;
-      setHeight(Math.max(40, d.documentElement.scrollHeight, d.body?.scrollHeight ?? 0) + 4);
+      const root = d?.getElementById('mm-root');
+      if (!root) return;
+      const h = Math.ceil(root.getBoundingClientRect().height);
+      const scrollbar = d!.documentElement.scrollWidth > d!.documentElement.clientWidth ? 16 : 0;
+      setHeight(Math.max(40, h + scrollbar + 8));
     };
     const onLoad = () => {
       measure();
       const d = f.contentDocument;
-      if (d?.body) {
-        ro = new ResizeObserver(measure);
-        ro.observe(d.body);
-        d.querySelectorAll('img').forEach((i) => i.addEventListener('load', measure));
-      }
+      const root = d?.getElementById('mm-root');
+      if (!d || !root) return;
+      ro = new ResizeObserver(measure);
+      ro.observe(root);
+      ro.observe(f);
+      d.querySelectorAll('img').forEach((i) => {
+        i.addEventListener('load', measure);
+        i.addEventListener('error', measure);
+      });
+      d.fonts?.ready.then(measure).catch(() => undefined);
+      for (const ms of [150, 600, 1500]) timers.push(window.setTimeout(measure, ms));
     };
     f.addEventListener('load', onLoad);
+    if (f.contentDocument?.readyState === 'complete' && f.contentDocument.getElementById('mm-root')) onLoad();
     return () => {
       f.removeEventListener('load', onLoad);
       ro?.disconnect();
+      timers.forEach(clearTimeout);
     };
   }, [doc]);
 
@@ -131,8 +201,14 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
       />
       </div>
       {hasQuote && (
-        <button class="trim-btn" aria-label={t('read.trimmed')} title={t('read.trimmed')} aria-expanded={showQuoted} onClick={() => setShowQuoted(!showQuoted)}>
-          ···
+        <button
+          class="trim-btn"
+          aria-label={showQuoted ? t('read.hideTrimmed') : t('read.trimmed')}
+          title={showQuoted ? t('read.hideTrimmed') : t('read.trimmed')}
+          aria-expanded={showQuoted}
+          onClick={() => setShowQuoted(!showQuoted)}
+        >
+          <Icon name="dots" size={16} />
         </button>
       )}
     </div>
