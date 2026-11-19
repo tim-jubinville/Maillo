@@ -5,7 +5,7 @@ import { b64urlToBase64, displayName, type Attachment, type ParsedMessage } from
 import { locale, t } from '../i18n';
 import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
 import { go, listHash, threadHash, type MailRoute } from '../route';
-import { actions, api, closeThread, expandQuickReply, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
+import { actions, api, closeThread, expandQuickReply, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, personName, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
 import type { ThreadNote } from '../gmail/types';
 import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
 import { CIcon } from './ColorIcons';
@@ -341,7 +341,7 @@ function Message({ m, me, defaultOpen, last }: { m: ParsedMessage; me: string; d
   if (!open) {
     return (
       <div class="msg">
-        <button class="msg-collapsed" aria-label={t('read.expand', { name: displayName(m.from) })} onClick={() => setOpen(true)}>
+        <button class="msg-collapsed" aria-label={t('read.expand', { name: personName(m.from) })} onClick={() => setOpen(true)}>
           <Avatar a={m.from} size="sm" />
           <b style={{ fontSize: '14px', flex: 'none' }}>{senderName(m.from)}</b>
           <span class="ell" style={{ flex: 1, fontSize: '13px', color: 'var(--muted)' }}>{m.snippet}</span>
@@ -358,7 +358,7 @@ function Message({ m, me, defaultOpen, last }: { m: ParsedMessage; me: string; d
           <Avatar a={m.from} size="lg" />
           <div class="msg-who">
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-              <span class="name">{displayName(m.from)}</span>
+              <span class="name">{personName(m.from)}</span>
               <span class="email">{m.from.email}</span>
               {m.listUnsubscribe && (
                 <button style={{ fontSize: '12px', fontWeight: 500, textDecoration: 'underline', textDecorationColor: 'var(--blue)' }} onClick={() => unsubscribe(m)}>

@@ -4,7 +4,7 @@ import { config, defaultAppName } from '../config';
 import { WORDMARK_PATH, WORDMARK_RATIO, WORDMARK_VIEWBOX } from './wordmark';
 import type { Address } from '../gmail/mime';
 import { avatarColor, initials } from '../model';
-import { getState } from '../store';
+import { getState, personName } from '../store';
 
 /** The built-in app icon. `dark` forces one variant; otherwise it follows the colour mode. */
 export function AppIcon({ size = 30, dark }: { size?: number; dark?: boolean }) {
@@ -104,11 +104,11 @@ export function Avatar({ a, size = '' }: { a: Address; size?: '' | 'sm' | 'lg' |
   if (photo) {
     return (
       <span class={`av ${size}`} aria-hidden="true">
-        <Photo src={photo} fallback={<AvatarInitials a={a} size={size} />} />
+        <Photo src={photo} fallback={<AvatarInitials a={a.name ? a : { ...a, name: personName(a) }} size={size} />} />
       </span>
     );
   }
-  return <AvatarInitials a={a} size={size} />;
+  return <AvatarInitials a={a.name ? a : { ...a, name: personName(a) }} size={size} />;
 }
 
 function AvatarInitials({ a, size }: { a: Address; size: string }) {
