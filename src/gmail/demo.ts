@@ -1,5 +1,6 @@
 import { strToB64url } from './mime';
 import type {
+  ContactCard,
   GDraft,
   GFilter,
   GLabel,
@@ -230,12 +231,30 @@ function attachToThread(msg: GMessage, threadId?: string): GThread {
   return t;
 }
 
+const card = (name: string, email: string, extra: Partial<ContactCard> = {}): ContactCard => ({
+  id: `people/demo-${email.split('@')[0]}`, source: 'contact', name, emails: [email], phones: [], addresses: [], urls: [], ...extra
+});
+
+const demoContacts: ContactCard[] = [
+  card('Julien Roy', 'julien@law.example', { org: 'Roy & Associés', title: 'Lawyer', phones: [{ value: '+1 555-0142', type: 'Work' }] }),
+  card('Léa Fontaine', 'lea@studio.example', {
+    org: 'Studio Example', title: 'Creative director', phones: [{ value: '+1 555-0188', type: 'Mobile' }],
+    addresses: ['123 Example Street, Springfield'], birthday: 'March 14', urls: ['https://studio.example'], note: 'Met at the spring design meetup.'
+  }),
+  card('Marcus Chen', 'marcus@studio.example', { org: 'Studio Example', title: 'Product designer' }),
+  card('Noor Haddad', 'noor@studio.example', { org: 'Studio Example', title: 'Strategist', phones: [{ value: '+1 555-0107', type: 'Work' }] }),
+  card('Priya Shah', 'priya@mail.example', { phones: [{ value: '+1 555-0163', type: 'Mobile' }], birthday: 'August 2' }),
+  card('Sofia Reyes', 'sofia@mail.example', { emails: ['sofia@mail.example', 'sofia.reyes@work.example'], phones: [{ value: '+1 555-0129', type: 'Mobile' }] })
+];
+
 export const demoBackend: MailBackend = {
   demo: true,
   profile: () => wait({ emailAddress: ME, messagesTotal: 18904, threadsTotal: 2431 }),
   userInfo: () => wait({ name: 'Demo User' }),
   contactPhotos: () => wait({}),
   searchPeople: () => wait([]),
+  listContacts: () => wait(demoContacts),
+  findContact: (email) => wait(demoContacts.find((c) => c.emails.some((e) => e.toLowerCase() === email.toLowerCase())) ?? null),
   listLabels: () => wait(labels),
   getLabel: (id) => {
     const l = labels.find((x) => x.id === id)!;
