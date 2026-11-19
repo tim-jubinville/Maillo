@@ -247,7 +247,15 @@ a:hover { color: var(--violet); }
 .tab:not(.on) .cic { opacity: 0.85; }
 .tab:not(.on):hover .cic { opacity: 1; }
 .tab-dot { position: absolute; top: -2px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
-.tab.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
+.tab.on { color: var(--ink); font-weight: 600; }
+/* The active tab's bar uses its category icon's colours. */
+.tab { position: relative; --tab-bar: var(--accent); }
+.tab-primary { --tab-bar: linear-gradient(90deg, #5e97ff, #2b59e8); }
+.tab-promotions { --tab-bar: linear-gradient(90deg, #ffa45e, #e25a1c); }
+.tab-social { --tab-bar: linear-gradient(90deg, #d08aeb, #8636b0); }
+.tab-updates { --tab-bar: linear-gradient(90deg, #ffd24d, #e8930c); }
+.tab-forums { --tab-bar: linear-gradient(90deg, #4fd1c2, #0f877f); }
+.tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; border-radius: 3px 3px 0 0; background: var(--tab-bar); }
 .chips { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid rgba(213, 218, 229, 0.7); overflow-x: auto; scrollbar-width: none; }
 .rows { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: calc(var(--rhb, 0px) + 12px); }
 .rows.in { animation: rows-in 220ms ease-out; }
