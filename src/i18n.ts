@@ -110,6 +110,9 @@ const en = {
   'act.pin.aside': 'Set aside',
   'act.pin.action': 'Mark as Action required',
   'act.backToInbox': 'Back to Inbox',
+  'act.unpin.aside': 'Remove from Set aside',
+  'act.unpin.action': 'Remove from Action required',
+  'dnd.threads': '{n} conversation|{n} conversations',
   'act.asideDone': 'Done: remove from the pile and archive',
   'act.addNote': 'Add a private note',
 
@@ -644,6 +647,9 @@ const fr: Record<StringKey, string> = {
   'act.pin.aside': 'Mettre de côté',
   'act.pin.action': 'Marquer comme action requise',
   'act.backToInbox': 'Remettre dans la boîte de réception',
+  'act.unpin.aside': 'Retirer des éléments mis de côté',
+  'act.unpin.action': 'Retirer d’Action requise',
+  'dnd.threads': '{n} conversation|{n} conversations',
   'act.asideDone': 'Terminé : retirer de la pile et archiver',
   'act.addNote': 'Ajouter une note privée',
 
