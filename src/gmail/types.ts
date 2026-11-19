@@ -118,6 +118,12 @@ export interface GProfile {
   historyId?: string;
 }
 
+export interface PersonHit {
+  name: string;
+  email: string;
+  photo?: string;
+}
+
 export interface GUserInfo {
   name?: string;
   picture?: string;
@@ -161,6 +167,8 @@ export interface MailBackend {
   userInfo(): Promise<GUserInfo>;
   /** Photo URLs by lower-case email address, from Google Contacts and the Workspace directory. */
   contactPhotos(): Promise<Record<string, string>>;
+  /** As-you-type people search (contacts, Workspace directory, other contacts). Empty without the contacts feature. */
+  searchPeople(q: string): Promise<PersonHit[]>;
   listLabels(): Promise<GLabel[]>;
   getLabel(id: string): Promise<GLabel>;
   createLabel(name: string): Promise<GLabel>;

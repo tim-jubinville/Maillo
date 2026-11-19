@@ -1,3 +1,4 @@
+import { config } from '../config';
 import { currentToken, dropSession } from '../auth';
 import type {
   CalendarEvent,
@@ -7,6 +8,7 @@ import type {
   GMessage,
   GProfile,
   GUserInfo,
+  PersonHit,
   GSendAs,
   GThread,
   GThreadList,
@@ -137,12 +139,52 @@ async function collectPhotos(url: string, query: Query, key: 'connections' | 'ot
   }
 }
 
+interface GSearchResult {
+  results?: { person?: GPerson & { names?: { displayName?: string }[] } }[];
+  people?: (GPerson & { names?: { displayName?: string }[] })[];
+}
+
+function toHits(people: (GPerson & { names?: { displayName?: string }[] })[], into: Map<string, PersonHit>) {
+  for (const p of people) {
+    const photo = p.photos?.find((x) => !x.default)?.url;
+    for (const e of p.emailAddresses ?? []) {
+      const email = e.value?.trim();
+      if (!email || into.has(email.toLowerCase())) continue;
+      into.set(email.toLowerCase(), { name: p.names?.[0]?.displayName ?? '', email, photo: photo && /^https:\/\//.test(photo) ? photo : undefined });
+    }
+  }
+}
+
+let peopleWarm = false;
+
 export const gmailBackend: MailBackend = {
   demo: false,
   profile: () => get<GProfile>('/profile'),
   userInfo: () => request<GUserInfo>('https://www.googleapis.com/oauth2/v3/userinfo'),
   // Your own contacts win over the directory, which wins over "other contacts". Each source is optional:
   // personal accounts have no directory, and a missing permission just leaves that source out.
+  searchPeople: async (q) => {
+    if (!config.features.contactPhotos) return [];
+    // Google asks for an empty "warm-up" search before the first real one, so its cache is ready.
+    if (!peopleWarm) {
+      peopleWarm = true;
+      await Promise.allSettled([
+        request(`${PEOPLE}/people:searchContacts`, { query: { query: '', readMask: 'names' } }),
+        request(`${PEOPLE}/otherContacts:search`, { query: { query: '', readMask: 'names' } })
+      ]);
+    }
+    const mask = 'names,emailAddresses,photos';
+    const [mine, dir, other] = await Promise.allSettled([
+      request<GSearchResult>(`${PEOPLE}/people:searchContacts`, { query: { query: q, readMask: mask, pageSize: 6 } }),
+      request<GSearchResult>(`${PEOPLE}/people:searchDirectoryPeople`, { query: { query: q, readMask: mask, sources: 'DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE', pageSize: 6 } }),
+      request<GSearchResult>(`${PEOPLE}/otherContacts:search`, { query: { query: q, readMask: mask, pageSize: 6 } })
+    ]);
+    const out = new Map<string, PersonHit>();
+    if (mine.status === 'fulfilled') toHits((mine.value.results ?? []).map((r) => r.person ?? {}), out);
+    if (dir.status === 'fulfilled') toHits(dir.value.people ?? [], out);
+    if (other.status === 'fulfilled') toHits((other.value.results ?? []).map((r) => r.person ?? {}), out);
+    return [...out.values()];
+  },
   contactPhotos: async () => {
     const out: Record<string, string> = {};
     const sources: [string, Query, 'connections' | 'otherContacts' | 'people'][] = [
