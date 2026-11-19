@@ -682,9 +682,10 @@ a:hover { color: var(--violet); }
 .row.sel { --row-bg: color-mix(in srgb, var(--accent-tint) 55%, var(--surface)); }
 .row.chk { --row-bg: var(--row-chk); }
 .row:hover .row-acts, .row:focus-within .row-acts { opacity: 1; pointer-events: auto; }
-.row-act { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; opacity: 0.6; filter: saturate(0.7); transition: opacity 0.12s, filter 0.12s, background 0.12s; }
+.row-act { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; opacity: 0.78; filter: saturate(0.8); transition: opacity 0.12s, filter 0.12s, background 0.12s; }
 .row-act:hover, .row-act:focus-visible { opacity: 1; filter: none; background: var(--hover); }
 .row-act:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.row-sep { width: 1px; height: 16px; align-self: center; margin: 0 4px; background: var(--line); }
 @media (hover: none) { .row-acts { display: none; } }
 [data-mode='dark'] { --note-bg: linear-gradient(170deg, #3d3519, #342d14); --note-ink: #f7eab4; --note-muted: #d4c27e; --note-line: rgba(247, 234, 180, 0.16); }
 [data-mode='dark'] .sticky { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px rgba(0, 0, 0, 0.3); }
