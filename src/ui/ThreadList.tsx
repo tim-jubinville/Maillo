@@ -279,7 +279,7 @@ function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: str
   const hidden = items.filter((i) => !shown.has(i.id));
   return (
     <Ribbon label={t('list.selected', { n: sel.length })} bottom>
-      <div class="toolbar nowrap" ref={bar}>
+      <div class="toolbar nowrap" data-bar="bulk" ref={bar}>
         <span class="sel-n" ref={count}>{t('list.selected', { n: sel.length })}</span>
         <BarButtons items={items} shown={shown} />
         <MoreMenu hidden={hidden} align="right" />

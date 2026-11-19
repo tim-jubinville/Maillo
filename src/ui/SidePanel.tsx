@@ -30,7 +30,7 @@ export function SidePanel({ s }: { s: AppState }) {
 function OpenLink({ name, href, hint }: { name: string; href: string; hint?: boolean }) {
   return (
     <>
-      {hint && <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)' }}>{t('panel.enable')}</p>}
+      {hint && <p style={{ margin: 0, fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)' }}>{t('panel.enable')}</p>}
       <a class="btn sm" href={href} target="_blank" rel="noopener noreferrer" style={{ alignSelf: 'flex-start' }}>
         <Icon name="external" size={16} />
         {t('panel.open', { name })}
@@ -131,8 +131,8 @@ function Tasks() {
             }}
           />
           <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 500 }}>{k.title}</span>
-            {k.due && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{new Date(k.due).toLocaleDateString(locale(), { month: 'short', day: 'numeric' })}</span>}
+            <span style={{ fontSize: 'calc(13px * var(--ts, 1))', fontWeight: 500 }}>{k.title}</span>
+            {k.due && <span style={{ fontSize: 'calc(12px * var(--ts, 1))', color: 'var(--muted)' }}>{new Date(k.due).toLocaleDateString(locale(), { month: 'short', day: 'numeric' })}</span>}
           </span>
         </label>
       ))}
@@ -149,8 +149,8 @@ function Contact({ s }: { s: AppState }) {
       <span class="caps">{t('panel.contactFrom')}</span>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '12px 0', textAlign: 'center' }}>
         <Avatar a={a} size="xl" />
-        <b style={{ fontSize: '16px' }}>{a.name || a.email}</b>
-        <span style={{ fontSize: '13px', color: 'var(--muted)', overflowWrap: 'anywhere' }}>{a.email}</span>
+        <b style={{ fontSize: 'calc(16px * var(--ts, 1))' }}>{a.name || a.email}</b>
+        <span style={{ fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)', overflowWrap: 'anywhere' }}>{a.email}</span>
         <button class="btn sm" onClick={() => openCompose('new', undefined, { to: [a] })}>
           <Icon name="mail" size={16} />
           {t('panel.email')}

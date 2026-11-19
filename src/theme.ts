@@ -39,6 +39,8 @@ export function applyTheme() {
   const root = document.documentElement;
   const dark = isDark();
   root.dataset.mode = dark ? 'dark' : 'light';
+  root.dataset.icons = getPrefs().icons;
+  root.style.setProperty('--ts', String(getPrefs().textScale || 1));
   root.style.setProperty('--accent', th.accent);
   root.style.setProperty('--bg-top', th.top);
   root.style.setProperty('--bg-bottom', th.bottom);

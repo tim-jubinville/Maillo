@@ -71,6 +71,25 @@ export function BarButtons({ items, shown }: { items: BarItem[]; shown: Set<stri
   );
 }
 
+/** Opens a ribbon's Move to / Label as menu, from the "…" menu if it has folded there. */
+export function openBarMenu(bar: 'thread' | 'bulk', label: string): boolean {
+  const el = document.querySelector<HTMLElement>(`[data-bar="${bar}"]`);
+  if (!el) return false;
+  const direct = [...el.querySelectorAll<HTMLButtonElement>('button[aria-haspopup]')].find((b) => b.getAttribute('aria-label') === label);
+  if (direct) {
+    if (direct.getAttribute('aria-expanded') !== 'true') direct.click();
+    return true;
+  }
+  const more = [...el.querySelectorAll<HTMLButtonElement>('button[aria-haspopup]')].find((b) => b.getAttribute('aria-label') === t('act.more'));
+  if (!more) return false;
+  if (more.getAttribute('aria-expanded') !== 'true') more.click();
+  requestAnimationFrame(() => {
+    const item = [...el.querySelectorAll<HTMLButtonElement>('.pop .mi')].find((b) => b.textContent?.trim() === label);
+    item?.click();
+  });
+  return true;
+}
+
 export function MoreMenu({ hidden, more, align }: { hidden: BarItem[]; more?: (close: () => void) => ComponentChildren; align?: 'left' | 'right' }) {
   return (
     <Menu label={t('act.more')} button={<CIcon name="more" />} align={align}>

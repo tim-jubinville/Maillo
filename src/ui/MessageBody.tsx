@@ -84,6 +84,7 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
   const sender = m.from.email.toLowerCase();
   const imagesAllowed = prefs.images === 'always' || allowOnce || prefs.imageSenders.includes(sender);
   const dark = isDark();
+  const scale = prefs.textScale || 1;
 
   useEffect(() => {
     let cancelled = false;
@@ -135,8 +136,9 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? '';
     const { html: body, found } = markQuotes(rawBody);
     quoteFound.current = found;
-    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>${BASE_CSS}${scheme}${hideQuote}${darkText}</style>${head}</head><body><div id="mm-root">${body}</div></body></html>`;
-  }, [source, cids, imagesAllowed, showQuoted, dark]);
+    const textSize = scale === 1 ? '' : `body{font-size:${+(15 * scale).toFixed(2)}px}`;
+    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>${BASE_CSS}${textSize}${scheme}${hideQuote}${darkText}</style>${head}</head><body><div id="mm-root">${body}</div></body></html>`;
+  }, [source, cids, imagesAllowed, showQuoted, dark, scale]);
 
   useEffect(() => setHasQuote(quoteFound.current), [doc]);
 
