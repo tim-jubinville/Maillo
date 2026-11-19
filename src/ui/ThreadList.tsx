@@ -213,7 +213,7 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
           {!compact && (labels.length > 0 || r.attachment || nudge > 0) && (
             <span class="row-meta">
               {labels.slice(0, 3).map((l) => (
-                <span class="tag"><span class="dot" style={{ background: labelColor(l) }} /><span class="ell">{labelDisplayName(l)}</span></span>
+                <span class="tag lbl" style={{ '--lc': labelColor(l) }}><span class="dot" /><span class="ell">{labelDisplayName(l)}</span></span>
               ))}
               {r.attachment && (
                 <span class="att" role="img" aria-label={t('read.attachments', { n: 1 })}><Icon name="clip" size={12} /></span>

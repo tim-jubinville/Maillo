@@ -158,10 +158,42 @@ export function labelDisplayName(l: GLabel): string {
   return l.name.split('/').pop() ?? l.name;
 }
 
-const LABEL_FALLBACK = ['#6C93DC', '#EE8F78', '#5FB0B2', '#8571D4', '#F39A55', '#57997F', '#9A6AAE', '#C99A6B'];
+const LABEL_FALLBACK = ['#3D7BE8', '#EC5A3C', '#14A3A1', '#7350E0', '#F07F1E', '#2E9E62', '#A548C9', '#C2833E'];
+
+/** Gmail's label palette is often pastel; push saturation up and lightness into a mid range so labels read clearly. */
+function vivid(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d > 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  // Greys stay grey; colours get at least 62% saturation and 42–56% lightness.
+  const s2 = s < 0.08 ? s : Math.max(s, 0.62);
+  const l2 = Math.min(0.56, Math.max(0.42, l));
+  const c = (1 - Math.abs(2 * l2 - 1)) * s2;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const o = l2 - c / 2;
+  const [r2, g2, b2] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return '#' + [r2, g2, b2].map((v) => Math.round((v + o) * 255).toString(16).padStart(2, '0')).join('');
+}
+
+const vividCache = new Map<string, string>();
 
 export function labelColor(l: GLabel): string {
-  return l.color?.backgroundColor || LABEL_FALLBACK[Math.abs([...l.id].reduce((a, c) => a * 7 + c.charCodeAt(0), 3)) % LABEL_FALLBACK.length];
+  const base = l.color?.backgroundColor || LABEL_FALLBACK[Math.abs([...l.id].reduce((a, c) => a * 7 + c.charCodeAt(0), 3)) % LABEL_FALLBACK.length];
+  let v = vividCache.get(base);
+  if (!v) vividCache.set(base, (v = vivid(base)));
+  return v;
 }
 
 export function stripSubjectPrefix(s: string): string {

@@ -112,6 +112,11 @@ a:hover { color: var(--violet); }
   background: var(--cloud); font-size: 11.5px; font-weight: 500; color: var(--ink-2); max-width: 160px;
 }
 .tag .dot { width: 6px; height: 6px; border-radius: 2px; flex: none; }
+/* Label chips take their label's colour: tinted background, darker tinted text. */
+.tag.lbl { background: color-mix(in srgb, var(--lc) 16%, var(--surface)); color: color-mix(in srgb, var(--lc) 42%, #14213d); }
+.tag.lbl .dot { background: var(--lc); }
+.tag.lbl .x { color: inherit; opacity: 0.7; }
+[data-mode='dark'] .tag.lbl { background: color-mix(in srgb, var(--lc) 26%, var(--surface)); color: color-mix(in srgb, var(--lc) 45%, #ffffff); }
 .caps { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
 
 .glass {
