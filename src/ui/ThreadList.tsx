@@ -81,7 +81,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
                 aria-selected={on}
                 aria-label={label}
                 title={on ? undefined : label}
-                class={`tab ${on ? 'on' : ''}`}
+                class={`tab tab-${c} ${on ? "on" : ""}`}
                 onClick={() => go(listHash({ ...route, category: c, thread: undefined }))}
               >
                 <span class="tab-ic">
