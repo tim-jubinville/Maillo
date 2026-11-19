@@ -125,7 +125,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
         )}
         <RecipientField id={`to-${c.key}`} label={t('compose.to')} value={c.to} recent={s.recent} onChange={(to) => patch({ to })}>
           {!c.showCc && (
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: '10px', fontSize: '13px' }}>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: '10px', fontSize: 'calc(13px * var(--ts, 1))' }}>
               <button onClick={() => updateCompose({ showCc: true })}>{t('compose.cc')}</button>
               <button onClick={() => updateCompose({ showCc: true })}>{t('compose.bcc')}</button>
             </span>
@@ -169,7 +169,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
               <span class="c-att">
                 <Icon name="clip" size={14} />
                 <span class="ell">{a.filename}</span>
-                <span style={{ color: 'var(--muted)', fontSize: '12px', flex: 'none' }}>{a.loading ? '…' : sizeLabel(a.size)}</span>
+                <span style={{ color: 'var(--muted)', fontSize: 'calc(12px * var(--ts, 1))', flex: 'none' }}>{a.loading ? '…' : sizeLabel(a.size)}</span>
                 <button class="ib sm" aria-label={t('compose.removeAttachment', { name: a.filename })} onClick={() => patch({ attachments: c.attachments.filter((x) => x.id !== a.id) })}>
                   <Icon name="x" size={14} />
                 </button>
@@ -342,7 +342,7 @@ function RecipientField({
               <Avatar a={a} size="sm" />
               <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 <span class="ell">{a.name || a.email}</span>
-                {a.name && <span class="ell" style={{ fontSize: '12px', color: 'var(--muted)' }}>{a.email}</span>}
+                {a.name && <span class="ell" style={{ fontSize: 'calc(12px * var(--ts, 1))', color: 'var(--muted)' }}>{a.email}</span>}
               </span>
             </button>
           ))}

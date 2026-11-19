@@ -10,7 +10,7 @@ import { labelColor, sizeLabel } from '../model';
 import { THEMES, currentTheme } from '../theme';
 import { CHIMES, playChime } from '../chime';
 import { askPermission, permission, sendTest } from '../notify';
-import { getPrefs, setNotifyPrefs, setPrefs, type NotifyPrefs } from '../prefs';
+import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs } from '../prefs';
 import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, loadLabels, setState, toast, type AppState } from '../store';
@@ -196,8 +196,8 @@ function Labels({ s }: { s: AppState }) {
             </form>
           ) : (
             <>
-              <span style={{ flex: 1, fontSize: '14px' }}>{l.name}</span>
-              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{s.counts[l.id] ? `${s.counts[l.id]} ●` : ''}</span>
+              <span style={{ flex: 1, fontSize: 'calc(14px * var(--ts, 1))' }}>{l.name}</span>
+              <span style={{ fontSize: 'calc(12px * var(--ts, 1))', color: 'var(--muted)' }}>{s.counts[l.id] ? `${s.counts[l.id]} ●` : ''}</span>
               <button class="btn sm" onClick={() => { setEditing(l.id); setDraft(l.name); }}>{t('settings.rename')}</button>
               <button
                 class="btn sm danger"
@@ -331,7 +331,7 @@ function Filters({ s }: { s: AppState }) {
             <span class="caps" style={{ width: '48px' }}>{t('settings.when')}</span>
             <span class="token">{d.when || '*'}</span>
             <span class="caps">{t('settings.then')}</span>
-            <span style={{ fontSize: '13px', flex: '1 1 200px' }}>{d.then}</span>
+            <span style={{ fontSize: 'calc(13px * var(--ts, 1))', flex: '1 1 200px' }}>{d.then}</span>
             <button
               class="btn sm danger"
               onClick={async () => {
@@ -593,13 +593,13 @@ function AiSettings() {
       {status?.ok && (
         <>
           <Row title={t('ai.key')} help={configured ? (status.source === 'environment' ? t('ai.keyEnv') : t('ai.keyStored')) : t('ai.keyMissing')}>
-            <span class="tag" style={{ fontSize: '13px', height: '26px' }}>{configured ? t('ai.keySet') : t('ai.keyNotSet')}</span>
+            <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{configured ? t('ai.keySet') : t('ai.keyNotSet')}</span>
           </Row>
           <Row title={t('ai.model')} help={t('ai.modelHelp')}>
-            <span class="tag" style={{ fontSize: '13px', height: '26px' }}>{status.model}</span>
+            <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{status.model}</span>
           </Row>
           <Row title={t('ai.usage')}>
-            <span style={{ fontSize: '13px' }}>{t('ai.usageValue', { used: status.used ?? 0, limit: status.limit ?? 0 })}</span>
+            <span style={{ fontSize: 'calc(13px * var(--ts, 1))' }}>{t('ai.usageValue', { used: status.used ?? 0, limit: status.limit ?? 0 })}</span>
           </Row>
           {status.source !== 'environment' && (
             <div class="srow">
@@ -617,13 +617,13 @@ function AiSettings() {
           {configured && (
             <div class="frow" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button class="btn sm" disabled={busy} onClick={runTest}>{t('ai.test')}</button>
-              {test && <span role="status" style={{ fontSize: '13px' }}>{test}</span>}
+              {test && <span role="status" style={{ fontSize: 'calc(13px * var(--ts, 1))' }}>{test}</span>}
             </div>
           )}
         </>
       )}
       {error && <div class="frow err" role="alert">{error}</div>}
-      <div class="frow" style={{ fontSize: '12.5px', color: 'var(--muted)' }}>{t('ai.privacy')}</div>
+      <div class="frow" style={{ fontSize: 'calc(12.5px * var(--ts, 1))', color: 'var(--muted)' }}>{t('ai.privacy')}</div>
     </Section>
   );
 }
@@ -693,7 +693,7 @@ function Updates() {
   return (
     <Section title={t('settings.updates')} note={t('upd.help')}>
       <Row title={t('upd.installed')} help={status?.ok ? t('upd.server', { php: status.php ?? '', email: status.account ?? '' }) : undefined}>
-        <span class="tag" style={{ fontSize: '13px', height: '26px' }}>{status?.version || current || '—'}</span>
+        <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{status?.version || current || '—'}</span>
       </Row>
       {config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.demo')}</div>}
       {!config.demo && status === null && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.checking')}</div>}
@@ -814,7 +814,7 @@ function Appearance() {
         <AppIcon dark={dark} />
       )}
       {preview ? (
-        text && <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{text}</span>
+        text && <span style={{ fontWeight: 800, fontSize: 'calc(20px * var(--ts, 1))', letterSpacing: '-0.02em', color: dark ? '#e7ecf6' : '#14213d' }}>{text}</span>
       ) : (
         <AppName color={dark ? '#e7ecf6' : '#14213d'} />
       )}
@@ -826,6 +826,15 @@ function Appearance() {
       <Section title={t('settings.appearance')}>
         <Row title={t('app.mode')} help={t('app.modeHelp')}>
           <Seg label={t('app.mode')} value={p.mode} onChange={(v) => setPrefs({ mode: v })} options={[{ value: 'system', label: t('app.system') }, { value: 'light', label: t('app.light') }, { value: 'dark', label: t('app.dark') }]} />
+        </Row>
+        <Row title={t('app.textSize')} help={t('app.textSizeHelp')}>
+          <Seg label={t('app.textSize')} value={p.textScale} onChange={(v) => setPrefs({ textScale: v })} options={TEXT_SCALES.map((n, i) => ({ value: n, label: t(`app.textSize${i}` as StringKey) }))} />
+        </Row>
+        <Row title={t('app.icons')} help={t('app.iconsHelp')}>
+          <Seg label={t('app.icons')} value={p.icons} onChange={(v) => setPrefs({ icons: v })} options={[{ value: 'color', label: t('app.iconsColor') }, { value: 'outline', label: t('app.iconsOutline') }]} />
+        </Row>
+        <Row title={t('app.tooltips')} help={t('app.tooltipsHelp')}>
+          <Switch label={t('app.tooltips')} on={p.tooltips} onChange={(v) => setPrefs({ tooltips: v })} />
         </Row>
         <div class="srow" style={{ alignItems: 'flex-start' }}>
           <div class="slbl"><b>{t('app.theme')}</b><span>{t('app.themeHelp')}</span></div>
@@ -843,7 +852,7 @@ function Appearance() {
                   <span aria-hidden="true" style={{ height: '46px', borderRadius: '9px', background: `linear-gradient(180deg, ${th.top}, ${th.bottom})`, position: 'relative', display: 'block' }}>
                     <span style={{ position: 'absolute', left: '8px', bottom: '8px', width: '28px', height: '12px', borderRadius: '6px', background: th.accent }} />
                   </span>
-                  <span style={{ fontSize: '13px', fontWeight: on ? 700 : 500, color: 'var(--ink)' }}>{t(`theme.${th.id}` as StringKey)}</span>
+                  <span style={{ fontSize: 'calc(13px * var(--ts, 1))', fontWeight: on ? 700 : 500, color: 'var(--ink)' }}>{t(`theme.${th.id}` as StringKey)}</span>
                 </button>
               );
             })}
@@ -872,7 +881,7 @@ function Appearance() {
         <div class="frow">
           <button class="btn primary sm" disabled={!!busy || (!file && !config.logoUrl)} onClick={save}>{t('app.logoSave')}</button>
           {config.logoUrl && <button class="btn sm" disabled={!!busy} onClick={remove}>{t('app.logoRemove')}</button>}
-          {(busy || error) && <span class={error ? 'err' : ''} role="status" style={{ fontSize: '13px' }}>{error || busy}</span>}
+          {(busy || error) && <span class={error ? 'err' : ''} role="status" style={{ fontSize: 'calc(13px * var(--ts, 1))' }}>{error || busy}</span>}
         </div>
       </Section>
     </>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { t, type StringKey } from '../i18n';
+import { openBarMenu } from './BarItems';
 import { getPrefs } from '../prefs';
 import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, closeThread, getState, notesEnabled, pileOf, openCompose, openRow, setState, targetIds, toggleSelect, type AppState } from '../store';
@@ -22,6 +23,8 @@ const MAP: [string, StringKey][] = [
   ['t', 'keys.pin.action'],
   ['n', 'keys.note'],
   ['x', 'keys.select'],
+  ['v', 'keys.moveTo'],
+  ['l', 'keys.labelAs'],
   ['r', 'keys.reply'],
   ['a', 'keys.replyAll'],
   ['f', 'keys.forward'],
@@ -127,6 +130,12 @@ export function useShortcuts(s: AppState) {
           case 'r': if (last) openCompose('reply', last); return !!last;
           case 'a': if (last) openCompose('replyAll', last); return !!last;
           case 'f': if (last) openCompose('forward', last); return !!last;
+          case 'v':
+          case 'l': {
+            const label = t(e.key === 'v' ? 'act.moveTo' : 'act.labelAs');
+            if (st.open) return openBarMenu('thread', label);
+            return st.selected.size > 0 && openBarMenu('bulk', label);
+          }
           case 'I': actions.read(ids, true); return true;
           case 'U': actions.read(ids, false); return true;
           default: return false;
@@ -145,7 +154,7 @@ export function KeyHelp() {
       <div class="dialog" role="dialog" aria-modal="true" aria-label={t('keys.title')} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Icon name="keyboard" style={{ color: 'var(--c-trash)' }} />
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, flex: 1 }}>{t('keys.title')}</h2>
+          <h2 style={{ margin: 0, fontSize: 'calc(20px * var(--ts, 1))', fontWeight: 800, flex: 1 }}>{t('keys.title')}</h2>
           <button class="ib" aria-label={t('misc.close')} onClick={() => setState({ showKeys: false })} autoFocus>
             <Icon name="x" />
           </button>

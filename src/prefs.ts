@@ -51,7 +51,15 @@ export interface Prefs {
   layout: LayoutPrefs;
   /** Side panel left open last time. */
   panel: PanelId | '';
+  /** Coloured icons, or plain outlines everywhere. */
+  icons: 'color' | 'outline';
+  /** Interface text size, as a multiple of the default. */
+  textScale: number;
+  /** Show a label when hovering icon-only buttons. */
+  tooltips: boolean;
 }
+
+export const TEXT_SCALES = [0.88, 0.94, 1, 1.08, 1.16, 1.25];
 
 const KEY = 'maillo.prefs';
 
@@ -70,6 +78,9 @@ const defaults: Prefs = {
   signatureDash: true,
   layout: { ...DEFAULT_LAYOUT },
   panel: '',
+  icons: 'color',
+  textScale: 1,
+  tooltips: true,
   notify: {
     enabled: false,
     scope: 'primary',

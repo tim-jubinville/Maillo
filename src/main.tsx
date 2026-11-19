@@ -6,11 +6,13 @@ import { handleOpenFromNotification, initNotifier } from './notify';
 import { initPwa } from './pwa';
 import { boot, getState, openCompose } from './store';
 import { initTheme } from './theme';
+import { initTooltips } from './tooltip';
 import { App } from './ui/App';
 import './styles.css';
 
 document.title = config.appName;
 initTheme();
+initTooltips();
 initPwa(handleOpenFromNotification);
 initNotifier();
 unlockAudioOnGesture();

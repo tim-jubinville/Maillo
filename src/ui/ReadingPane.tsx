@@ -343,8 +343,8 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
       <div class="msg">
         <button class="msg-collapsed" aria-label={t('read.expand', { name: personName(m.from) })} onClick={() => setOpen(true)}>
           <Avatar a={m.from} size="sm" />
-          <b style={{ fontSize: '14px', flex: 'none' }}>{senderName(m.from)}</b>
-          <span class="ell" style={{ flex: 1, fontSize: '13px', color: 'var(--muted)' }}>{m.snippet}</span>
+          <b style={{ fontSize: 'calc(14px * var(--ts, 1))', flex: 'none' }}>{senderName(m.from)}</b>
+          <span class="ell" style={{ flex: 1, fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)' }}>{m.snippet}</span>
           {files.length > 0 && <Icon name="clip" size={14} style={{ color: 'var(--muted)' }} />}
           <span class="msg-time">{fullDate(m.date).split(' (')[0]}</span>
         </button>
@@ -361,7 +361,7 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
               <span class="name">{personName(m.from)}</span>
               <span class="email">{m.from.email}</span>
               {m.listUnsubscribe && (
-                <button style={{ fontSize: '12px', fontWeight: 500, textDecoration: 'underline', textDecorationColor: 'var(--blue)' }} onClick={() => unsubscribe(m)}>
+                <button style={{ fontSize: 'calc(12px * var(--ts, 1))', fontWeight: 500, textDecoration: 'underline', textDecorationColor: 'var(--blue)' }} onClick={() => unsubscribe(m)}>
                   {t('act.unsubscribe')}
                 </button>
               )}
@@ -371,7 +371,7 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
               <Icon name={details ? 'chevUp' : 'chevDown'} size={14} />
             </button>
             {details && (
-              <div style={{ fontSize: '12.5px', color: 'var(--muted)', lineHeight: 1.6, marginTop: '4px' }}>
+              <div style={{ fontSize: 'calc(12.5px * var(--ts, 1))', color: 'var(--muted)', lineHeight: 1.6, marginTop: '4px' }}>
                 <div>{t('compose.from')}: {m.from.name ? `${m.from.name} <${m.from.email}>` : m.from.email}</div>
                 {m.to.length > 0 && <div>{t('compose.to')}: {m.to.map((a) => a.email).join(', ')}</div>}
                 {m.cc.length > 0 && <div>{t('compose.cc')}: {m.cc.map((a) => a.email).join(', ')}</div>}
@@ -408,8 +408,8 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
                         {ext(a.filename)}
                       </span>
                       <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span class="ell" style={{ fontSize: '13px', fontWeight: 500 }}>{a.filename}</span>
-                        <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{sizeLabel(a.size)}</span>
+                        <span class="ell" style={{ fontSize: 'calc(13px * var(--ts, 1))', fontWeight: 500 }}>{a.filename}</span>
+                        <span style={{ fontSize: 'calc(12px * var(--ts, 1))', color: 'var(--muted)' }}>{sizeLabel(a.size)}</span>
                       </span>
                     </button>
                     <button class="ib sm" aria-label={`${t('act.download')} ${a.filename}`} title={t('act.download')} onClick={() => openAttachment(a, true)}>
@@ -441,14 +441,14 @@ function Invite({ m }: { m: ParsedMessage }) {
       )}
       <div style={{ flex: '1 1 240px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <span class="caps">{t('read.invite')}</span>
-        <span style={{ fontSize: '16px', fontWeight: 700 }}>{c.summary}</span>
+        <span style={{ fontSize: 'calc(16px * var(--ts, 1))', fontWeight: 700 }}>{c.summary}</span>
         {start && (
-          <span style={{ fontSize: '13px' }}>
+          <span style={{ fontSize: 'calc(13px * var(--ts, 1))' }}>
             {start.toLocaleString(loc, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
             {c.end ? ` – ${c.end.toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit' })}` : ''}
           </span>
         )}
-        {c.location && <span style={{ fontSize: '13px', color: 'var(--muted)' }}>{c.location}</span>}
+        {c.location && <span style={{ fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)' }}>{c.location}</span>}
         <div style={{ paddingTop: '6px' }}>
           <a class="btn sm" href={config.links.calendar} target="_blank" rel="noopener noreferrer">
             <Icon name="calendar" size={16} style={{ color: 'var(--c-inbox)' }} />
@@ -489,7 +489,7 @@ function RibbonBar({
   const hidden = items.filter((i) => !shown.has(i.id));
 
   return (
-    <div class="toolbar nowrap" ref={bar}>
+    <div class="toolbar nowrap" data-bar="thread" ref={bar}>
       {showBack && (
         <>
           <button class="ib" aria-label={t('act.back')} title={t('act.back')} onClick={closeThread}><Icon name="arrowLeft" /></button>
