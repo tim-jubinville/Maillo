@@ -41,6 +41,7 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 | `https://www.googleapis.com/auth/gmail.settings.basic` | Filters, signatures, vacation responder, forwarding status |
 | `https://www.googleapis.com/auth/userinfo.profile` | Your name and profile photo for the account button. Without it, Maillo shows your initial |
 | `https://www.googleapis.com/auth/calendar.events.readonly` | Optional: today's agenda |
+| `https://www.googleapis.com/auth/calendar.calendarlist.readonly` | Optional: your calendar's colour, for events without their own colour |
 | `https://www.googleapis.com/auth/tasks` | Optional: Tasks panel and "Add to Tasks" |
 | `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes. Only gives access to Maillo's own hidden folder, not your Drive files |
 | `https://www.googleapis.com/auth/contacts.readonly` | Optional: contact photos, from your Google Contacts |
@@ -125,7 +126,7 @@ window.MAILLO_CONFIG = {
 | `language` | `"auto"`, `"en"` or `"fr"`. People can also change it in Settings. |
 | `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
 | `accentColor` | Optional hex colour that replaces the default theme's accent. |
-| `features.calendar` | Shows today's events in the side panel. Adds the Calendar permission at sign-in. |
+| `features.calendar` | Shows today's events in the side panel, in their Google Calendar colours, with a Join button for video calls (Meet, Zoom, Teams, Webex). Adds two read-only Calendar permissions at sign-in. |
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
 | `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
 | `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |

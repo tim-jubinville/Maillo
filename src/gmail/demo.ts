@@ -374,9 +374,10 @@ export const demoBackend: MailBackend = {
       return x.toISOString();
     };
     return wait([
-      { id: 'e1', summary: 'Weekly sync', start: { dateTime: d(10) }, end: { dateTime: d(10, 30) } },
-      { id: 'e2', summary: 'Lunch', start: { dateTime: d(12, 30) }, end: { dateTime: d(13, 30) } },
-      { id: 'e3', summary: 'Q1 brief review', start: { dateTime: d(16) }, end: { dateTime: d(16, 45) } }
+      { id: 'e1', summary: 'Weekly sync', start: { dateTime: d(10) }, end: { dateTime: d(10, 30) }, color: '#039be5', hangoutLink: 'https://meet.google.com/abc-defg-hij' },
+      { id: 'e2', summary: 'Lunch', start: { dateTime: d(12, 30) }, end: { dateTime: d(13, 30) }, color: '#33b679' },
+      { id: 'e3', summary: 'Q1 brief review', start: { dateTime: d(16) }, end: { dateTime: d(16, 45) }, color: '#f4511e', location: 'https://example.zoom.us/j/123456789' },
+      { id: 'e4', summary: 'Late call', start: { dateTime: d(23, 30) }, end: { dateTime: d(23, 59) }, color: '#8e24aa', description: 'Join: https://teams.microsoft.com/l/meetup-join/abc' }
     ]);
   },
   listTasks: () => wait(tasks.filter((x) => x.status !== 'completed')),
