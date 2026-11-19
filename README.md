@@ -97,6 +97,13 @@ npm run build      # production files in dist/
 npm run package    # dist/ plus docs zipped into release/
 ```
 
+### Releasing
+
+1. Bump `version` in `package.json` and merge to `main`.
+2. Push a matching tag (`git tag v0.5.0 && git push origin v0.5.0`), or create a release on GitHub with that tag.
+
+Either way, the Release workflow builds the install zip and attaches it to the release as `maillo-<version>.zip` and `maillo.zip`. The latest one is always at `https://github.com/<owner>/<repo>/releases/latest/download/maillo.zip`. Use that zip to install, not GitHub's "Source code" zip, which is the unbuilt repo.
+
 Local development needs `http://localhost:5173` listed as an authorised JavaScript origin on your OAuth client, or use `?demo`.
 
 ### Project layout
