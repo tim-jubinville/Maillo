@@ -200,8 +200,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
                 {inInbox && <span class="tag">{t('nav.inbox')}</span>}
                 {pile && <span class="tag aside-tag"><CIcon name={PILE_ICON[pile]} size={14} />{t(pileKey(pile, 'title'))}</span>}
                 {userLabels.map((l) => (
-                  <span class="tag removable">
-                    <span class="dot" style={{ background: labelColor(l) }} />
+                  <span class="tag lbl removable" style={{ '--lc': labelColor(l) }}>
+                    <span class="dot" />
                     <span class="ell">{labelDisplayName(l)}</span>
                     <button class="x" aria-label={t('compose.removeRecipient', { name: l.name })} onClick={() => actions.label(id, [], [l.id])}>
                       <Icon name="x" size={12} />
