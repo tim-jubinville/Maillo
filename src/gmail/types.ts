@@ -136,6 +136,8 @@ export interface CalendarEvent {
   end?: { dateTime?: string; date?: string };
   htmlLink?: string;
   colorId?: string;
+  /** The event's colour label on its calendar (Calendar's custom colours). */
+  eventLabelId?: string;
   location?: string;
   description?: string;
   hangoutLink?: string;

@@ -282,15 +282,29 @@ export const gmailBackend: MailBackend = {
   todayEvents: async () => {
     const from = startOfDay();
     const to = new Date(from.getTime() + 86_400_000);
-    const [r, cal] = await Promise.all([
+    const hex = (c?: string) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : undefined);
+    const [r, cal, labelled] = await Promise.all([
+      // eventLabelVersion=1 makes Google include each event's label (Calendar's colour labels since mid-2026).
       request<{ items?: CalendarEvent[] }>('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-        query: { timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: true, orderBy: 'startTime', maxResults: 20 }
+        query: { timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: true, orderBy: 'startTime', maxResults: 20, eventLabelVersion: 1 }
       }),
       // The calendar's own colour, for events without one. Needs the calendar-list permission; falls back to Google's default.
-      request<{ backgroundColor?: string }>('https://www.googleapis.com/calendar/v3/users/me/calendarList/primary').catch(() => ({ backgroundColor: undefined }))
+      request<{ backgroundColor?: string }>('https://www.googleapis.com/calendar/v3/users/me/calendarList/primary').catch(() => ({ backgroundColor: undefined })),
+      // The calendar's colour labels (id → colour). Needs the calendars permission; without it, labelled events use the older colours.
+      request<{ labelProperties?: { eventLabels?: { id?: string; backgroundColor?: string }[] } }>('https://www.googleapis.com/calendar/v3/calendars/primary', {
+        query: { fields: 'labelProperties', eventLabelVersion: 1 }
+      }).catch(() => ({ labelProperties: undefined }))
     ]);
-    const base = cal.backgroundColor && /^#[0-9a-f]{6}$/i.test(cal.backgroundColor) ? cal.backgroundColor : CALENDAR_DEFAULT;
-    return (r.items ?? []).map((e) => ({ ...e, color: (e.colorId && EVENT_COLORS[e.colorId]) || base }));
+    const labels = new Map<string, string>();
+    for (const l of labelled.labelProperties?.eventLabels ?? []) {
+      const c = hex(l.backgroundColor);
+      if (l.id && c) labels.set(l.id, c);
+    }
+    const base = hex(cal.backgroundColor) ?? CALENDAR_DEFAULT;
+    return (r.items ?? []).map((e) => ({
+      ...e,
+      color: (e.eventLabelId && labels.get(e.eventLabelId)) || (e.colorId && EVENT_COLORS[e.colorId]) || base
+    }));
   },
   listTasks: async () => {
     const r = await request<{ items?: TaskItem[] }>('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
