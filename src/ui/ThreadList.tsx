@@ -2,6 +2,7 @@ import { useRef } from 'preact/hooks';
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type ThreadRow } from '../model';
 import { getPrefs } from '../prefs';
+import { dropZone, endDrag, startThreadDrag } from '../dnd';
 import { CATEGORIES, go, listHash, type Category, type MailRoute } from '../route';
 import { actions, loadList, pileOf, PILES, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
 import { Avatar, Ribbon } from './common';
@@ -159,7 +160,16 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
   const canAside = !r.labelIds.includes('SPAM') && !r.labelIds.includes('TRASH') && !(r.hasDraft && r.count <= 1 && !r.labelIds.includes('INBOX'));
   const cls = ['row', compact ? 'compact' : '', r.unread ? 'unread' : '', checked ? 'chk' : open ? 'sel' : '', focus ? 'focus' : ''].join(' ');
   return (
-    <div class={cls} role="listitem" data-id={r.id} onClick={() => openRow(r.id)}>
+    <div
+      class={`${cls} ${s.dragging === 'label' ? 'drop-ok' : ''}`}
+      role="listitem"
+      data-id={r.id}
+      onClick={() => openRow(r.id)}
+      draggable
+      onDragStart={(e) => startThreadDrag(e, checked ? [...s.selected] : [r.id])}
+      onDragEnd={endDrag}
+      {...dropZone('label', ([labelId]) => actions.label(checked ? [...s.selected] : [r.id], [labelId], []))}
+    >
       <input
         type="checkbox"
         class="cb"
@@ -216,7 +226,7 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
         <span class="row-acts">
           {PILES.map((p) => {
             const here = pile === p;
-            const label = here ? t('act.backToInbox') : t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action');
+            const label = here ? t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action') : t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action');
             return (
               <button
                 class="row-act"
@@ -244,7 +254,8 @@ function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: str
   const width = useWidth(bar);
   const countW = useWidth(count);
   const folder = route.folder;
-  const anyUnread = s.list.rows.some((r) => s.selected.has(r.id) && r.unread);
+  const selRows = s.list.rows.filter((r) => s.selected.has(r.id));
+  const anyUnread = selRows.some((r) => r.unread);
   const items: BarItem[] = [
     ...(folder === 'spam'
       ? [{ id: 'notspam', group: 1, prio: 10, w: 104, label: t('act.notSpam'), icon: 'spam' as const, text: true, run: () => actions.notSpam(sel) }]
@@ -254,9 +265,12 @@ function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: str
             { id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, run: () => actions.archive(sel) },
             { id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, run: () => actions.spam(sel) },
             { id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, run: () => actions.trash(sel) },
-            ...PILES.filter((p) => !(route.label && route.label === s.piles[p].labelId)).map((p, i) => ({
-              id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], run: () => actions.pin(p, sel)
-            }))
+            ...PILES.map((p, i) => {
+              const inPile = selRows.length > 0 && selRows.every((r) => pileOf(r.labelIds) === p);
+              return inPile
+                ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: 'inbox' as const, run: () => actions.unpin(sel, true) }
+                : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], run: () => actions.pin(p, sel) };
+            })
           ]),
     { id: 'read', group: 2, prio: 7, w: 38, label: anyUnread ? t('act.markRead') : t('act.markUnread'), icon: anyUnread ? 'mail' : 'unread', run: () => actions.read(sel, anyUnread) },
     { id: 'star', group: 2, prio: 5.5, w: 38, label: t('list.star'), icon: 'starred', run: () => actions.star(sel, true) },

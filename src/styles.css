@@ -720,3 +720,30 @@ a:hover { color: var(--violet); }
 .app-hero .for-dark { display: none; }
 [data-mode='dark'] .app-hero .for-dark { display: block; }
 [data-mode='dark'] .app-hero .for-light { display: none; }
+
+/* Drag and drop */
+.drag-ghost {
+  position: fixed; top: 0; left: -1000px; padding: 7px 14px; border-radius: 999px; white-space: nowrap;
+  background: var(--accent); color: #fff; font: 600 13px/1.2 Inter, system-ui, sans-serif; box-shadow: 0 6px 18px rgba(20, 33, 61, 0.25);
+}
+.row[draggable='true'] { -webkit-user-drag: element; }
+.nav.drop-ok { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
+.nav.drop-on, .row.drop-on { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent); color: var(--ink); }
+.pile.drop-ok .pile-card.d0 { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent), 0 10px 28px rgba(20, 33, 61, 0.14); }
+.pile.drop-on .pile-card.d0 { box-shadow: 0 0 0 2.5px var(--accent), 0 14px 34px rgba(20, 33, 61, 0.2); transform: translateY(-4px) scale(1.03); }
+.pile-empty .pile-card.d0 { border-style: dashed; background: color-mix(in srgb, var(--surface) 85%, transparent); }
+.pile-empty .pile-text b { font-weight: 600; }
+
+/* Fan cards: open the conversation, or take it out of the pile */
+.fan-card:not(.more) { padding: 0; }
+.fan-open { display: flex; flex-direction: column; gap: 7px; width: 100%; height: 100%; padding: 12px; text-align: left; color: inherit; border-radius: inherit; }
+.fan-open:focus-visible { outline: none; }
+.fan-card:has(.fan-open:focus-visible) { box-shadow: 0 0 0 2px var(--accent), 0 16px 40px rgba(20, 33, 61, 0.2); }
+.fan-x {
+  position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface-2); color: var(--ink-2); opacity: 0; transition: opacity 0.15s;
+}
+.fan-card:hover .fan-x, .fan-x:focus-visible { opacity: 1; }
+.fan-x:hover { background: var(--hover); color: var(--ink); }
+@media (hover: none) { .fan-x { opacity: 1; } }
+.fan-open .fan-top { padding-right: 20px; }
