@@ -94,7 +94,9 @@ a:hover { color: var(--violet); }
   background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); color: #fff; border-color: transparent;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 20%, transparent);
 }
-.btn.primary:hover:not(:disabled) { filter: brightness(1.08); color: #fff; }
+.btn.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); filter: brightness(1.08); color: #fff;
+}
 .btn.danger { color: var(--danger); }
 
 .chip {
