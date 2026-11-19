@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { config, configMissing } from '../config';
 import { t } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
@@ -8,10 +8,11 @@ import { actions, dismissToast, openCompose, pileLabelIds, setState, signInClick
 import { Brand, Menu, Photo } from './common';
 import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
+import { SearchBox } from './SearchBox';
 import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
-import { KeyHelp, SEARCH_KEY, useShortcuts } from './Keys';
+import { KeyHelp, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
 import { PileBar } from './Piles';
 import { Settings } from './Settings';
@@ -86,17 +87,6 @@ function SignIn({ s }: { s: AppState }) {
 }
 
 function Header({ s }: { s: AppState }) {
-  const r = s.route;
-  const [q, setQ] = useState(r.view === 'mail' && r.q !== undefined ? r.q : '');
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    setQ(r.view === 'mail' && r.q !== undefined ? r.q : '');
-  }, [r.view === 'mail' ? r.q : undefined]);
-  const submit = (e: Event) => {
-    e.preventDefault();
-    const v = q.trim();
-    go(v ? `#/search/${encodeURIComponent(v)}` : '#/inbox');
-  };
   const online = navigator.onLine;
   return (
     <header class="header">
@@ -114,26 +104,7 @@ function Header({ s }: { s: AppState }) {
         </button>
         <Brand />
       </div>
-      <form class="search" role="search" onSubmit={submit}>
-        <Icon name="search" />
-        <label for="mm-search" class="sr-only">{t('search.label')}</label>
-        <input
-          id="mm-search"
-          ref={input}
-          type="search"
-          value={q}
-          placeholder={t('search.placeholder')}
-          aria-keyshortcuts="Meta+K Control+K"
-          autoComplete="off"
-          onInput={(e) => setQ((e.target as HTMLInputElement).value)}
-        />
-        {q && (
-          <button type="button" class="ib sm" aria-label={t('search.clear')} onClick={() => { setQ(''); go('#/inbox'); }}>
-            <Icon name="x" />
-          </button>
-        )}
-        <span class="kbd" aria-hidden="true">{SEARCH_KEY}</span>
-      </form>
+      <SearchBox s={s} />
       <div class="header-right">
         <button class="ib" aria-label={t('header.help')} title={t('header.help')} onClick={() => setState({ showKeys: true })}>
           <Icon name="help" style={{ color: 'var(--c-sent)' }} />
