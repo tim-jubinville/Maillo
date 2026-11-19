@@ -19,6 +19,7 @@ import type { GLabel, GSendAs, MailBackend, NotesMap } from './gmail/types';
 import { t } from './i18n';
 import { listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs } from './prefs';
+import type { DragKind } from './dnd';
 import { CATEGORIES, go, listHash, parseHash, threadHash, type Category, type MailRoute, type Route } from './route';
 
 export const api: MailBackend = config.demo ? demoBackend : gmailBackend;
@@ -115,6 +116,8 @@ export interface AppState {
   piles: Record<PileId, Pile>;
   notes: NotesMap;
   noteEditing?: string;
+  /** What is being dragged, so drop targets can show themselves. */
+  dragging?: DragKind;
 }
 
 let state: AppState = {
@@ -741,7 +744,12 @@ function defaultFrom(): string {
 
 function signatureFor(email: string): string {
   const sig = state.sendAs.find((s) => s.sendAsEmail === email)?.signature;
-  return sig ? `<br><div class="mm-signature">-- <br>${sig}</div>` : '';
+  return sig ? `<br><div class="mm-signature">${signatureBlock(sig)}</div>` : '';
+}
+
+/** The signature, with Gmail's "-- " separator line unless turned off in Settings. */
+export function signatureBlock(sig: string): string {
+  return getPrefs().signatureDash ? `-- <br>${sig}` : sig;
 }
 
 function quoteHtml(m: ParsedMessage): string {

@@ -4,8 +4,9 @@ import { t } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
 import { getPrefs } from '../prefs';
 import { go, listHash, type Folder, type MailRoute } from '../route';
-import { dismissToast, openCompose, pileLabelIds, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
+import { actions, dismissToast, openCompose, pileLabelIds, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
 import { Brand, Menu, Photo } from './common';
+import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
@@ -206,11 +207,27 @@ function Sidebar({ s }: { s: AppState }) {
     .filter((l) => l.type === 'user' && l.labelListVisibility !== 'labelHide' && !pileIds.includes(l.id))
     .sort((a, b) => a.name.localeCompare(b.name));
   const count = (f: Folder) => (f === 'inbox' ? s.counts.INBOX : f === 'drafts' ? s.counts.DRAFT : f === 'spam' ? s.counts.SPAM : 0) ?? 0;
+  // Folders that conversations can be dragged onto, and what dropping there does.
+  const folderDrop: Partial<Record<Folder, (ids: string[]) => void>> = {
+    inbox: actions.moveToInbox,
+    starred: (ids) => actions.star(ids, true),
+    important: (ids) => actions.important(ids, true),
+    all: actions.archive,
+    spam: actions.spam,
+    trash: actions.trash
+  };
   const item = (f: Folder) => {
     const icon = FOLDER_ICON[f];
     const n = count(f);
+    const onDrop = !active(f) ? folderDrop[f] : undefined;
     return (
-      <a class={`nav ${active(f) ? 'on' : ''}`} href={`#/${f}`} aria-current={active(f) ? 'page' : undefined}>
+      <a
+        class={`nav ${active(f) ? 'on' : ''} ${onDrop && s.dragging === 'threads' ? 'drop-ok' : ''}`}
+        href={`#/${f}`}
+        aria-current={active(f) ? 'page' : undefined}
+        draggable={false}
+        {...(onDrop ? dropZone('threads', onDrop) : {})}
+      >
         <CIcon name={icon} size={24} />
         <span class="nav-t">{t(`nav.${f}`)}</span>
         {n > 0 && <span class={`nav-c ${f === 'inbox' ? '' : 'quiet'}`}>{n}</span>}
@@ -240,7 +257,16 @@ function Sidebar({ s }: { s: AppState }) {
         const depth = l.name.split('/').length - 1;
         const n = s.counts[l.id] ?? 0;
         return (
-          <a class={`nav ${on ? 'on' : ''}`} href={`#/label/${encodeURIComponent(l.id)}`} style={{ paddingLeft: `${12 + depth * 18}px` }} aria-current={on ? 'page' : undefined}>
+          <a
+            class={`nav ${on ? 'on' : ''} ${!on && s.dragging === 'threads' ? 'drop-ok' : ''}`}
+            href={`#/label/${encodeURIComponent(l.id)}`}
+            style={{ paddingLeft: `${12 + depth * 18}px` }}
+            aria-current={on ? 'page' : undefined}
+            draggable
+            onDragStart={(e) => startLabelDrag(e, l.id, labelDisplayName(l))}
+            onDragEnd={endDrag}
+            {...(!on ? dropZone('threads', (ids) => actions.moveTo(ids, l.id)) : {})}
+          >
             <span class="ldot" aria-hidden="true" style={{ background: labelColor(l) }} />
             <span class="nav-t">{labelDisplayName(l)}</span>
             {n > 0 && <span class="nav-c quiet">{n}</span>}

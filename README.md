@@ -15,11 +15,14 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Labels, including nested labels and label colours
 - Full Gmail search syntax (`from:`, `has:attachment`, `newer_than:7d`, and so on) with quick filter chips
 - Threaded conversations with collapsed earlier messages and hidden quoted text
-- Bulk actions: archive, delete, spam, read/unread, star, important, move, label
+- Bulk actions from a ribbon at the bottom of the list: archive, delete, spam, read/unread, star, important, move, label (extra actions fold into "…")
+- Move to and Label as open with a search field ready to type in; Enter picks the first match
+- Hover actions on each row: archive, delete, mark read/unread, set aside, Action required
+- Drag and drop: drag conversations (or the whole selection) onto a label, Inbox, Starred, Important, All mail, Spam, Trash or a pile; drag a label from the sidebar onto a conversation to apply it
 - Undo for archive, delete, spam, move and label changes
 - Reminders for important messages you have not answered ("Received 3 days ago. Reply?")
 - **Set aside**: pin conversations out of the inbox into a small stack of cards at the bottom of the screen. Click the stack to fan the cards out and pick one. Stored as a regular Gmail label, so it syncs everywhere.
-- **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. A conversation lives in one pile at a time.
+- **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. A conversation lives in one pile at a time. Take one out with the ✕ on its card, or with "Remove from…" on the row, the ribbon or the bulk ribbon; it goes back to the Inbox.
 - **Private notes**: stick a note on any conversation (for example "Paid on Nov 14"). Only you see it, it is never sent, and it syncs between devices through a hidden app folder in your Google Drive (optional, see `features.notes`).
 
 **Reading**
@@ -42,7 +45,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 **Settings**
 - Labels: create, rename, delete
 - Filters: list, create, delete
-- Signatures for each sending address
+- Signatures for each sending address, edited as rich text or HTML, with or without the `--` line
 - Vacation responder
 - Read-only status for forwarding, IMAP and POP
 - Display options: density, reading pane, inbox categories, images, page size, language, keyboard shortcuts

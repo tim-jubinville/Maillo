@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { fileToBase64, htmlToText, parseAddressList, type Address } from '../gmail/mime';
 import { t, type StringKey } from '../i18n';
 import { sizeLabel } from '../model';
-import { closeCompose, discardCompose, getState, saveDraft, sendCompose, updateCompose, type AppState, type ComposeState } from '../store';
+import { closeCompose, discardCompose, getState, saveDraft, sendCompose, signatureBlock, updateCompose, type AppState, type ComposeState } from '../store';
 import { Avatar } from './common';
 import { Icon } from './Icon';
 
@@ -232,7 +232,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
               style={{ color: 'var(--c-drafts)' }}
               aria-label={t('compose.signature')}
               title={t('compose.signature')}
-              onClick={() => exec('insertHTML', `<div>-- <br>${DOMPurify.sanitize(s.sendAs.find((x) => x.sendAsEmail === c.from)!.signature!)}</div>`)}
+              onClick={() => exec('insertHTML', `<div>${signatureBlock(DOMPurify.sanitize(s.sendAs.find((x) => x.sendAsEmail === c.from)!.signature!))}</div>`)}
             >
               <Icon name="signature" />
             </button>

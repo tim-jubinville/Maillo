@@ -5,7 +5,8 @@ import { go, threadHash, type MailRoute } from '../route';
 import { Avatar, useOutside } from './common';
 import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
-import { PILES, type AppState, type PileId } from '../store';
+import { actions, PILES, type AppState, type PileId } from '../store';
+import { dropZone } from '../dnd';
 import type { ColorIconName } from './ColorIcons';
 import type { StringKey } from '../i18n';
 
@@ -35,17 +36,33 @@ export function PileBar({ s }: { s: AppState }) {
   useEffect(() => {
     if (open && s.piles[open].rows.length < 2) setOpen(null);
   }, [open && s.piles[open].rows.length]);
-  const visible = PILES.filter((p) => s.piles[p].rows.length > 0);
+  const dragging = s.dragging === 'threads';
+  // While dragging conversations, every pile shows as a drop target, even an empty one.
+  const visible = PILES.filter((p) => dragging || s.piles[p].rows.length > 0);
   if (!visible.length) return null;
+  // Out of the way while the bulk-action ribbon is showing, unless something is being dragged to them.
+  const tucked = s.selected.size > 0 && !dragging;
   return (
-    <div ref={wrap} class={`pile-wrap ${open ? 'is-open' : ''}`}>
+    <div ref={wrap} class={`pile-wrap ${open ? 'is-open' : ''} ${tucked ? 'tucked' : ''}`} {...(tucked ? { inert: true } : {})}>
       {visible.map((p) => {
         const rows = s.piles[p].rows;
         const top = rows.slice(0, 3);
+        const drop = dropZone('threads', (ids) => actions.pin(p, ids));
+        if (!rows.length) {
+          return (
+            <div class={`pile pile-${p} pile-empty drop-ok`} {...drop}>
+              <span class="pile-card d0">
+                <CIcon name={PILE_ICON[p]} size={20} />
+                <span class="pile-text"><b class="ell">{t(pileKey(p, 'title'))}</b></span>
+              </span>
+            </div>
+          );
+        }
         return (
           <button
             ref={(el) => { refs.current[p] = el; }}
-            class={`pile pile-${p} ${open === p ? 'on' : ''}`}
+            {...drop}
+            class={`pile pile-${p} ${open === p ? 'on' : ''} ${dragging ? 'drop-ok' : ''}`}
             aria-label={t(pileKey(p, 'open'), { n: rows.length })}
             aria-expanded={rows.length > 1 ? open === p : undefined}
             aria-haspopup={rows.length > 1 ? 'true' : undefined}
@@ -102,7 +119,7 @@ function Fan({ s, pile, rows, onClose }: { s: AppState; pile: PileId; rows: Thre
   }, []);
 
   const onKey = (e: KeyboardEvent) => {
-    const btns = [...(ref.current?.querySelectorAll<HTMLElement>('.fan-card') ?? [])];
+    const btns = [...(ref.current?.querySelectorAll<HTMLElement>('.fan-open, .fan-card.more') ?? [])];
     const i = btns.indexOf(document.activeElement as HTMLElement);
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
@@ -147,9 +164,9 @@ function Fan({ s, pile, rows, onClose }: { s: AppState; pile: PileId; rows: Thre
       onPointerLeave={() => setPx(null)}
     >
       {cards.map((r, i) => (
+        <div class={`fan-card ${r.id === s.open?.id ? 'cur' : ''}`} style={place(i)}>
         <button
-          class={`fan-card ${r.id === s.open?.id ? 'cur' : ''}`}
-          style={place(i)}
+          class="fan-open"
           onFocus={() => setPx(xOf(i))}
           onClick={() => {
             onClose(false);
@@ -167,6 +184,16 @@ function Fan({ s, pile, rows, onClose }: { s: AppState; pile: PileId; rows: Thre
             {r.attachment && <Icon name="clip" size={12} />}
           </span>
         </button>
+        <button
+          class="fan-x"
+          aria-label={`${t(pile === 'aside' ? 'act.unpin.aside' : 'act.unpin.action')}: ${r.subject || t('list.noSubject')}`}
+          title={t(pile === 'aside' ? 'act.unpin.aside' : 'act.unpin.action')}
+          onFocus={() => setPx(xOf(i))}
+          onClick={() => actions.unpin([r.id], true)}
+        >
+          <Icon name="x" size={14} />
+        </button>
+        </div>
       ))}
       {extra > 0 && (
         <button
