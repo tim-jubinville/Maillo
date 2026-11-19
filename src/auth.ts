@@ -36,7 +36,9 @@ const HINT_KEY = 'maillo.hint';
 export const SCOPES = (() => {
   const s = [
     'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.settings.basic'
+    'https://www.googleapis.com/auth/gmail.settings.basic',
+    // Name and profile photo only, for the account button.
+    'https://www.googleapis.com/auth/userinfo.profile'
   ];
   if (config.features.calendar) s.push('https://www.googleapis.com/auth/calendar.events.readonly');
   if (config.features.tasks) s.push('https://www.googleapis.com/auth/tasks');

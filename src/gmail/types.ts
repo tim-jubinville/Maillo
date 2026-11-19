@@ -118,6 +118,11 @@ export interface GProfile {
   historyId?: string;
 }
 
+export interface GUserInfo {
+  name?: string;
+  picture?: string;
+}
+
 export interface CalendarEvent {
   id: string;
   summary?: string;
@@ -153,6 +158,7 @@ export interface ListThreadsParams {
 export interface MailBackend {
   readonly demo: boolean;
   profile(): Promise<GProfile>;
+  userInfo(): Promise<GUserInfo>;
   listLabels(): Promise<GLabel[]>;
   getLabel(id: string): Promise<GLabel>;
   createLabel(name: string): Promise<GLabel>;

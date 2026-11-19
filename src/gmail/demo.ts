@@ -233,6 +233,7 @@ function attachToThread(msg: GMessage, threadId?: string): GThread {
 export const demoBackend: MailBackend = {
   demo: true,
   profile: () => wait({ emailAddress: ME, messagesTotal: 18904, threadsTotal: 2431 }),
+  userInfo: () => wait({ name: 'You' }),
   listLabels: () => wait(labels),
   getLabel: (id) => {
     const l = labels.find((x) => x.id === id)!;

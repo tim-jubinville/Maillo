@@ -38,6 +38,7 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 |---|---|
 | `https://www.googleapis.com/auth/gmail.modify` | Read, label, archive, delete, send mail and manage drafts |
 | `https://www.googleapis.com/auth/gmail.settings.basic` | Filters, signatures, vacation responder, forwarding status |
+| `https://www.googleapis.com/auth/userinfo.profile` | Your name and profile photo for the account button. Without it, Maillo shows your initial |
 | `https://www.googleapis.com/auth/calendar.events.readonly` | Optional: today's agenda |
 | `https://www.googleapis.com/auth/tasks` | Optional: Tasks panel and "Add to Tasks" |
 | `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes. Only gives access to Maillo's own hidden folder, not your Drive files |

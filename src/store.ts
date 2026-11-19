@@ -95,6 +95,8 @@ export interface AppState {
   deniedEmail?: string;
   sessionExpired: boolean;
   me: string;
+  /** Google profile photo URL for the signed-in account, when available. */
+  mePhoto?: string;
   route: Route;
   labels: GLabel[];
   counts: Record<string, number>;
@@ -252,6 +254,7 @@ async function start() {
     setState({ phase: 'ready', me: p.emailAddress, route: parseHash(), sessionExpired: false });
     loadLabels().then(() => loadPiles());
     loadSendAs();
+    loadUserInfo();
     loadNotes();
     await loadList(true);
     const r = state.route;
@@ -260,6 +263,16 @@ async function start() {
   } catch (e) {
     if (e instanceof AuthRequired) setState({ phase: 'signin' });
     else setState({ phase: 'signin', authError: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+// Optional: installs or sessions without the profile scope keep the initial.
+async function loadUserInfo() {
+  try {
+    const u = await api.userInfo();
+    if (u.picture && /^https:\/\//.test(u.picture)) setState({ mePhoto: u.picture });
+  } catch {
+    /* keep the initial */
   }
 }
 

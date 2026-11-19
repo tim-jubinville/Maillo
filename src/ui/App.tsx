@@ -5,7 +5,7 @@ import { labelColor, labelDisplayName } from '../model';
 import { getPrefs } from '../prefs';
 import { go, listHash, type Folder, type MailRoute } from '../route';
 import { dismissToast, openCompose, pileLabelIds, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
-import { Brand, Menu } from './common';
+import { Brand, Menu, Photo } from './common';
 import { Compose } from './Compose';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
@@ -136,7 +136,7 @@ function Header({ s }: { s: AppState }) {
           label={t('header.account', { email: s.me })}
           class="avatar-btn"
           align="right"
-          button={<span aria-hidden="true">{(s.me[0] || '?').toUpperCase()}</span>}
+          button={<span aria-hidden="true"><Photo src={s.mePhoto} fallback={(s.me[0] || '?').toUpperCase()} /></span>}
         >
           {(close) => (
             <>
