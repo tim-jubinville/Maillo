@@ -100,7 +100,7 @@ function ownPhoto(email: string): string | undefined {
 }
 
 export function Avatar({ a, size = '' }: { a: Address; size?: '' | 'sm' | 'lg' | 'xl' }) {
-  const photo = ownPhoto(a.email);
+  const photo = ownPhoto(a.email) ?? getState().contactPhotos[a.email.toLowerCase()];
   if (photo) {
     return (
       <span class={`av ${size}`} aria-hidden="true">

@@ -159,6 +159,8 @@ export interface MailBackend {
   readonly demo: boolean;
   profile(): Promise<GProfile>;
   userInfo(): Promise<GUserInfo>;
+  /** Photo URLs by lower-case email address, from Google Contacts and the Workspace directory. */
+  contactPhotos(): Promise<Record<string, string>>;
   listLabels(): Promise<GLabel[]>;
   getLabel(id: string): Promise<GLabel>;
   createLabel(name: string): Promise<GLabel>;

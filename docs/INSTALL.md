@@ -19,6 +19,7 @@ The setup takes about 20 minutes.
    - **Google Calendar API** (only if you turn on the calendar panel)
    - **Google Tasks API** (only if you turn on the tasks panel)
    - **Google Drive API** (only if you turn on private notes)
+   - **People API** (only if you turn on contact photos)
    - **Generative Language API** (only if you turn on AI; see "Optional: AI with Gemini" below)
 
 ## 2. Configure the consent screen
@@ -42,6 +43,9 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 | `https://www.googleapis.com/auth/calendar.events.readonly` | Optional: today's agenda |
 | `https://www.googleapis.com/auth/tasks` | Optional: Tasks panel and "Add to Tasks" |
 | `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes. Only gives access to Maillo's own hidden folder, not your Drive files |
+| `https://www.googleapis.com/auth/contacts.readonly` | Optional: contact photos, from your Google Contacts |
+| `https://www.googleapis.com/auth/contacts.other.readonly` | Optional: contact photos, from "Other contacts" (people you've emailed) |
+| `https://www.googleapis.com/auth/directory.readonly` | Optional: contact photos of colleagues, from your Workspace directory |
 
 ## 3. Create the OAuth Client ID
 
@@ -126,6 +130,7 @@ window.MAILLO_CONFIG = {
 | `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
 | `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
 | `setAsideLabel` | Gmail label used for the Set aside pile. Maillo creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
+| `features.contactPhotos` | Shows people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory. Read-only; photos are fetched once per browser session. Adds the three contacts/directory permissions and needs the People API. |
 | `features.ai` | Turns on the Gemini relay (`ai.php`) and **Settings → AI**. Needs a PHP host. See "Optional: AI with Gemini". |
 | `aiModel` | Gemini model used by the relay. Empty uses `gemini-flash-latest`. |
 | `aiDailyLimit` | Maximum AI requests per account per day. `0` uses the default (300). |
@@ -224,6 +229,7 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 | Notes say they could not be saved or loaded | Enable the Google Drive API, add the `drive.appdata` scope, set `features.notes` to `true`, then sign out and in again. |
 | Settings → AI says ai.php is not reachable | The host does not run PHP, or `ai.php` was not uploaded. |
 | "Google rejected this key" | Enable the Generative Language API in the key's project, and check the key's API restrictions. |
+| Contact photos don't appear | Enable the People API, add the three contacts/directory scopes, set `features.contactPhotos` to `true`, then sign out and in again. Only people with a photo in Contacts or the directory get one. |
 | Calendar or Tasks panel is empty | Enable the API in Google Cloud, add the scope, set the feature to `true`, then sign out and in again. |
 | No Install button in Settings | The browser doesn't offer one (Safari, Firefox), the site isn't on HTTPS, or Maillo is already installed. Follow the steps shown on the page. |
 | Notifications don't appear | Check that the site is allowed to notify in the browser's site settings and in your system's notification settings (macOS: System Settings → Notifications → your browser; Windows: Settings → System → Notifications), and that Focus or Do Not Disturb is off. |

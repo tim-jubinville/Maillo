@@ -234,6 +234,7 @@ export const demoBackend: MailBackend = {
   demo: true,
   profile: () => wait({ emailAddress: ME, messagesTotal: 18904, threadsTotal: 2431 }),
   userInfo: () => wait({ name: 'You' }),
+  contactPhotos: () => wait({}),
   listLabels: () => wait(labels),
   getLabel: (id) => {
     const l = labels.find((x) => x.id === id)!;

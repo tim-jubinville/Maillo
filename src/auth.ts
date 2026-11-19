@@ -43,6 +43,13 @@ export const SCOPES = (() => {
   if (config.features.calendar) s.push('https://www.googleapis.com/auth/calendar.events.readonly');
   if (config.features.tasks) s.push('https://www.googleapis.com/auth/tasks');
   if (config.features.notes) s.push('https://www.googleapis.com/auth/drive.appdata');
+  if (config.features.contactPhotos) {
+    s.push(
+      'https://www.googleapis.com/auth/contacts.readonly',
+      'https://www.googleapis.com/auth/contacts.other.readonly',
+      'https://www.googleapis.com/auth/directory.readonly'
+    );
+  }
   return s;
 })();
 
