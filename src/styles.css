@@ -122,7 +122,8 @@ a:hover { color: var(--violet); }
 /* App shell */
 .app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; min-height: 560px; }
 /* Rail and side icons are both 68px wide; the avatar's centre lines up with the side icons (34px from the edge). */
-.header { display: flex; align-items: center; gap: 16px; padding: 10px 15px 10px 16px; }
+/* Three columns so the search sits in the true centre of the window, whatever is on either side. */
+.header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 10px 15px 10px 16px; }
 .header .brandbox { display: flex; align-items: center; gap: 0; width: 290px; flex: none; }
 .header .brandbox > .ib:first-child { margin-right: 16px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; }
@@ -140,19 +141,19 @@ a:hover { color: var(--violet); }
 .wordmark { display: block; flex: none; color: var(--ink); overflow: visible; }
 /* Quiet and compact until focused, then it widens and turns solid. */
 .search {
-  flex: 0 1 340px; max-width: 780px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 14px;
+  width: min(340px, 34vw); max-width: 780px; justify-self: center; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 14px;
   background: color-mix(in srgb, var(--surface) 38%, transparent); border: 1px solid color-mix(in srgb, var(--surface) 55%, transparent);
   border-radius: 999px; box-shadow: none; color: var(--ink-2);
-  transition: flex-basis 0.22s ease, background-color 0.18s, box-shadow 0.18s, border-color 0.18s;
+  transition: width 0.22s ease, background-color 0.18s, box-shadow 0.18s, border-color 0.18s;
 }
 .search:hover { background: color-mix(in srgb, var(--surface) 55%, transparent); }
-.search:focus-within { flex-basis: 680px; background: var(--surface); border-color: var(--edge); box-shadow: 0 6px 20px rgba(20, 33, 61, 0.1); color: var(--muted); }
+.search:focus-within { width: min(680px, 52vw); background: var(--surface); border-color: var(--edge); box-shadow: 0 6px 20px rgba(20, 33, 61, 0.1); color: var(--muted); }
 .search .kbd { background: transparent; }
 .search:focus-within .kbd { background: var(--surface); }
 @media (prefers-reduced-motion: reduce) { .search { transition: none; } }
 .search input { flex: 1; min-width: 0; border: 0; outline: none; font-size: 15px; color: var(--ink); background: transparent; }
 .kbd { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; flex: none; background: var(--surface); }
-.header-right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.header-right { justify-self: end; margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .header .ib:hover, .side-icons .sp:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
 .acct-h { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px; color: var(--ink); }
 .acct-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
@@ -526,9 +527,10 @@ a:hover { color: var(--violet); }
   .card:not(.reading) .readcol { display: none; }
   .readscroll { padding-bottom: 32px; }
   .msg-body { padding-left: 0; }
-  .header { gap: 8px; flex-wrap: wrap; }
+  .header { display: flex; gap: 8px; flex-wrap: wrap; }
   .header .brand-name { font-size: 18px; }
-  .search { order: 3; flex-basis: 100%; }
+  .search { order: 3; flex-basis: 100%; width: auto; }
+  .search:focus-within { width: auto; }
   .compose, .compose.max { right: 0; left: 0; bottom: 0; transform: none; width: 100%; max-width: none; height: 100dvh; border-radius: 0; }
   .settings { padding: 8px 10px 40px; }
   .snav { position: static; width: 100%; flex: 1 1 100%; flex-direction: row; overflow-x: auto; }
