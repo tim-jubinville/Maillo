@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { config } from '../config';
+import { config, configMissing } from '../config';
 import { t } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
 import { getPrefs } from '../prefs';
@@ -60,6 +60,8 @@ function SignIn({ s }: { s: AppState }) {
         <h1>{t('auth.title')}</h1>
         {s.phase === 'denied' ? (
           <p class="err">{t('auth.notAllowed', { email: s.deniedEmail ?? '' })}</p>
+        ) : configMissing && !config.demo ? (
+          <p class="err" role="alert">{t('auth.configError')}</p>
         ) : !config.googleClientId && !config.demo ? (
           <p>{t('auth.missingClient')}</p>
         ) : (

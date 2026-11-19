@@ -215,6 +215,7 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 | Problem | Fix |
 |---|---|
 | "This install is not configured yet" | `googleClientId` is empty in `config.js`. |
+| "config.js could not be read" | `config.js` is missing or has a syntax error. Open `https://your-address/config.js` to check it: every text value needs straight quotes (`"you@example.com"`, not `you@example.com` or curly quotes), and every line in the list needs its comma. If the file looks right, purge the Cloudflare cache (if you use it) and reload. |
 | `redirect_uri_mismatch` or `origin_mismatch` | The address in the browser does not exactly match an authorised JavaScript origin (check `https`, `www`, and the port). |
 | `access_denied` | Your account is not a test user (External, Testing) or not in the organisation (Internal). |
 | "… is not allowed on this install" | The account is not listed in `allowedAccounts` or `allowedDomains`. |

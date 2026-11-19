@@ -94,7 +94,9 @@ a:hover { color: var(--violet); }
   background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); color: #fff; border-color: transparent;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 20%, transparent);
 }
-.btn.primary:hover:not(:disabled) { filter: brightness(1.08); color: #fff; }
+.btn.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent-hi), var(--accent) 60%); filter: brightness(1.08); color: #fff;
+}
 .btn.danger { color: var(--danger); }
 
 .chip {
@@ -168,6 +170,7 @@ a:hover { color: var(--violet); }
   display: flex; align-items: center; justify-content: center;
 }
 
+.sidebar > * { flex-shrink: 0; }
 .sidebar { width: 236px; flex: 0 0 236px; overflow-y: auto; padding: 16px 10px 16px 12px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--line-soft); background: var(--sidebar-bg); }
 .compose-btn {
   display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px 0 18px; margin: 0 0 14px; border-radius: 999px;
@@ -241,6 +244,11 @@ a:hover { color: var(--violet); }
 .tab.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
 .chips { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid rgba(213, 218, 229, 0.7); overflow-x: auto; scrollbar-width: none; }
 .rows { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+.rows.in { animation: rows-in 220ms ease-out; }
+.rows.in.from-right { --rows-from: 14px; }
+.rows.in.from-left { --rows-from: -14px; }
+@keyframes rows-in { from { opacity: 0; transform: translateX(var(--rows-from, 0)); } }
+.tab.on > span:last-child { animation: fadein 200ms ease-out; }
 .listhead { flex: none; border-bottom: 1px solid var(--line-soft); background: var(--surface); }
 .listhead .tabs, .listhead .chips { border-top: 1px solid var(--line-soft); }
 .row { display: flex; align-items: flex-start; gap: 4px; padding: 12px 14px 12px 6px; border-bottom: 1px solid var(--row-line); cursor: pointer; position: relative; }

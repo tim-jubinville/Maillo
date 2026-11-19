@@ -1,3 +1,4 @@
+import { useRef } from 'preact/hooks';
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type ThreadRow } from '../model';
 import { getPrefs } from '../prefs';
@@ -41,6 +42,15 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
     const next = q.includes(token) ? q.replace(token, '').replace(/\s+/g, ' ').trim() : `${q} ${token}`.trim();
     go(`#/search/${encodeURIComponent(next)}`);
   };
+  // Slide the list in from the side of the category tab that was picked.
+  const catIndex = showTabs ? CATEGORIES.indexOf(route.category) : -1;
+  const lastCat = useRef(catIndex);
+  const slide = useRef('');
+  if (catIndex !== lastCat.current) {
+    slide.current = catIndex >= 0 && lastCat.current >= 0 ? (catIndex > lastCat.current ? 'from-right' : 'from-left') : '';
+    lastCat.current = catIndex;
+  }
+  const rowsKey = `${s.list.key}|${s.list.loading && !rows.length ? 'loading' : 'ready'}`;
 
   return (
     <section class={`listcol ${split ? 'split' : 'full'}`} aria-label={t('list.label')}>
@@ -134,7 +144,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
 
       </div>
 
-      <div class="rows" role="list">
+      <div class={`rows ${showTabs ? `in ${slide.current}` : ''}`} role="list" key={rowsKey}>
         {s.list.loading && !rows.length && Array.from({ length: 6 }, () => <div class="skeleton" />)}
         {s.list.error && !rows.length && (
           <div class="empty">
