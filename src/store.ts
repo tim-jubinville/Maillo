@@ -741,7 +741,12 @@ function defaultFrom(): string {
 
 function signatureFor(email: string): string {
   const sig = state.sendAs.find((s) => s.sendAsEmail === email)?.signature;
-  return sig ? `<br><div class="mm-signature">-- <br>${sig}</div>` : '';
+  return sig ? `<br><div class="mm-signature">${signatureBlock(sig)}</div>` : '';
+}
+
+/** The signature, with Gmail's "-- " separator line unless turned off in Settings. */
+export function signatureBlock(sig: string): string {
+  return getPrefs().signatureDash ? `-- <br>${sig}` : sig;
 }
 
 function quoteHtml(m: ParsedMessage): string {

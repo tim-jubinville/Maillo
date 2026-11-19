@@ -42,7 +42,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 **Settings**
 - Labels: create, rename, delete
 - Filters: list, create, delete
-- Signatures for each sending address
+- Signatures for each sending address, edited as rich text or HTML, with or without the `--` line
 - Vacation responder
 - Read-only status for forwarding, IMAP and POP
 - Display options: density, reading pane, inbox categories, images, page size, language, keyboard shortcuts

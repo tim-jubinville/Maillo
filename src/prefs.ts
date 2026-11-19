@@ -34,6 +34,8 @@ export interface Prefs {
   sidebarCollapsed: boolean;
   mode: 'system' | 'light' | 'dark';
   theme: string;
+  /** Put a "-- " line above the signature, like Gmail does by default. */
+  signatureDash: boolean;
   notify: NotifyPrefs;
 }
 
@@ -51,6 +53,7 @@ const defaults: Prefs = {
   sidebarCollapsed: false,
   mode: 'system',
   theme: '',
+  signatureDash: true,
   notify: {
     enabled: false,
     scope: 'primary',

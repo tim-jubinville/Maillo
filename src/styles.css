@@ -466,6 +466,15 @@ a:hover { color: var(--violet); }
 .sw[aria-checked='true'] { background: linear-gradient(135deg, var(--accent-hi), var(--accent)); }
 .sw[aria-checked='true']::after { left: 21px; }
 .input, .select, .textarea { height: 38px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; background: var(--surface); font-size: 14px; min-width: 0; }
+.sig-box { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.sig-bar { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--line-soft); background: var(--surface-2); }
+.sig-bar .ib:disabled { opacity: .35; cursor: default; }
+.sig-bar .sig-src { margin-left: auto; }
+.sig-bar .sig-src[aria-pressed='true'] { background: var(--hover); color: var(--ink); }
+.sig-ed { min-height: 96px; max-height: 320px; overflow: auto; padding: 12px 14px; font-size: 14px; line-height: 1.5; outline: none; }
+.sig-ed:focus-visible, .sig-code:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.sig-ed img { max-width: 100%; height: auto; }
+.sig-code { display: block; width: 100%; min-height: 140px; border: 0; padding: 12px 14px; resize: vertical; background: transparent; color: var(--ink); font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; outline: none; }
 .textarea { height: auto; min-height: 110px; padding: 10px 12px; width: 100%; resize: vertical; font-family: inherit; line-height: 1.5; }
 .frow { display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-top: 1px solid var(--row-line); flex-wrap: wrap; }
 .token { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--cloud); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); }
@@ -562,6 +571,9 @@ a:hover { color: var(--violet); }
 [data-mode='dark'] .brand-logo.mono { filter: brightness(0) invert(1); }
 [data-mode='dark'] { --logo-color: color-mix(in srgb, var(--accent) 35%, #ffffff); }
 [data-mode='dark'] .row.unread .row-from, [data-mode='dark'] .row.unread .row-subject { color: #ffffff; }
+/* Signatures often hard-code dark text, so they sit on paper in dark mode, like HTML emails. */
+[data-mode='dark'] .sig-ed { background: #ffffff; color: #14213d; }
+[data-mode='dark'] .sig-ed a { color: #1a4fd6; }
 [data-mode='dark'] .msg-body .paper { background: #ffffff; padding: 14px 16px; }
 [data-mode='dark'] .tag.important { color: #f5dc8a; }
 [data-mode='dark'] .calbox { background: var(--surface-2); }

@@ -138,7 +138,7 @@ const labels: GLabel[] = [
   { id: 'Label_action', name: 'Action required', type: 'user' }
 ];
 
-let sendAs: GSendAs[] = [{ sendAsEmail: ME, displayName: 'Demo User', isPrimary: true, isDefault: true, signature: '<div>Demo User</div>' }];
+let sendAs: GSendAs[] = [{ sendAsEmail: ME, displayName: 'Demo User', isPrimary: true, isDefault: true, signature: '<div><b>Demo User</b></div><div><a href="mailto:you@example.com">you@example.com</a></div><div style="color:#000000">555 0100</div>' }];
 let vacation: GVacation = { enableAutoReply: false, responseSubject: '', responseBodyPlainText: '' };
 let filters: GFilter[] = [
   { id: 'f1', criteria: { from: '@studio.example' }, action: { addLabelIds: ['Label_work', 'IMPORTANT'] } },
