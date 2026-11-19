@@ -98,6 +98,8 @@ export interface AppState {
   me: string;
   /** Google profile photo URL for the signed-in account, when available. */
   mePhoto?: string;
+  /** Full name of the signed-in Google account. */
+  meName?: string;
   /** Contact photo URLs by lower-case email (empty unless features.contactPhotos is on). */
   contactPhotos: Record<string, string>;
   route: Route;
@@ -323,6 +325,7 @@ async function loadUserInfo() {
   try {
     const u = await api.userInfo();
     if (u.picture && /^https:\/\//.test(u.picture)) setState({ mePhoto: u.picture });
+    if (u.name?.trim()) setState({ meName: u.name.trim() });
   } catch {
     /* keep the initial */
   }
@@ -923,7 +926,8 @@ function outgoing(c: ComposeState) {
   const sa = state.sendAs.find((s) => s.sendAsEmail === c.from);
   const html = `<div dir="auto">${c.html}${c.quoted ? `<br>${c.quoted}` : ''}</div>`;
   return buildMime({
-    from: { name: sa?.displayName ?? '', email: c.from },
+    // Like Gmail: without a name set on the address, send under the account's own name.
+    from: { name: sa?.displayName || state.meName || '', email: c.from },
     to: c.to,
     cc: c.cc,
     bcc: c.bcc,
@@ -1044,6 +1048,15 @@ export async function sendCompose() {
     if (e instanceof AuthRequired) fail(e);
     else toast(t('toast.sendFailed'));
   }
+}
+
+/** A person's display name; your own addresses use their send-as name or your Google account name. */
+export function personName(a: Address): string {
+  if (a.name) return a.name;
+  const e = a.email.toLowerCase();
+  const own = state.sendAs.find((x) => x.sendAsEmail.toLowerCase() === e);
+  if (own || e === state.me.toLowerCase()) return own?.displayName || state.meName || displayName(a);
+  return displayName(a);
 }
 
 export function senderName(a: Address) {
