@@ -222,28 +222,22 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
           )}
         </span>
       </button>
-      {canAside && (
-        <span class="row-acts">
-          {PILES.map((p) => {
-            const here = pile === p;
-            const label = here ? t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action') : t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action');
-            return (
-              <button
-                class="row-act"
-                aria-label={label}
-                title={label}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (here) actions.unpin([r.id], true);
-                  else actions.pin(p, [r.id]);
-                }}
-              >
-                <CIcon name={here ? 'inbox' : PILE_ICON[p]} size={17} />
-              </button>
-            );
-          })}
-        </span>
-      )}
+      <span class="row-acts">
+        {r.labelIds.includes('INBOX') && <RowAct label={t('act.archive')} icon="archive" run={() => actions.archive([r.id])} />}
+        {!r.labelIds.includes('TRASH') && <RowAct label={t('act.delete')} icon="trash" run={() => actions.trash([r.id])} />}
+        <RowAct label={r.unread ? t('act.markRead') : t('act.markUnread')} icon={r.unread ? 'mail' : 'unread'} run={() => actions.read([r.id], r.unread)} />
+        {canAside && <span class="row-sep" aria-hidden="true" />}
+        {canAside && PILES.map((p) => {
+          const here = pile === p;
+          return (
+            <RowAct
+              label={here ? t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action') : t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action')}
+              icon={here ? 'inbox' : PILE_ICON[p]}
+              run={() => (here ? actions.unpin([r.id], true) : actions.pin(p, [r.id]))}
+            />
+          );
+        })}
+      </span>
     </div>
   );
 }
@@ -291,5 +285,22 @@ function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: str
         <button class="ib clear-sel" aria-label={t('list.clearSelection')} title={t('list.clearSelection')} onClick={() => selectAll(false)}><Icon name="x" /></button>
       </div>
     </Ribbon>
+  );
+}
+
+function RowAct({ label, icon, run }: { label: string; icon: ColorIconName; run: () => void }) {
+  return (
+    <button
+      class="row-act"
+      aria-label={label}
+      title={label}
+      draggable={false}
+      onClick={(e) => {
+        e.stopPropagation();
+        run();
+      }}
+    >
+      <CIcon name={icon} size={17} />
+    </button>
   );
 }

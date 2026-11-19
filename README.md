@@ -17,6 +17,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Threaded conversations with collapsed earlier messages and hidden quoted text
 - Bulk actions from a ribbon at the bottom of the list: archive, delete, spam, read/unread, star, important, move, label (extra actions fold into "…")
 - Move to and Label as open with a search field ready to type in; Enter picks the first match
+- Hover actions on each row: archive, delete, mark read/unread, set aside, Action required
 - Drag and drop: drag conversations (or the whole selection) onto a label, Inbox, Starred, Important, All mail, Spam, Trash or a pile; drag a label from the sidebar onto a conversation to apply it
 - Undo for archive, delete, spam, move and label changes
 - Reminders for important messages you have not answered ("Received 3 days ago. Reply?")
