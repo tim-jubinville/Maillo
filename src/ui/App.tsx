@@ -126,22 +126,25 @@ function Header({ s }: { s: AppState }) {
         <span class="kbd" aria-hidden="true">{SEARCH_KEY}</span>
       </form>
       <div class="header-right">
-        <span class="status">
-          <span class={`glowdot ${online ? '' : 'off'}`} aria-hidden="true" />
-          {config.demo ? t('header.demo') : online ? t('header.synced') : t('header.offline')}
-        </span>
         <button class="ib" aria-label={t('header.help')} title={t('header.help')} onClick={() => setState({ showKeys: true })}>
           <Icon name="help" style={{ color: 'var(--c-sent)' }} />
         </button>
         <Menu
           label={t('header.account', { email: s.me })}
-          class="avatar-btn"
+          class={`avatar-btn ${online || config.demo ? '' : 'offline'}`}
           align="right"
+          hover
           button={<span aria-hidden="true"><Photo src={s.mePhoto} fallback={(s.me[0] || '?').toUpperCase()} /></span>}
         >
           {(close) => (
             <>
-              <div class="pop-h">{s.me}</div>
+              <div class="pop-h acct-h">
+                <span class="ell">{s.me}</span>
+                <span class="acct-status">
+                  <span class={`glowdot ${online ? '' : 'off'}`} aria-hidden="true" />
+                  {config.demo ? t('header.demo') : online ? t('header.synced') : t('header.offline')}
+                </span>
+              </div>
               <a class="mi" href="#/settings/general" onClick={close}><Icon name="gear" />{t('header.settings')}</a>
               {!config.demo && (
                 <button class="mi" onClick={() => { close(); signInClick(true); }}><Icon name="user" />{t('auth.switch')}</button>

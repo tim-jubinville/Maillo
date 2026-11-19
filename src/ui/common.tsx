@@ -152,7 +152,8 @@ export function Menu({
   children,
   align = 'left',
   class: cls = 'ib',
-  style
+  style,
+  hover
 }: {
   button: ComponentChildren;
   label: string;
@@ -160,12 +161,28 @@ export function Menu({
   align?: 'left' | 'right';
   class?: string;
   style?: Record<string, string>;
+  /** Also open while the pointer rests on it (devices with hover only). */
+  hover?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const ref = useOutside(open, close);
+  const timer = useRef<number | undefined>(undefined);
+  const canHover = hover && window.matchMedia('(hover: hover)').matches;
+  const hoverProps = canHover
+    ? {
+        onMouseEnter: () => {
+          clearTimeout(timer.current);
+          setOpen(true);
+        },
+        onMouseLeave: () => {
+          clearTimeout(timer.current);
+          timer.current = window.setTimeout(close, 220);
+        }
+      }
+    : {};
   return (
-    <div class="menu-wrap" ref={ref}>
+    <div class="menu-wrap" ref={ref} {...hoverProps}>
       <button class={cls} style={style} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
         {button}
       </button>
