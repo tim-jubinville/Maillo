@@ -263,8 +263,18 @@ a:hover { color: var(--violet); }
 .list-ribbon .sel-n { animation: fadein 140ms ease-out; }
 .list-ribbon.joined { margin-right: -1px; border-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon { left: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.listcol.split:has(.list-ribbon.joined) { border-right-color: transparent; }
-.listcol.split:has(.list-ribbon.joined) ~ .readcol { border-left: 1px solid var(--line-soft); }
+/* The list ribbon reaches over the column divider, so the two read as one bar with no line between. */
+.list-ribbon.joined { z-index: 9; }
+/* Same backing on both halves so the joined bar has one even tone, and shadows that only fall downward (no seam). */
+.list-ribbon.joined, .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
+  background: var(--ribbon-bg), var(--surface);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 22px -14px rgba(20, 33, 61, 0.28);
+}
+[data-mode='dark'] .list-ribbon.joined, [data-mode='dark'] .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 22px -14px rgba(0, 0, 0, 0.6);
+}
+.list-ribbon.joined::after { content: ''; position: absolute; top: -1px; bottom: -1px; right: -2px; width: 3px; background: inherit; }
 .ib.pressed, .row-act.pressed { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); box-shadow: inset 0 1px 3px rgba(20, 33, 61, 0.18); }
 .ribbon .ib.pressed:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, var(--surface)); box-shadow: inset 0 1px 3px rgba(20, 33, 61, 0.22); }
 [data-mode='dark'] .ib.pressed, [data-mode='dark'] .row-act.pressed { background: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4); }
