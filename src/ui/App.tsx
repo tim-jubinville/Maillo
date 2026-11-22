@@ -8,6 +8,7 @@ import { actions, dismissToast, openCompose, pileLabelIds, setState, signInClick
 import { Brand, Menu, Photo } from './common';
 import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
+import { composeInWindow, PopoutWindow } from './Popout';
 import { SearchBox } from './SearchBox';
 import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
@@ -52,7 +53,12 @@ export function App() {
         <SideIcons s={s} />
       </div>
       <PileBar s={s} />
-      {s.compose && <Compose key={s.compose.key} s={s} c={s.compose} />}
+      {s.compose && !s.compose.popout && <Compose key={s.compose.key} s={s} c={s.compose} />}
+      {s.compose?.popout && (
+        <PopoutWindow title={s.compose.subject || t('compose.new')}>
+          <Compose key={`pop-${s.compose.key}`} s={s} c={s.compose} />
+        </PopoutWindow>
+      )}
       <Toasts s={s} />
       {s.showKeys && <KeyHelp />}
     </div>
@@ -217,7 +223,7 @@ function Sidebar({ s }: { s: AppState }) {
   };
   return (
     <nav class={`sidebar ${s.sidebarOpen ? 'open' : ''}`} aria-label={t('nav.mailboxes')}>
-      <button class="compose-btn" onClick={() => openCompose()}>
+      <button class="compose-btn" title={t('compose.shiftHint')} onClick={(e) => (e.shiftKey ? composeInWindow() : openCompose())}>
         <Icon name="pencil" />
         {t('nav.compose')}
       </button>
