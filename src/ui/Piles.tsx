@@ -174,6 +174,8 @@ function Fan({ s, pile, rows, leaving, onClose }: { s: AppState; pile: PileId; r
       aria-label={t(pileKey(pile, 'fan'))}
       onKeyDown={onKey}
       onPointerMove={(e) => {
+        // Over the "Go through all" button: no card should grow toward the pointer and cover it.
+        if ((e.target as Element).closest?.('.fan-all')) return setPx(null);
         const box = ref.current?.getBoundingClientRect();
         if (box) setPx(e.clientX - (box.left + box.width / 2));
       }}
