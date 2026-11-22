@@ -18,7 +18,7 @@ const KEEP_BACKUPS = 3;
 const PROTECTED_PATHS = ['config.js', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
 const MAX_LOGO = 1024 * 1024;
 // Server files shipped in the release; any other .php file in a package is refused.
-const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php'];
+const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php'];
 const ALLOWED_EXT = ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'woff', 'woff2', 'txt', 'webmanifest', 'map', 'htaccess'];
 
 $root = __DIR__;

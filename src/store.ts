@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { config, isAllowedAccount } from './config';
-import { currentToken, onAuthChange, prepareAuth, rememberAccount, signIn, signOut, tokenExpiresSoon } from './auth';
+import { currentToken, hasServerSession, onAuthChange, prepareAuth, rememberAccount, renewFromServer, signIn, signOut, staySignedIn, tokenExpiresSoon } from './auth';
 import { AuthRequired, gmailBackend, pool, RateLimited } from './gmail/api';
 import { demoBackend } from './gmail/demo';
 import {
@@ -20,6 +20,7 @@ import { t } from './i18n';
 import { CATEGORY_LABEL, listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
+import { startSync } from './sync';
 import { CATEGORIES, go, listHash, parseHash, threadHash, type Category, type MailRoute, type Route } from './route';
 
 export const api: MailBackend = config.demo ? demoBackend : gmailBackend;
@@ -284,8 +285,21 @@ export async function boot() {
     lastRenew = Date.now();
     signIn().catch(() => undefined);
   }, true);
+  // Timers sleep with the tab or the computer; catch up when it's back.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && hasServerSession() && (tokenExpiresSoon() || !currentToken())) renewFromServer().catch(() => undefined);
+  });
   onAuthChange(() => {
-    if (!config.demo && state.phase === 'ready' && !currentToken()) setState({ sessionExpired: true });
+    if (config.demo || state.phase !== 'ready' || currentToken()) return;
+    // With a lasting session, a lapsed token is renewed quietly instead of asking to sign in.
+    if (hasServerSession()) {
+      renewFromServer().then((ok) => {
+        if (ok) setState({ sessionExpired: false });
+        else if (!currentToken()) setState({ sessionExpired: true });
+      });
+      return;
+    }
+    setState({ sessionExpired: true });
   });
   if (config.demo) return start();
   if (!config.googleClientId) return setState({ phase: 'signin' });
@@ -293,6 +307,11 @@ export async function boot() {
     await prepareAuth();
   } catch (e) {
     return setState({ phase: 'signin', authError: e instanceof Error ? e.message : String(e) });
+  }
+  if (staySignedIn()) {
+    // Signed in on this device before: get a token from the server, no Google popup.
+    if (currentToken()) renewFromServer().catch(() => undefined);
+    else if (await renewFromServer().catch(() => false)) return start();
   }
   if (currentToken()) return start();
   setState({ phase: 'signin' });
@@ -319,8 +338,8 @@ export async function signInClick(switchAccount = false) {
   }
 }
 
-export function signOutClick() {
-  signOut();
+export async function signOutClick() {
+  await signOut().catch(() => undefined);
   clearRowCache();
   sessionStorage.removeItem(PHOTO_CACHE);
   location.hash = '';
@@ -344,6 +363,7 @@ async function start() {
     loadUserInfo();
     loadContactPhotos();
     loadNotes();
+    startSync(api);
     await loadList(true);
     const r = state.route;
     if (r.view === 'mail' && r.thread) openThread(r.thread);

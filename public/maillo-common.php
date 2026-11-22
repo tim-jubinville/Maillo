@@ -48,6 +48,7 @@ function read_config(string $root): array
         'aiModel' => $str('aiModel'),
         'aiDailyLimit' => preg_match('/\baiDailyLimit\s*:\s*(\d+)/', $js, $m) ? (int) $m[1] : 0,
         'aiEnabled' => (bool) preg_match('/\bai\s*:\s*true\b/', $js),
+        'staySignedIn' => (bool) preg_match('/\bstaySignedIn\s*:\s*true\b/', $js),
         'accounts' => $list('allowedAccounts'),
         'domains' => array_map(function ($d) {
             return ltrim($d, '@');
@@ -115,12 +116,51 @@ function http_post_json(string $url, array $payload, array $headers = []): array
     return [$code, is_string($res) ? json_decode($res, true) : null];
 }
 
+function http_post_form(string $url, array $fields): array
+{
+    $body = http_build_query($fields);
+    $headers = ['Content-Type: application/x-www-form-urlencoded'];
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => $headers,
+        ]);
+        $res = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+    } else {
+        $ctx = stream_context_create(['http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", $headers),
+            'content' => $body,
+            'timeout' => 20,
+            'ignore_errors' => true,
+        ]]);
+        $res = @file_get_contents($url, false, $ctx);
+        $code = 0;
+        if (isset($http_response_header[0]) && preg_match('/\s(\d{3})(\s|$)/', $http_response_header[0], $m)) {
+            $code = (int) $m[1];
+        }
+    }
+    return [$code, is_string($res) ? json_decode($res, true) : null];
+}
+
 function authorize(array $cfg): string
 {
     $token = (string) ($_POST['token'] ?? '');
     if ($token === '' || !preg_match('/^[A-Za-z0-9._\-~+\/]+=*$/', $token)) {
         fail(401, 'no_token');
     }
+    return check_account($cfg, $token);
+}
+
+/** Checks that an access token was issued to this install's client, for an allowed account; returns the address. */
+function check_account(array $cfg, string $token): string
+{
     if ($cfg['clientId'] === '') {
         fail(403, 'not_configured');
     }
