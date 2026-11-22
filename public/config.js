@@ -49,8 +49,10 @@ window.MAILLO_CONFIG = {
     staySignedIn: false,        // stay signed in on each device instead of a new Google sign-in
                                 // every hour (session.php, PHP hosts). Add the OAuth client
                                 // secret in Settings > Account; it is stored on the server.
-    syncSettings: false         // keep Maillo's settings the same on all your devices, through
+    syncSettings: false,        // keep Maillo's settings the same on all your devices, through
                                 // a hidden app folder in Google Drive (needs the Drive API)
+    keep: false                 // Google Keep side panel (Workspace only: needs the Keep API and an
+                                // admin to allow it, see INSTALL.md). Without it, Keep is hidden.
   },
 
   // Gemini model used by the AI relay, and how many AI requests each account may

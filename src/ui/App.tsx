@@ -286,7 +286,8 @@ function MailCard({ s, route }: { s: AppState; route: MailRoute }) {
 function SideIcons({ s }: { s: AppState }) {
   const items: { id: NonNullable<AppState['panel']>; icon: ColorIconName; label: string }[] = [
     { id: 'calendar', icon: 'calendar', label: t('panel.calendar') },
-    { id: 'keep', icon: 'keep', label: t('panel.keep') },
+    // Keep's API only exists for Google Workspace with an admin's approval, so it's opt-in.
+    ...(config.features.keep || config.demo ? [{ id: 'keep' as const, icon: 'keep' as const, label: t('panel.keep') }] : []),
     { id: 'tasks', icon: 'tasks', label: t('panel.tasks') },
     { id: 'contacts', icon: 'contacts', label: t('panel.contacts') }
   ];
@@ -300,7 +301,7 @@ function SideIcons({ s }: { s: AppState }) {
           aria-pressed={s.panel === i.id}
           onClick={() => setState({ panel: s.panel === i.id ? undefined : i.id })}
         >
-          <CIcon name={i.icon} size={26} />
+          <CIcon name={i.icon} size={20} />
         </button>
       ))}
     </div>

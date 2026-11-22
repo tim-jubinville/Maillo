@@ -283,8 +283,8 @@ a:hover { color: var(--violet); }
 .settings-card { display: flex; }
 .settings-card .settings { flex: 1; }
 .settings-card .section { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border: 1px solid var(--line-soft); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.06); }
-.side-icons { width: 68px; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 4px; }
-.sp { position: relative; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.side-icons { width: 56px; flex: 0 0 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 4px; }
+.sp { position: relative; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 .sp .ic { width: 20px; height: 20px; stroke-width: 1.9; }
 .sp:hover { background: var(--hover); }
 .sp.on .cic { transform: scale(1.08); }
@@ -481,6 +481,36 @@ body.resizing iframe { pointer-events: none; }
 .panel { width: var(--w-panel, 300px); flex: 0 0 var(--w-panel, 300px); border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; background: var(--surface-2); }
 .panel-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 18px; border-bottom: 1px solid var(--line-soft); height: calc(var(--head-h) + 1px); flex: none; font-weight: 600; }
 .panel-body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+/* Empty side panels: a soft icon medallion, a title and a hint. */
+.pempty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 28px 12px 18px; animation: fadein 0.25s ease-out; }
+.pempty-art { position: relative; width: 96px; height: 96px; display: grid; place-items: center; margin-bottom: 8px; }
+.pempty-art .cic { position: relative; filter: drop-shadow(0 6px 10px rgba(20, 33, 61, 0.14)); }
+.pempty-ring { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--pe, var(--accent)) 16%, var(--surface)), color-mix(in srgb, var(--pe, var(--accent)) 6%, transparent) 70%); }
+.pempty-ring.r2 { inset: -12px; background: none; border: 1.5px dashed color-mix(in srgb, var(--pe, var(--accent)) 22%, transparent); animation: pempty-spin 40s linear infinite; }
+@keyframes pempty-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pempty-ring.r2 { animation: none; } }
+.pempty-calendar { --pe: var(--c-inbox); }
+.pempty-tasks { --pe: var(--c-sent); }
+.pempty-keep { --pe: #E0A400; }
+.pempty-contacts { --pe: var(--c-scheduled); }
+.pempty b { font-size: calc(15px * var(--ts, 1)); font-weight: 700; color: var(--ink); }
+.pempty > span { font-size: calc(13px * var(--ts, 1)); color: var(--muted); max-width: 260px; line-height: 1.45; }
+.pempty-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.keep-new { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-soft); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.06); }
+.keep-new input, .keep-new textarea { border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; resize: none; padding: 2px 0; }
+.keep-new input { font-weight: 600; }
+.keep-new textarea { font-size: calc(13px * var(--ts, 1)); }
+.keep-new .btn { align-self: flex-end; }
+.keep-note { align-items: flex-start; }
+.keep-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: calc(13px * var(--ts, 1)); }
+.keep-body p { margin: 0; white-space: pre-wrap; color: var(--ink-2); overflow-wrap: anywhere; }
+.keep-body ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.keep-body li { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.keep-body li.done { text-decoration: line-through; color: var(--muted); }
+.keep-body li.more { color: var(--muted); }
+.keep-del { opacity: 0; color: var(--muted); }
+.keep-note:hover .keep-del, .keep-del:focus-visible { opacity: 1; }
+@media (hover: none) { .keep-del { opacity: 1; } }
 .pcard { display: flex; gap: 12px; padding: 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-soft); }
 .pcard .bar { width: 3px; border-radius: 2px; flex: none; background: var(--c-inbox); }
 /* Calendar events: bar in the event's Google Calendar colour, optional Join button. */

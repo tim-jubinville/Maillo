@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'preact/hooks';
 import { config } from '../config';
-import type { CalendarEvent, TaskItem } from '../gmail/types';
+import type { CalendarEvent, KeepNote, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
 import { api, setState, toast, type AppState } from '../store';
+import { CIcon, type ColorIconName } from './ColorIcons';
 import { ContactsPanel } from './ContactsPanel';
 import { Icon } from './Icon';
 
@@ -20,10 +21,26 @@ export function SidePanel({ s }: { s: AppState }) {
       <div class="panel-body">
         {p === 'calendar' && <Calendar />}
         {p === 'tasks' && <Tasks />}
-        {p === 'keep' && <OpenLink name={t('panel.keep')} href={config.links.keep} />}
+        {p === 'keep' && <Keep />}
         {p === 'contacts' && <ContactsPanel s={s} />}
       </div>
     </aside>
+  );
+}
+
+/** A friendly empty panel: a big icon, a line or two, and what to do next. */
+export function PanelEmpty({ icon, title, sub, children }: { icon: ColorIconName; title: string; sub?: string; children?: preact.ComponentChildren }) {
+  return (
+    <div class={`pempty pempty-${icon}`}>
+      <span class="pempty-art" aria-hidden="true">
+        <span class="pempty-ring" />
+        <span class="pempty-ring r2" />
+        <CIcon name={icon} size={40} />
+      </span>
+      <b>{title}</b>
+      {sub && <span>{sub}</span>}
+      {children && <div class="pempty-actions">{children}</div>}
+    </div>
   );
 }
 
@@ -65,13 +82,18 @@ function Calendar() {
     if (!config.features.calendar && !config.demo) return;
     api.todayEvents().then(setEvents).catch((e) => toast(t('toast.error', { msg: e.message })));
   }, []);
-  if (!config.features.calendar && !config.demo) return <OpenLink name={t('panel.calendar')} href={config.links.calendar} hint />;
+  if (!config.features.calendar && !config.demo)
+    return (
+      <PanelEmpty icon="calendar" title={t('empty.calOffTitle')} sub={t('empty.calOff')}>
+        <OpenLink name={t('panel.calendar')} href={config.links.calendar} />
+      </PanelEmpty>
+    );
   const today = new Date().toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' });
   return (
     <>
       <span class="caps">{t('panel.today')} · {today}</span>
       {events === null && <div class="skeleton" style={{ margin: 0 }} />}
-      {events?.length === 0 && <p style={{ margin: 0, color: 'var(--muted)' }}>{t('panel.noEvents')}</p>}
+      {events?.length === 0 && <PanelEmpty icon="calendar" title={t('panel.noEvents')} sub={t('empty.calSub')} />}
       {events?.map((e) => {
         const join = joinLink(e);
         const ended = !!e.end?.dateTime && new Date(e.end.dateTime).getTime() < Date.now();
@@ -103,7 +125,12 @@ function Tasks() {
   useEffect(() => {
     if (config.features.tasks || config.demo) load();
   }, []);
-  if (!config.features.tasks && !config.demo) return <OpenLink name={t('panel.tasks')} href="https://tasks.google.com/" hint />;
+  if (!config.features.tasks && !config.demo)
+    return (
+      <PanelEmpty icon="tasks" title={t('empty.tasksOffTitle')} sub={t('empty.tasksOff')}>
+        <OpenLink name={t('panel.tasks')} href="https://tasks.google.com/" />
+      </PanelEmpty>
+    );
   return (
     <>
       <form
@@ -119,7 +146,7 @@ function Tasks() {
         <input id="task-new" class="input" style={{ width: '100%' }} placeholder={t('panel.addTask')} value={title} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} />
       </form>
       {items === null && <div class="skeleton" style={{ margin: 0 }} />}
-      {items?.length === 0 && <p style={{ margin: 0, color: 'var(--muted)' }}>{t('panel.noTasks')}</p>}
+      {items?.length === 0 && <PanelEmpty icon="tasks" title={t('panel.noTasks')} sub={t('empty.tasksSub')} />}
       {items?.map((k) => (
         <label class="pcard" style={{ cursor: 'pointer', alignItems: 'flex-start' }}>
           <input
@@ -140,3 +167,95 @@ function Tasks() {
   );
 }
 
+
+function Keep() {
+  const [notes, setNotes] = useState<KeepNote[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const on = config.features.keep || config.demo;
+  const load = () =>
+    api.listKeepNotes().then(
+      (n) => {
+        setNotes(n);
+        setFailed(false);
+      },
+      () => setFailed(true)
+    );
+  useEffect(() => {
+    if (on) load();
+  }, []);
+  if (!on)
+    return (
+      <PanelEmpty icon="keep" title={t('empty.keepOffTitle')} sub={t('empty.keepOff')}>
+        <OpenLink name={t('panel.keep')} href={config.links.keep} />
+      </PanelEmpty>
+    );
+  const add = async (e: Event) => {
+    e.preventDefault();
+    if (!title.trim() && !text.trim()) return;
+    setBusy(true);
+    try {
+      const n = await api.createKeepNote(title.trim(), text.trim());
+      setNotes((cur) => [n, ...(cur ?? [])]);
+      setTitle('');
+      setText('');
+    } catch (er) {
+      toast(t('toast.error', { msg: er instanceof Error ? er.message : String(er) }));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (n: KeepNote) => {
+    if (!confirm(t('keep.deleteConfirm'))) return;
+    setNotes((cur) => cur?.filter((x) => x.name !== n.name) ?? null);
+    try {
+      await api.deleteKeepNote(n.name);
+    } catch (er) {
+      toast(t('toast.error', { msg: er instanceof Error ? er.message : String(er) }));
+      load();
+    }
+  };
+  return (
+    <>
+      <form class="keep-new" onSubmit={add}>
+        <label class="sr-only" for="keep-title">{t('keep.title')}</label>
+        <input id="keep-title" class="bare" placeholder={t('keep.title')} value={title} disabled={busy} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} />
+        <label class="sr-only" for="keep-text">{t('keep.take')}</label>
+        <textarea id="keep-text" class="bare" rows={2} placeholder={t('keep.take')} value={text} disabled={busy}
+          onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') add(e);
+          }}
+        />
+        {(title.trim() || text.trim()) && <button class="btn sm primary" disabled={busy}>{t('keep.add')}</button>}
+      </form>
+      {failed && (
+        <PanelEmpty icon="keep" title={t('keep.failedTitle')} sub={t('keep.failed')}>
+          <button class="btn sm" onClick={load}>{t('list.retry')}</button>
+        </PanelEmpty>
+      )}
+      {!failed && notes === null && <div class="skeleton" style={{ margin: 0 }} />}
+      {!failed && notes?.length === 0 && <PanelEmpty icon="keep" title={t('keep.none')} sub={t('keep.noneSub')} />}
+      {notes?.map((n) => (
+        <div class="pcard keep-note">
+          <div class="keep-body">
+            {n.title && <b>{n.title}</b>}
+            {n.text && <p>{n.text.length > 400 ? `${n.text.slice(0, 400)}…` : n.text}</p>}
+            {n.items && (
+              <ul>
+                {n.items.slice(0, 8).map((i) => (
+                  <li class={i.checked ? 'done' : ''}><Icon name={i.checked ? 'check' : 'square'} size={13} />{i.text}</li>
+                ))}
+                {n.items.length > 8 && <li class="more">{t('pile.more', { n: n.items.length - 8 })}</li>}
+              </ul>
+            )}
+          </div>
+          <button class="ib sm keep-del" aria-label={t('keep.delete')} title={t('keep.delete')} onClick={() => remove(n)}><Icon name="trash" size={15} /></button>
+        </div>
+      ))}
+      <OpenLink name={t('panel.keep')} href={config.links.keep} />
+    </>
+  );
+}
