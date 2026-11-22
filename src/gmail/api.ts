@@ -22,6 +22,7 @@ import type {
 } from './types';
 
 const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const META_HEADERS = ['From', 'To', 'Subject', 'Date', 'Content-Type'];
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -45,38 +46,185 @@ function qs(q?: Query): string {
   return s ? `?${s}` : '';
 }
 
-async function request<T>(url: string, init: RequestInit & { query?: Query } = {}, attempt = 0): Promise<T> {
+/** Google's rate-limit answers: 429, or 403 with one of these reasons. */
+function isRateLimit(status: number, reason?: string): boolean {
+  return status === 429 || (status === 403 && /rateLimitExceeded|userRateLimitExceeded|quotaExceeded/i.test(reason ?? ''));
+}
+
+export class RateLimited extends ApiError {}
+
+// Gmail charges "quota units" per call (threads.get 10, threads.list 10, history 2…) with a per-user cap of 15,000 a minute.
+// Spending is tracked here so bursts slow down instead of failing.
+const UNIT_BUDGET = 11_000;
+const spent: { at: number; units: number }[] = [];
+let inFlight = 0;
+const waiting: (() => void)[] = [];
+const MAX_IN_FLIGHT = 8;
+
+function unitsFor(url: string, method: string): number {
+  if (!url.startsWith(GMAIL)) return 0;
+  const path = url.slice(GMAIL.length);
+  if (path.startsWith('/history')) return 2;
+  if (/^\/labels\/[^/]+$/.test(path) && method === 'GET') return 1;
+  if (path.startsWith('/labels') || path.startsWith('/settings') || path === '/profile') return 1;
+  if (/\/(send)$/.test(path)) return 100;
+  if (/\/attachments\//.test(path)) return 5;
+  return 10;
+}
+
+async function budget(units: number) {
+  if (!units) return;
+  for (;;) {
+    const now = Date.now();
+    while (spent.length && now - spent[0].at > 60_000) spent.shift();
+    const used = spent.reduce((n, x) => n + x.units, 0);
+    if (used + units <= UNIT_BUDGET || !spent.length) break;
+    await new Promise((r) => setTimeout(r, Math.min(5_000, 60_000 - (now - spent[0].at) + 50)));
+  }
+  spent.push({ at: Date.now(), units });
+}
+
+async function slot<T>(run: () => Promise<T>): Promise<T> {
+  if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>((r) => waiting.push(r));
+  inFlight++;
+  try {
+    return await run();
+  } finally {
+    inFlight--;
+    waiting.shift()?.();
+  }
+}
+
+function retryDelay(res: Response, attempt: number): number {
+  const after = Number(res.headers.get('Retry-After'));
+  if (after > 0) return Math.min(after, 30) * 1000;
+  return 800 * 2 ** attempt + Math.random() * 400;
+}
+
+async function request<T>(url: string, init: RequestInit & { query?: Query; units?: number } = {}, attempt = 0): Promise<T> {
   const token = currentToken();
   if (!token) throw new AuthRequired();
-  const res = await fetch(url + qs(init.query), {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init.headers ?? {})
-    }
-  });
+  if (attempt === 0) await budget(init.units ?? unitsFor(url, init.method ?? 'GET'));
+  const res = await slot(() =>
+    fetch(url + qs(init.query), {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body && typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+        ...(init.headers ?? {})
+      }
+    })
+  );
   if (res.status === 401) {
     dropSession();
     throw new AuthRequired();
   }
-  if ((res.status === 429 || res.status >= 500) && attempt < 3) {
-    await new Promise((r) => setTimeout(r, 400 * 2 ** attempt + Math.random() * 200));
-    return request<T>(url, init, attempt + 1);
-  }
+  let msg = res.statusText;
+  let reason: string | undefined;
   if (!res.ok) {
-    let msg = res.statusText;
     try {
-      const j = await res.json();
+      const j = await res.clone().json();
       msg = j?.error?.message || msg;
+      reason = j?.error?.errors?.[0]?.reason || j?.error?.status;
     } catch {
       /* empty */
     }
+  }
+  const limited = isRateLimit(res.status, reason || msg);
+  if ((limited || res.status >= 500) && attempt < 4) {
+    await new Promise((r) => setTimeout(r, retryDelay(res, attempt)));
+    return request<T>(url, init, attempt + 1);
+  }
+  if (!res.ok) {
+    if (limited) throw new RateLimited(res.status, msg);
     throw new ApiError(res.status, msg);
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
+  if ((init as { raw?: boolean }).raw) return text as T;
   return (text ? JSON.parse(text) : undefined) as T;
+}
+
+const BATCH = 'https://www.googleapis.com/batch/gmail/v1';
+const BATCH_SIZE = 20;
+
+/**
+ * Sends several Gmail GET requests in one HTTP call (Google's batch endpoint). Quota is the same,
+ * but it's far faster than dozens of separate requests. Parts that fail are retried one by one.
+ */
+async function batchGet<T>(paths: string[]): Promise<(T | undefined)[]> {
+  const out: (T | undefined)[] = new Array(paths.length);
+  const chunks: number[][] = [];
+  for (let i = 0; i < paths.length; i += BATCH_SIZE) chunks.push(paths.slice(i, i + BATCH_SIZE).map((_, j) => i + j));
+  await Promise.all(
+    chunks.map(async (idx) => {
+      const retry: number[] = [];
+      if (idx.length === 1) retry.push(idx[0]);
+      else {
+        const boundary = 'batch_maillo_' + Math.random().toString(36).slice(2);
+        const body =
+          idx
+            .map((i) => `--${boundary}\r\nContent-Type: application/http\r\nContent-ID: <p${i}>\r\n\r\nGET /gmail/v1/users/me${paths[i]}\r\n`)
+            .join('\r\n') + `\r\n--${boundary}--`;
+        try {
+          const units = idx.reduce((n, i) => n + unitsFor(GMAIL + paths[i].split('?')[0], 'GET'), 0);
+          const raw = await request<string>(BATCH, {
+            method: 'POST',
+            body,
+            units,
+            headers: { 'Content-Type': `multipart/mixed; boundary=${boundary}` },
+            // The response is multipart text, not JSON.
+            ...({ raw: true } as object)
+          }).catch((e) => {
+            if (e instanceof AuthRequired) throw e;
+            return '';
+          });
+          const parsed = parseBatch(typeof raw === 'string' ? raw : '');
+          for (const i of idx) {
+            const part = parsed.get(`p${i}`);
+            if (part && part.status >= 200 && part.status < 300) out[i] = part.body as T;
+            else if (part && part.status === 404) out[i] = undefined;
+            else retry.push(i);
+          }
+        } catch (e) {
+          if (e instanceof AuthRequired) throw e;
+          retry.push(...idx);
+        }
+      }
+      for (const i of retry) {
+        try {
+          out[i] = await request<T>(GMAIL + paths[i]);
+        } catch (e) {
+          if (e instanceof AuthRequired || e instanceof RateLimited) throw e;
+          if (!(e instanceof ApiError && e.status === 404)) throw e;
+        }
+      }
+    })
+  );
+  return out;
+}
+
+/** Splits a batch response into its parts, by Content-ID. */
+export function parseBatch(text: string): Map<string, { status: number; body: unknown }> {
+  const out = new Map<string, { status: number; body: unknown }>();
+  const m = /^--(\S+)/m.exec(text);
+  if (!m) return out;
+  for (const chunk of text.split(`--${m[1]}`)) {
+    const id = /Content-ID:\s*<?response-([^>\s]+)>?/i.exec(chunk)?.[1];
+    const st = /HTTP\/[\d.]+\s+(\d{3})/.exec(chunk);
+    if (!id || !st) continue;
+    const start = chunk.indexOf('{');
+    let body: unknown;
+    if (start >= 0) {
+      try {
+        body = JSON.parse(chunk.slice(start, chunk.lastIndexOf('}') + 1));
+      } catch {
+        body = undefined;
+      }
+    }
+    out.set(id, { status: Number(st[1]), body });
+  }
+  return out;
 }
 
 const get = <T>(path: string, query?: Query) => request<T>(GMAIL + path, { query });
@@ -310,8 +458,27 @@ export const gmailBackend: MailBackend = {
   getThread: (id, format) =>
     get<GThread>(`/threads/${id}`, {
       format,
-      metadataHeaders: format === 'metadata' ? ['From', 'To', 'Subject', 'Date'] : undefined
+      metadataHeaders: format === 'metadata' ? META_HEADERS : undefined
     }),
+  getThreads: async (ids) => {
+    const res = await batchGet<GThread>(ids.map((id) => `/threads/${encodeURIComponent(id)}${qs({ format: 'metadata', metadataHeaders: META_HEADERS })}`));
+    return res;
+  },
+  getLabels: async (ids) => batchGet<GLabel>(ids.map((id) => `/labels/${encodeURIComponent(id)}`)),
+  history: async (start) => {
+    try {
+      const r = await get<{ history?: unknown[]; historyId?: string; nextPageToken?: string }>('/history', {
+        startHistoryId: start,
+        maxResults: 1,
+        fields: 'history/id,historyId,nextPageToken'
+      });
+      return { changed: !!(r.history?.length || r.nextPageToken), historyId: r.historyId };
+    } catch (e) {
+      // Too old a starting point (Google keeps about a week): treat everything as changed.
+      if (e instanceof ApiError && e.status === 404) return { changed: true };
+      throw e;
+    }
+  },
   modifyThread: async (id, add, remove) => {
     await post(`/threads/${id}/modify`, { addLabelIds: add, removeLabelIds: remove });
   },

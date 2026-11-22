@@ -82,6 +82,7 @@ const en = {
   'list.label': 'Conversation list',
   'list.loadError': 'Could not load conversations.',
   'list.retry': 'Try again',
+  'list.rateLimited': 'Google is slowing down requests for a moment. Maillo will try again in 30 seconds.',
   'list.noSubject': '(no subject)',
 
   'act.archive': 'Archive',
@@ -674,6 +675,7 @@ const fr: Record<StringKey, string> = {
   'list.label': 'Liste des conversations',
   'list.loadError': 'Impossible de charger les conversations.',
   'list.retry': 'Réessayer',
+  'list.rateLimited': 'Google ralentit les requêtes pour un moment. Maillo réessaiera dans 30 secondes.',
   'list.noSubject': '(sans objet)',
 
   'act.archive': 'Archiver',

@@ -7,7 +7,7 @@ import { t } from './i18n';
 import { getPrefs, type NotifyPrefs, type NotifyScope } from './prefs';
 import { swRegistration } from './pwa';
 import { go, parseHash, threadHash, type MailRoute } from './route';
-import { api, getState, onState, refresh } from './store';
+import { api, getState, onState, pollChanges, refresh } from './store';
 
 export interface NewMail {
   id: string;
@@ -53,6 +53,7 @@ const threadVersions = new Map<string, string>();
 let timer: number | undefined;
 let running = false;
 let pausedNotice = false;
+let checkedVersion = -1;
 
 function saveSeen() {
   const list = [...seen].slice(-400);
@@ -114,18 +115,23 @@ async function check() {
   if (running || !n.enabled || s.phase !== 'ready' || s.sessionExpired) return;
   running = true;
   try {
+    // Nothing changed in the mailbox: no need to look for new mail.
+    const v = await pollChanges().catch(() => -1);
+    if (v >= 0 && v === checkedVersion) return;
+    checkedVersion = v;
     const lists = await Promise.all(sources(n).map((p) => api.listThreads(p).catch(() => ({ threads: [] }))));
     const changed = new Map<string, string>();
     for (const l of lists) for (const x of l.threads ?? []) {
       if (threadVersions.get(x.id) !== x.historyId) changed.set(x.id, x.historyId ?? '');
     }
     const found: NewMail[] = [];
-    for (const [id, version] of changed) {
-      const th = await api.getThread(id, 'metadata').catch(() => undefined);
-      if (!th) continue;
-      threadVersions.set(id, version);
+    const ids = [...changed.keys()];
+    const ths = ids.length ? await api.getThreads(ids).catch(() => []) : [];
+    ths.forEach((th, i) => {
+      if (!th) return;
+      threadVersions.set(ids[i], changed.get(ids[i])!);
       found.push(...newMessages(th, s.me));
-    }
+    });
     saveSeen();
     if (found.length) {
       await announce(found);

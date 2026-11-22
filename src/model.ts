@@ -53,7 +53,8 @@ export function listParams(r: MailRoute, tabs: boolean): ListThreadsParams {
   if (r.q !== undefined) return { q: r.q };
   if (r.label) return { labelIds: [r.label] };
   const f = r.folder ?? 'inbox';
-  if (f === 'inbox' && tabs) return { q: `in:inbox category:${r.category}` };
+  // Labels rather than a search: searches can lag behind new mail and skip conversations.
+  if (f === 'inbox' && tabs) return { labelIds: ['INBOX', CATEGORY_LABEL[r.category]] };
   return { ...FOLDER_QUERY[f] };
 }
 

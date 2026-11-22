@@ -39,11 +39,9 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Show original, print
 
 **Writing**
-- Quick reply box at the bottom of every conversation, with a button to open the full reply; Reply can default to Reply all (Settings → General)
-- Compose, reply, reply all, forward (with the original attachments); changing the From address swaps in that address's signature
-- Search suggestions with recent searches (which you can clear), folders, labels, people and matching conversations
-- Unread inbox count in the browser tab title
-- Messages whose senders mislabel their text encoding ("dâ€™Ãªtre") are shown with the right accents
+- Quick reply box at the bottom of every conversation, with a button to open the full reply
+- Light on Google's API quota: checks for changes with Gmail's history (2 units) before reloading anything, fetches conversation headers in batches, remembers them on the device between visits, and slows down instead of failing when Google rate-limits
+- Compose, reply, reply all, forward (with the original attachments)
 - Rich text formatting, links, signatures, attachments (drag and drop works)
 - Send from any of your Gmail "Send mail as" addresses
 - Recipient suggestions from your recent conversations

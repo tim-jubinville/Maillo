@@ -192,8 +192,11 @@ function latest(t: GThread) {
   return Math.max(...(t.messages ?? []).map((m) => Number(m.internalDate)));
 }
 
+let demoHistory = 100;
+
 function bump(t: GThread) {
   t.historyId = String(Number(t.historyId ?? '1') + 1);
+  demoHistory++;
 }
 
 function decodeRaw(raw: string) {
@@ -249,7 +252,7 @@ const demoContacts: ContactCard[] = [
 
 export const demoBackend: MailBackend = {
   demo: true,
-  profile: () => wait({ emailAddress: ME, messagesTotal: 18904, threadsTotal: 2431 }),
+  profile: () => wait({ emailAddress: ME, messagesTotal: 18904, threadsTotal: 2431, historyId: String(demoHistory) }),
   userInfo: () => wait({ name: 'Demo User' }),
   contactPhotos: () => wait({}),
   searchPeople: () => wait([]),
@@ -298,6 +301,9 @@ export const demoBackend: MailBackend = {
     });
   },
   getThread: (id) => wait(threads.find((t) => t.id === id)!, 80),
+  getThreads: (ids) => wait(ids.map((id) => threads.find((t) => t.id === id)), 120),
+  getLabels: (ids) => Promise.all(ids.map((id) => (labels.some((l) => l.id === id) ? demoBackend.getLabel(id) : Promise.resolve(undefined)))),
+  history: (start) => wait({ changed: demoHistory > Number(start), historyId: String(demoHistory) }, 40),
   modifyThread: (id, add, remove) => {
     const t = threads.find((x) => x.id === id);
     t?.messages?.forEach((m) => {
@@ -436,5 +442,6 @@ export function deliverDemoMail(): boolean {
   const id = `m${seq++}`;
   const msg: GMessage = { id, threadId: tid, labelIds: [...s.labels], snippet: 'Hi! I’m around the office on Friday morning. Coffee at 10 by the window, if you’re free?', internalDate: String(Date.now()), historyId: '1', payload: payloadFor(s, id) };
   threads.push({ id: tid, messages: [msg], historyId: '1', snippet: msg.snippet });
+  demoHistory++;
   return true;
 }
