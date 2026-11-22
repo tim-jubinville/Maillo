@@ -2,10 +2,11 @@ import DOMPurify from 'dompurify';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { aiGenerate, aiRemoveKey, aiSetKey, aiStatus, AiError, type AiStatus } from '../ai';
-import { currentToken } from '../auth';
+import { currentToken, hasServerSession, sessionCall, setServerReady, staySignedIn, type SessionReply } from '../auth';
+import { changeLanguage, onSyncStatus, pull, syncEnabled, syncStatus } from '../sync';
 import { config } from '../config';
 import type { GFilter, GSendAs, GVacation } from '../gmail/types';
-import { setLanguage, t, type StringKey } from '../i18n';
+import { t, type StringKey } from '../i18n';
 import { labelColor, sizeLabel } from '../model';
 import { THEMES, currentTheme } from '../theme';
 import { CHIMES, playChime } from '../chime';
@@ -64,7 +65,12 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
           {section === 'app' && <InstallApp />}
           {section === 'labels' && <Labels s={s} />}
           {section === 'filters' && <Filters s={s} />}
-          {section === 'accounts' && <Accounts />}
+          {section === 'accounts' && (
+            <>
+              <StaySignedIn />
+              <Accounts />
+            </>
+          )}
           {section === 'vacation' && <Vacation />}
           {section === 'forwarding' && <Forwarding />}
           {section === 'shortcuts' && (
@@ -110,11 +116,28 @@ function Row({ title, help, children }: { title: string; help?: string; children
   );
 }
 
+function SyncRow() {
+  const [, force] = useState(0);
+  useEffect(() => onSyncStatus(() => force((n) => n + 1)), []);
+  const st = syncStatus();
+  const text =
+    st.state === 'saving' ? t('sync.saving') : st.state === 'error' ? t('sync.error') : st.at ? t('sync.saved', { time: new Date(st.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }) : t('sync.waiting');
+  return (
+    <Row title={t('sync.title')} help={t('sync.help')}>
+      <span style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <span role="status" style={{ fontSize: 'calc(13px * var(--ts, 1))', color: st.state === 'error' ? 'var(--danger, #c0392b)' : 'var(--muted)' }}>{text}</span>
+        <button class="btn sm" onClick={() => pull(true)}>{t('sync.now')}</button>
+      </span>
+    </Row>
+  );
+}
+
 function General() {
   const p = getPrefs();
   const stored = localStorage.getItem('maillo.lang');
   return (
-    <Section title={t('settings.general')} note={t('settings.syncNote')}>
+    <Section title={t('settings.general')} note={syncEnabled() ? t('sync.note') : t('settings.syncNote')}>
+      {syncEnabled() && <SyncRow />}
       <Row title={t('settings.density')} help={t('settings.densityHelp')}>
         <Seg label={t('settings.density')} value={p.density} onChange={(v) => setPrefs({ density: v })} options={[{ value: 'comfortable', label: t('settings.comfortable') }, { value: 'compact', label: t('settings.compact') }]} />
       </Row>
@@ -143,7 +166,7 @@ function General() {
         <Seg
           label={t('settings.language')}
           value={stored === 'en' || stored === 'fr' ? stored : 'auto'}
-          onChange={(v) => setLanguage(v as 'en' | 'fr' | 'auto')}
+          onChange={(v) => changeLanguage(v as 'en' | 'fr' | 'auto')}
           options={[{ value: 'auto', label: t('settings.languageAuto') }, { value: 'en', label: 'English' }, { value: 'fr', label: 'Français' }]}
         />
       </Row>
@@ -352,6 +375,67 @@ function Filters({ s }: { s: AppState }) {
           </div>
         );
       })}
+    </Section>
+  );
+}
+
+function signInError(code?: string): string {
+  const key = `stay.err.${code}` as StringKey;
+  const known = t(key);
+  return known === key ? t('ai.err.generic', { code: code ?? 'unknown' }) : known;
+}
+
+function StaySignedIn() {
+  const [status, setStatus] = useState<SessionReply | null>(null);
+  const [secret, setSecret] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const load = () => {
+    if (!staySignedIn()) return;
+    sessionCall({ action: 'secret_status' }, true).then(setStatus);
+  };
+  useEffect(load, []);
+  if (config.demo) return null;
+  const run = async (fields: Record<string, string>) => {
+    setBusy(true);
+    setError('');
+    const r = await sessionCall(fields, true);
+    setBusy(false);
+    if (!r.ok) return setError(signInError(r.error));
+    setSecret('');
+    setStatus(r);
+    setServerReady(!!r.configured);
+  };
+  const configured = !!status?.ok && status.configured;
+  return (
+    <Section title={t('stay.title')} note={t('stay.help')}>
+      {!staySignedIn() && <div class="frow" style={{ color: 'var(--muted)' }}>{t('stay.off')}</div>}
+      {staySignedIn() && status === null && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.checking')}</div>}
+      {status && !status.ok && <div class="frow err">{signInError(status.error)}</div>}
+      {status?.ok && (
+        <>
+          <Row title={t('stay.device')} help={hasServerSession() ? t('stay.deviceOn') : configured ? t('stay.deviceOff') : t('stay.deviceNeedsSecret')}>
+            <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{hasServerSession() ? t('stay.on') : t('stay.hourly')}</span>
+          </Row>
+          {status.source !== 'environment' && (
+            <div class="srow">
+              <div class="slbl">
+                <b><label for="oauth-secret">{configured ? t('stay.replace') : t('stay.add')}</label></b>
+                <span>{t('stay.where')}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input id="oauth-secret" class="input" type="password" autoComplete="off" spellcheck={false} style={{ flex: '1 1 240px' }} value={secret} disabled={busy} onInput={(e) => setSecret((e.target as HTMLInputElement).value)} />
+                <button class="btn primary sm" disabled={!secret.trim() || busy} onClick={() => run({ action: 'set_secret', secret: secret.trim() })}>{t('ai.save')}</button>
+                {configured && <button class="btn sm danger" disabled={busy} onClick={() => confirm(t('stay.removeConfirm')) && run({ action: 'remove_secret' })}>{t('ai.remove')}</button>}
+              </div>
+            </div>
+          )}
+          {configured && !hasServerSession() && (
+            <div class="frow" style={{ fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)' }}>{t('stay.signInAgain')}</div>
+          )}
+        </>
+      )}
+      {error && <div class="frow err" role="alert">{error}</div>}
     </Section>
   );
 }

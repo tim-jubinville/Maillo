@@ -28,7 +28,7 @@ window.MAILLO_CONFIG = {
   // "auto" follows the browser. Available: "en", "fr".
   language: "auto",
 
-  // Default colour theme: sky, teal, pine, iris, plum, coral, tangerine, cocoa or steel.
+  // Default colour theme: sky, teal, pine, iris, plum, coral, tangerine, sunflower, cocoa or steel.
   // People can pick another in Settings > Appearance.
   theme: "sky",
 
@@ -43,9 +43,14 @@ window.MAILLO_CONFIG = {
                                 // a hidden app folder in Google Drive (needs the Drive API)
     ai: false,                  // Gemini relay (ai.php, PHP hosts). Add the API key in
                                 // Settings > AI; it is stored on the server, never here.
-    contactPhotos: false        // senders' photos from Google Contacts, "other contacts" and,
+    contactPhotos: false,       // senders' photos from Google Contacts, "other contacts" and,
                                 // on Workspace, your organisation's directory (read-only;
                                 // needs the People API)
+    staySignedIn: false,        // stay signed in on each device instead of a new Google sign-in
+                                // every hour (session.php, PHP hosts). Add the OAuth client
+                                // secret in Settings > Account; it is stored on the server.
+    syncSettings: false         // keep Maillo's settings the same on all your devices, through
+                                // a hidden app folder in Google Drive (needs the Drive API)
   },
 
   // Gemini model used by the AI relay, and how many AI requests each account may

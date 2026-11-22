@@ -44,7 +44,7 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 | `https://www.googleapis.com/auth/calendar.calendarlist.readonly` | Optional: your calendar's colour, for events without their own colour |
 | `https://www.googleapis.com/auth/calendar.calendars.readonly` | Optional: your calendar's colour labels, so events show the colours you picked in Google Calendar |
 | `https://www.googleapis.com/auth/tasks` | Optional: Tasks panel and "Add to Tasks" |
-| `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes. Only gives access to Maillo's own hidden folder, not your Drive files |
+| `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes and settings sync. Only gives access to Maillo's own hidden folder, not your Drive files |
 | `https://www.googleapis.com/auth/contacts.readonly` | Optional: contact photos, from your Google Contacts |
 | `https://www.googleapis.com/auth/contacts.other.readonly` | Optional: contact photos, from "Other contacts" (people you've emailed) |
 | `https://www.googleapis.com/auth/directory.readonly` | Optional: contact photos of colleagues, from your Workspace directory |
@@ -132,6 +132,8 @@ window.MAILLO_CONFIG = {
 | `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
 | `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
 | `setAsideLabel` | Gmail label used for the Set aside pile. Maillo creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
+| `features.staySignedIn` | Each device stays signed in instead of a new Google sign-in every hour. Needs PHP and your OAuth client secret on the server; see "Optional: stay signed in". |
+| `features.syncSettings` | Keeps Maillo's settings the same on all your devices through a hidden file in Google Drive. Adds the `drive.appdata` permission (shared with `features.notes`) and needs the Drive API. |
 | `features.contactPhotos` | Shows people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory. Read-only; photos are fetched once per browser session. Also lets search suggest people from your contacts and directory as you type, and turns on the Contacts side panel (your contacts, search, and full contact cards). Adds the three contacts/directory permissions and needs the People API. |
 | `features.ai` | Turns on the Gemini relay (`ai.php`) and **Settings → AI**. Needs a PHP host. See "Optional: AI with Gemini". |
 | `aiModel` | Gemini model used by the relay. Empty uses `gemini-flash-latest`. |
@@ -182,6 +184,23 @@ Maillo can call the Gemini API through `ai.php`, a small relay on your server, s
 
 Use a paid Gemini API plan for email. On the free tier, Google may use what you send to improve its products. Each account is limited to `aiDailyLimit` requests per day (300 by default), and Google's own spending cap applies on top.
 
+## Optional: stay signed in
+
+Browser-only sign-in lasts one hour, after which Google asks again. With `session.php` (PHP hosts), each device stays signed in until you sign out:
+
+1. Set `features.staySignedIn` to `true` in `config.js`.
+2. In Google Cloud, open **APIs & Services → Credentials**, open your Web client and copy its **Client secret**. No redirect URI is needed.
+3. Sign in, open **Settings → Accounts & signatures → Stay signed in**, paste the secret and click **Save**. Maillo checks it with Google, then stores it in `.maillo-oauth.php` on the server (never served, backed up or replaced by updates). You can set a `GOOGLE_CLIENT_SECRET` environment variable instead.
+4. Sign out and sign in again on each device. Google shows its consent screen once per device.
+
+How it works: signing in hands `session.php` a one-time code. It trades it for a Google refresh token, which stays on the server, encrypted (AES-256-GCM, key in `.maillo-oauth.php`) in `.maillo-sessions/`. The browser gets only an HttpOnly, SameSite=Strict cookie and asks `session.php` for a fresh one-hour access token when it needs one, so notifications also keep working in the background. Sessions end when you sign out, after 180 days without use, when the account is removed from `allowedAccounts`/`allowedDomains`, or when access is revoked at [myaccount.google.com/permissions](https://myaccount.google.com/permissions). Removing the secret in Settings ends every session.
+
+If your consent screen is in **Testing** (External user type), Google expires refresh tokens after 7 days; publish the app or use the Internal user type to avoid that. Needs PHP's OpenSSL extension (standard).
+
+## Optional: the same settings on every device
+
+Set `features.syncSettings` to `true` (it needs the Drive API and the `drive.appdata` scope, like `features.notes`), then sign out and in again. Maillo saves your settings to a hidden file in your Drive's app folder (`maillo-settings.json`, invisible in Drive) and applies the newest copy on each device. Column widths, text size, the open side panel and whether notifications are turned on stay per device.
+
 ## Updating
 
 **From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Maillo:
@@ -213,7 +232,8 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 
 ## Security notes
 
-- Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo) and `ai.php` (optional Gemini relay). Both check your Google sign-in and allowed account before doing anything, using `maillo-common.php`.
+- Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo), `ai.php` (optional Gemini relay) and `session.php` (optional lasting sign-in). They check your Google sign-in and allowed account before doing anything, using `maillo-common.php`. With `staySignedIn`, refresh tokens never reach the browser: they stay encrypted on the server behind an HttpOnly cookie, and `session.php` only answers requests carrying Maillo's own header (so other sites can't use the cookie).
+- Conversation headers (sender, subject, snippet) are cached in the browser's local storage so Maillo opens faster; the cache is tied to your account and cleared when you sign out.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
 - The content security policy only allows connections to Google's APIs.
