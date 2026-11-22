@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { fileToBase64, htmlToText, parseAddressList, type Address } from '../gmail/mime';
 import { t, type StringKey } from '../i18n';
 import { sizeLabel } from '../model';
-import { closeCompose, discardCompose, getState, saveDraft, sendCompose, signatureBlock, signatureHtml, updateCompose, type AppState, type ComposeState } from '../store';
+import { closeCompose, discardCompose, getState, saveDraft, sendCompose, signatureBlock, signatureHtml, toast, updateCompose, type AppState, type ComposeState } from '../store';
+import { popInCompose, popOutCompose } from './Popout';
 import { Avatar } from './common';
 import { Icon } from './Icon';
 
@@ -21,7 +22,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
   useEffect(() => {
     if (editor.current) {
       editor.current.innerHTML = DOMPurify.sanitize(c.html);
-      const target = c.to.length ? editor.current : document.getElementById(`to-${c.key}`);
+      const target = c.to.length ? editor.current : editor.current.ownerDocument.getElementById(`to-${c.key}`);
       (target as HTMLElement | null)?.focus();
     }
     return () => {
@@ -62,10 +63,10 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
           block.remove();
         }
       } else if (inner) {
-        const div = document.createElement('div');
+        const div = ed.ownerDocument.createElement('div');
         div.className = 'mm-signature';
         div.innerHTML = inner;
-        ed.append(document.createElement('br'), div);
+        ed.append(ed.ownerDocument.createElement('br'), div);
       }
     }
     patch({ from, ...(ed ? { html: ed.innerHTML } : {}) });
@@ -73,7 +74,8 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
 
   const exec = (cmd: string, value?: string) => {
     editor.current?.focus();
-    document.execCommand(cmd, false, value);
+    // The editor may live in the pop-out window, which has its own document.
+    (editor.current?.ownerDocument ?? document).execCommand(cmd, false, value);
     syncHtml();
   };
 
@@ -111,7 +113,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
 
   return (
     <div
-      class={`compose ${c.maximized ? 'max' : ''} ${c.minimized ? 'min' : ''}`}
+      class={`compose ${c.popout ? 'popped' : ''} ${c.maximized && !c.popout ? 'max' : ''} ${c.minimized && !c.popout ? 'min' : ''}`}
       role="dialog"
       aria-label={title}
       onKeyDown={onKey}
@@ -121,15 +123,26 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
         if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
       }}
     >
-      <div class="compose-head" onDblClick={() => updateCompose({ minimized: !c.minimized })}>
+      <div class="compose-head" onDblClick={() => !c.popout && updateCompose({ minimized: !c.minimized })}>
         <b class="ell">{title}</b>
-        {!c.minimized && <span class="st" aria-live="polite">{status}</span>}
-        <button class="ib sm" aria-label={t('compose.minimize')} title={t('compose.minimize')} onClick={() => updateCompose({ minimized: !c.minimized, maximized: false })}>
-          <Icon name={c.minimized ? 'chevUp' : 'minimize'} />
-        </button>
-        <button class="ib sm" aria-label={t('compose.expand')} title={t('compose.expand')} onClick={() => updateCompose({ maximized: !c.maximized, minimized: false })}>
-          <Icon name="maximize" />
-        </button>
+        {(!c.minimized || c.popout) && <span class="st" aria-live="polite">{status}</span>}
+        {c.popout ? (
+          <button class="ib sm" aria-label={t('compose.popIn')} title={t('compose.popIn')} onClick={() => { syncHtml(true); popInCompose(); }}>
+            <Icon name="popIn" />
+          </button>
+        ) : (
+          <>
+            <button class="ib sm" aria-label={t('compose.minimize')} title={t('compose.minimize')} onClick={() => updateCompose({ minimized: !c.minimized, maximized: false })}>
+              <Icon name={c.minimized ? 'chevUp' : 'minimize'} />
+            </button>
+            <button class="ib sm" aria-label={t('compose.popOut')} title={t('compose.popOut')} onClick={() => { syncHtml(true); if (!popOutCompose()) toast(t('compose.popupBlocked')); }}>
+              <Icon name="external" />
+            </button>
+            <button class="ib sm" aria-label={t('compose.expand')} title={t('compose.expand')} onClick={() => updateCompose({ maximized: !c.maximized, minimized: false })}>
+              <Icon name="maximize" />
+            </button>
+          </>
+        )}
         <button class="ib sm" aria-label={t('compose.close')} title={t('compose.close')} onClick={() => { syncHtml(true); closeCompose(); }}>
           <Icon name="x" />
         </button>
@@ -174,7 +187,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
             const html = e.clipboardData?.getData('text/html');
             if (!html) return;
             e.preventDefault();
-            document.execCommand('insertHTML', false, DOMPurify.sanitize(html, { FORBID_TAGS: ['style', 'meta', 'link'] }));
+            (editor.current?.ownerDocument ?? document).execCommand('insertHTML', false, DOMPurify.sanitize(html, { FORBID_TAGS: ['style', 'meta', 'link'] }));
             syncHtml();
           }}
         />

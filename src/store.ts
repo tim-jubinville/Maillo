@@ -59,6 +59,8 @@ export interface ComposeState {
   attachments: ComposeAttachment[];
   minimized: boolean;
   maximized: boolean;
+  /** Shown in its own browser window. */
+  popout?: boolean;
   status: 'idle' | 'saving' | 'saved' | 'error';
 }
 
