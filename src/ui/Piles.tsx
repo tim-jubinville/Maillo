@@ -26,11 +26,27 @@ function who(r: ThreadRow) {
 
 export function PileBar({ s }: { s: AppState }) {
   const [open, setOpen] = useState<PileId | null>(null);
+  // The fan folds back into its pile before it goes away.
+  const [leaving, setLeaving] = useState(false);
+  const leaveTimer = useRef<number | undefined>(undefined);
   const refs = useRef<Partial<Record<PileId, HTMLButtonElement | null>>>({});
   const close = (refocus = true) => {
     const was = open;
-    setOpen(null);
-    if (refocus && was) refs.current[was]?.focus();
+    if (!was || leaving) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    setLeaving(true);
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => {
+      setOpen(null);
+      setLeaving(false);
+      if (refocus) refs.current[was]?.focus();
+    }, reduce ? 0 : 320);
+  };
+  const toggle = (p: PileId) => {
+    if (open === p) return close();
+    clearTimeout(leaveTimer.current);
+    setLeaving(false);
+    setOpen(p);
   };
   const wrap = useOutside(!!open, () => close(!!wrap.current?.contains(document.activeElement)));
   useEffect(() => {
@@ -40,10 +56,8 @@ export function PileBar({ s }: { s: AppState }) {
   // While dragging conversations, every pile shows as a drop target, even an empty one.
   const visible = PILES.filter((p) => dragging || s.piles[p].rows.length > 0);
   if (!visible.length) return null;
-  // Out of the way while the bulk-action ribbon is showing, unless something is being dragged to them.
-  const tucked = s.selected.size > 0 && !dragging;
   return (
-    <div ref={wrap} class={`pile-wrap ${open ? 'is-open' : ''} ${tucked ? 'tucked' : ''}`} {...(tucked ? { inert: true } : {})}>
+    <div ref={wrap} class={`pile-wrap ${open ? 'is-open' : ''}`}>
       {visible.map((p) => {
         const rows = s.piles[p].rows;
         const top = rows.slice(0, 3);
@@ -67,7 +81,7 @@ export function PileBar({ s }: { s: AppState }) {
             aria-expanded={rows.length > 1 ? open === p : undefined}
             aria-haspopup={rows.length > 1 ? 'true' : undefined}
             title={t(pileKey(p, 'title'))}
-            onClick={() => (rows.length === 1 ? openFromPile(s, p, rows[0].id) : setOpen(open === p ? null : p))}
+            onClick={() => (rows.length === 1 ? openFromPile(s, p, rows[0].id) : toggle(p))}
           >
             {[...top].reverse().map((r, i, arr) => {
               const depth = arr.length - 1 - i;
@@ -89,13 +103,13 @@ export function PileBar({ s }: { s: AppState }) {
           </button>
         );
       })}
-      {open && <div class="fan-scrim" aria-hidden="true" onClick={() => close(false)} />}
-      {open && <Fan key={open} s={s} pile={open} rows={s.piles[open].rows} onClose={close} />}
+      {open && <div class={`fan-scrim ${leaving ? 'leaving' : ''}`} aria-hidden="true" onClick={() => close(false)} />}
+      {open && <Fan key={open} s={s} pile={open} rows={s.piles[open].rows} leaving={leaving} onClose={close} />}
     </div>
   );
 }
 
-function Fan({ s, pile, rows, onClose }: { s: AppState; pile: PileId; rows: ThreadRow[]; onClose: (refocus?: boolean) => void }) {
+function Fan({ s, pile, rows, leaving, onClose }: { s: AppState; pile: PileId; rows: ThreadRow[]; leaving: boolean; onClose: (refocus?: boolean) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
   const [settled, setSettled] = useState(false);
@@ -141,9 +155,11 @@ function Fan({ s, pile, rows, onClose }: { s: AppState; pile: PileId; rows: Thre
     let scale = 1;
     if (px !== null) scale = 1 + 0.2 * Math.max(0, 1 - Math.abs(px - x) / 170);
     const lift = (scale - 1) * 120;
+    const out = shown && !leaving;
     return {
       '--i': i,
-      transform: shown
+      '--r': n - 1 - i,
+      transform: out
         ? `translate(${x}px, ${y - lift}px) rotate(${angle}deg) scale(${scale})`
         : `translate(0px, 90px) rotate(0deg) scale(0.6)`,
       zIndex: px === null ? i : Math.round(scale * 100)
@@ -153,7 +169,7 @@ function Fan({ s, pile, rows, onClose }: { s: AppState; pile: PileId; rows: Thre
   return (
     <div
       ref={ref}
-      class={`fan fan-${pile} ${shown ? 'shown' : ''} ${settled ? 'settled' : ''}`}
+      class={`fan fan-${pile} ${shown ? 'shown' : ''} ${settled ? 'settled' : ''} ${leaving ? 'leaving' : ''}`}
       role="group"
       aria-label={t(pileKey(pile, 'fan'))}
       onKeyDown={onKey}
@@ -210,6 +226,20 @@ function Fan({ s, pile, rows, onClose }: { s: AppState; pile: PileId; rows: Thre
           <span>{t(pileKey(pile, 'viewAll'))}</span>
         </button>
       )}
+      <button
+        class="btn sm fan-all"
+        onClick={() => {
+          onClose(false);
+          // Opens the first one; the ribbon's arrows then step through the rest of the pile.
+          const id = s.piles[pile].labelId;
+          if (id && rows[0]) go(`#/label/${encodeURIComponent(id)}/t/${encodeURIComponent(rows[0].id)}`);
+          else if (id) go(`#/label/${encodeURIComponent(id)}`);
+        }}
+      >
+        <CIcon name={PILE_ICON[pile]} size={16} />
+        {t('pile.seeAll', { n: rows.length })}
+        <Icon name="chevRight" size={14} />
+      </button>
     </div>
   );
 }
