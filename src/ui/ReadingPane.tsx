@@ -113,7 +113,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
 
   return (
     <section class="readcol" aria-label={t('read.label')}>
-      <Ribbon label={t('read.label')}>
+      <Ribbon label={t('read.label')} class="read-ribbon">
       <RibbonBar
         showBack={showBack}
         position={idx >= 0 ? t('read.position', { i: idx + 1, n: ids.length }) : ''}
@@ -136,8 +136,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
           ...(!inSpam && !inTrash
             ? PILES.map((p, i) =>
                 pile === p
-                  ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: 'inbox' as const, run: () => actions.unpin(id, true) }
-                  : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], run: () => actions.pin(p, id) }
+                  ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: PILE_ICON[p], pressed: true, run: () => actions.unpin(id, true) }
+                  : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], pressed: false, run: () => actions.pin(p, id) }
               )
             : []),
           ...(notesEnabled && !note ? [{ id: 'note', group: 2, prio: 7.5, w: 38, label: t('act.addNote'), icon: 'note' as const, run: () => setState({ noteEditing: o.id }) }] : []),

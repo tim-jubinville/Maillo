@@ -15,7 +15,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Labels, including nested labels and label colours
 - Full Gmail search syntax (`from:`, `has:attachment`, `newer_than:7d`, and so on) with quick filter chips
 - Threaded conversations with collapsed earlier messages and hidden quoted text
-- Bulk actions from a ribbon at the bottom of the list: archive, delete, spam, read/unread, star, important, move, label (extra actions fold into "…")
+- The list's top bar is a frosted ribbon (select all, refresh, paging); selecting conversations swaps in the bulk actions in place: archive, delete, spam, piles, read/unread, star, important, move, label (extra actions fold into "…"). Beside an open conversation, it joins the reading pane's ribbon into one
 - Move to and Label as open with a search field ready to type in; Enter picks the first match
 - Quoted earlier messages (Gmail, Outlook, Apple Mail, plain-text "> " replies…) are folded behind a ··· button in every message; forwards stay visible
 - Search suggestions as you type: folders and labels, people (recent correspondents, plus your Google Contacts and Workspace directory with `features.contactPhotos`), matching conversations, and your recent searches
@@ -24,8 +24,8 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Drag and drop: drag conversations (or the whole selection) onto a label, Inbox, Starred, Important, All mail, Spam, Trash or a pile; drag a label from the sidebar onto a conversation to apply it
 - Undo for archive, delete, spam, move and label changes
 - Reminders for important messages you have not answered ("Received 3 days ago. Reply?")
-- **Set aside**: pin conversations out of the inbox into a small stack of cards at the bottom of the screen. Click the stack to fan the cards out and pick one. Stored as a regular Gmail label, so it syncs everywhere.
-- **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. A conversation lives in one pile at a time. Take one out with the ✕ on its card, or with "Remove from…" on the row, the ribbon or the bulk ribbon; it goes back to the Inbox.
+- **Set aside**: pin conversations out of the inbox into a small stack of cards at the bottom of the screen. Click the stack to fan the cards out and pick one, or "Go through all" to open the first and step through the rest with the ribbon's arrows. Escape folds the cards back into the stack. Stored as a regular Gmail label, so it syncs everywhere.
+- **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. A conversation lives in one pile at a time. Take one out with the ✕ on its card, or by un-pressing its pile button (shown pressed in on the row, the ribbon and the selection actions); it goes back to the Inbox.
 - **Private notes**: stick a note on any conversation (for example "Paid on Nov 14"). Only you see it, it is never sent, and it syncs between devices through a hidden app folder in your Google Drive (optional, see `features.notes`).
 - **Contact photos**: people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory (optional, see `features.contactPhotos`).
 - **Contacts panel**: browse and search your Google Contacts beside your mail, see the people in the open conversation, and open a card with their emails, phones, address, birthday and links. You can email someone, find all mail with them, copy details, or open them in Google Contacts to edit (uses the same optional `features.contactPhotos` permissions; read-only).

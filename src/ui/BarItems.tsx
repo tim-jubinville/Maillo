@@ -15,6 +15,8 @@ export interface BarItem {
   label: string;
   icon: ColorIconName;
   text?: boolean;
+  /** Shown pressed in; clicking it again undoes it (e.g. take a conversation out of a pile). */
+  pressed?: boolean;
   run?: () => void;
   menu?: ComponentChildren;
   /** Content shown when this item is opened from the "…" menu. */
@@ -62,7 +64,7 @@ export function BarButtons({ items, shown }: { items: BarItem[]; shown: Set<stri
             {i.menu ?? (i.text ? (
               <button class="btn sm" onClick={i.run}>{i.label}</button>
             ) : (
-              <button class="ib" aria-label={i.label} title={i.label} onClick={i.run}><CIcon name={i.icon} /></button>
+              <button class={`ib ${i.pressed ? 'pressed' : ''}`} aria-label={i.label} title={i.label} aria-pressed={i.pressed === undefined ? undefined : i.pressed} onClick={i.run}><CIcon name={i.icon} /></button>
             ))}
           </>
         );
@@ -115,9 +117,10 @@ function MoreItems({ hidden, more, close }: { hidden: BarItem[]; more?: (close: 
   return (
     <>
       {hidden.map((i) => (
-        <button class="mi" onClick={() => (i.sub ? setDrill(i) : (close(), i.run?.()))}>
+        <button class="mi" aria-pressed={i.pressed} onClick={() => (i.sub ? setDrill(i) : (close(), i.run?.()))}>
           <CIcon name={i.icon} size={18} />
           <span class="ell">{i.label}</span>
+          {i.pressed && <Icon name="check" size={14} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
           {i.sub && <Icon name="chevRight" size={14} style={{ marginLeft: 'auto', color: 'var(--muted)' }} />}
         </button>
       ))}
