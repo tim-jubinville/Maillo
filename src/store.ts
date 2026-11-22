@@ -796,8 +796,14 @@ function defaultFrom(): string {
 }
 
 function signatureFor(email: string): string {
+  const inner = signatureHtml(email);
+  return inner ? `<br><div class="mm-signature">${inner}</div>` : '';
+}
+
+/** The signature of one send-as address, ready to go inside the compose signature block ('' when it has none). */
+export function signatureHtml(email: string): string {
   const sig = state.sendAs.find((s) => s.sendAsEmail === email)?.signature;
-  return sig ? `<br><div class="mm-signature">${signatureBlock(sig)}</div>` : '';
+  return sig ? signatureBlock(sig) : '';
 }
 
 /** The signature, with Gmail's "-- " separator line unless turned off in Settings. */
@@ -1070,9 +1076,28 @@ function quickHtml(text: string): string {
     .join('');
 }
 
+/** People a reply-all would also reach, besides the one Reply goes to (never yourself). */
+export function replyAllExtras(msg: ParsedMessage): Address[] {
+  const own = new Set([state.me.toLowerCase(), ...state.sendAs.map((s) => s.sendAsEmail.toLowerCase())]);
+  const fromMe = own.has(msg.from.email.toLowerCase());
+  const main = fromMe ? msg.to : msg.replyTo.length ? msg.replyTo : [msg.from];
+  const seen = new Set([...own, ...main.map((a) => a.email.toLowerCase())]);
+  return [...(fromMe ? [] : msg.to), ...msg.cc].filter((a) => {
+    const k = a.email.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** Reply or Reply all, following the setting; plain Reply when there's nobody else to include. */
+export function defaultReplyMode(msg: ParsedMessage): 'reply' | 'replyAll' {
+  return getPrefs().replyDefault === 'replyAll' && replyAllExtras(msg).length ? 'replyAll' : 'reply';
+}
+
 export async function quickReply(msg: ParsedMessage, text: string): Promise<void> {
   if (state.compose) await closeCompose();
-  openCompose('reply', msg);
+  openCompose(defaultReplyMode(msg), msg);
   const c = state.compose;
   if (!c) return;
   setState({ compose: { ...c, html: `${quickHtml(text)}${signatureFor(c.from)}`, minimized: true } });
@@ -1081,7 +1106,7 @@ export async function quickReply(msg: ParsedMessage, text: string): Promise<void
 
 export async function expandQuickReply(msg: ParsedMessage, text: string): Promise<void> {
   if (state.compose) await closeCompose();
-  openCompose('reply', msg);
+  openCompose(defaultReplyMode(msg), msg);
   const c = state.compose;
   if (!c) return;
   setState({ compose: { ...c, html: `${quickHtml(text)}<div><br></div>${signatureFor(c.from)}` } });

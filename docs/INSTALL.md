@@ -125,7 +125,7 @@ window.MAILLO_CONFIG = {
 | `allowedAccounts` | Email addresses allowed to use this install. Anyone else is signed out right away. |
 | `allowedDomains` | Domains allowed to use this install, such as `"example.com"`. |
 | `language` | `"auto"`, `"en"` or `"fr"`. People can also change it in Settings. |
-| `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
+| `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `sunflower`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
 | `accentColor` | Optional hex colour that replaces the default theme's accent. |
 | `features.calendar` | Shows today's events in the side panel, in their Google Calendar colours, with a Join button for video calls (Meet, Zoom, Teams, Webex). Adds three read-only Calendar permissions at sign-in. |
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |

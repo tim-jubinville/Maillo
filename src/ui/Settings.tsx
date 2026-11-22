@@ -127,6 +127,9 @@ function General() {
       <Row title={t('settings.undo')} help={t('settings.undoHelp')}>
         <Seg label={t('settings.undo')} value={p.undoSeconds} onChange={(v) => setPrefs({ undoSeconds: v })} options={[0, 5, 10, 20, 30].map((n) => ({ value: n, label: n ? `${n}s` : t('settings.off') }))} />
       </Row>
+      <Row title={t('settings.replyDefault')} help={t('settings.replyDefaultHelp')}>
+        <Seg label={t('settings.replyDefault')} value={p.replyDefault} onChange={(v) => setPrefs({ replyDefault: v })} options={[{ value: 'reply', label: t('settings.replySender') }, { value: 'replyAll', label: t('settings.replyAllDefault') }]} />
+      </Row>
       <Row title={t('settings.images')} help={t('settings.imagesHelp')}>
         <Seg label={t('settings.images')} value={p.images} onChange={(v) => setPrefs({ images: v })} options={[{ value: 'ask', label: t('settings.imagesAsk') }, { value: 'always', label: t('settings.imagesAlways') }]} />
       </Row>

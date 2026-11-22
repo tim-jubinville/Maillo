@@ -57,6 +57,8 @@ export interface Prefs {
   textScale: number;
   /** Show a label when hovering icon-only buttons. */
   tooltips: boolean;
+  /** What Reply does when a conversation has several people in it. */
+  replyDefault: 'reply' | 'replyAll';
 }
 
 export const TEXT_SCALES = [0.88, 0.94, 1, 1.08, 1.16, 1.25];
@@ -81,6 +83,7 @@ const defaults: Prefs = {
   icons: 'color',
   textScale: 1,
   tooltips: true,
+  replyDefault: 'reply',
   notify: {
     enabled: false,
     scope: 'primary',

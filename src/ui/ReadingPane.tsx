@@ -5,7 +5,7 @@ import { b64urlToBase64, displayName, type Attachment, type ParsedMessage } from
 import { locale, t } from '../i18n';
 import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
 import { go, listHash, threadHash, type MailRoute } from '../route';
-import { actions, api, closeThread, expandQuickReply, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, personName, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
+import { actions, api, closeThread, defaultReplyMode, expandQuickReply, replyAllExtras, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, personName, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
 import type { ThreadNote } from '../gmail/types';
 import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
 import { CIcon } from './ColorIcons';
@@ -242,11 +242,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
               ) : (
                 last && (
                   <>
-                    <button class="btn" onClick={() => openCompose('reply', last)}><CIcon name="reply" size={18} />{t('act.reply')}</button>
-                    {last.to.length + last.cc.length > 1 && (
-                      <button class="btn" onClick={() => openCompose('replyAll', last)}><Icon name="replyAll" style={{ color: 'var(--c-snooze)' }} />{t('act.replyAll')}</button>
-                    )}
-                    <button class="btn" onClick={() => openCompose('forward', last)}><Icon name="forward" style={{ color: 'var(--c-sent)' }} />{t('act.forward')}</button>
+                    {replyButtons(last)}
                   </>
                 )
               )}
@@ -380,9 +376,15 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
             )}
           </div>
           <span class="msg-time" title={m.date.toLocaleString(locale())}>{fullDate(m.date)}</span>
-          <button class="ib" aria-label={t('act.reply')} title={t('act.reply')} onClick={() => openCompose('reply', m)}>
-            <Icon name="reply" />
-          </button>
+          {(() => {
+            const mode = defaultReplyMode(m);
+            const label = t(mode === 'replyAll' ? 'act.replyAll' : 'act.reply');
+            return (
+              <button class="ib" aria-label={label} title={label} onClick={() => openCompose(mode, m)}>
+                <Icon name={mode} />
+              </button>
+            );
+          })()}
           <Menu label={t('act.more')} align="right" button={<Icon name="more" />}>
             {(close) => (
               <>
@@ -505,6 +507,22 @@ function RibbonBar({
   );
 }
 
+/** Reply, Reply all and Forward under a conversation; the default reply comes first. */
+function replyButtons(last: ParsedMessage) {
+  const reply = (
+    <button class="btn" onClick={() => openCompose('reply', last)}><CIcon name="reply" size={18} />{t('act.reply')}</button>
+  );
+  const all = replyAllExtras(last).length > 0 && (
+    <button class="btn" onClick={() => openCompose('replyAll', last)}><CIcon name="replyAll" size={18} />{t('act.replyAll')}</button>
+  );
+  return (
+    <>
+      {defaultReplyMode(last) === 'replyAll' ? <>{all}{reply}</> : <>{reply}{all}</>}
+      <button class="btn" onClick={() => openCompose('forward', last)}><CIcon name="forward" size={18} />{t('act.forward')}</button>
+    </>
+  );
+}
+
 function QuickReply({ m }: { m: ParsedMessage }) {
   const [text, setText] = useState('');
   const area = useRef<HTMLTextAreaElement>(null);
@@ -515,6 +533,7 @@ function QuickReply({ m }: { m: ParsedMessage }) {
     el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
   };
   const target = m.replyTo[0] ?? m.from;
+  const extras = defaultReplyMode(m) === 'replyAll' ? replyAllExtras(m).length : 0;
   const send = async () => {
     const v = text.trim();
     if (!v) return;
@@ -535,7 +554,7 @@ function QuickReply({ m }: { m: ParsedMessage }) {
         ref={area}
         rows={1}
         value={text}
-        placeholder={t('quick.placeholder', { name: senderName(target) })}
+        placeholder={extras ? t('quick.placeholderAll', { name: senderName(target), n: extras }) : t('quick.placeholder', { name: senderName(target) })}
         onInput={(e) => {
           setText((e.target as HTMLTextAreaElement).value);
           resize();
