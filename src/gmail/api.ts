@@ -18,6 +18,7 @@ import type {
   ListThreadsParams,
   MailBackend,
   NotesMap,
+  SyncedSettings,
   TaskItem
 } from './types';
 
@@ -253,6 +254,8 @@ const NOTES_FILE = 'maillo-notes.json';
 // Notes saved before the rename to Maillo keep their original file name.
 const LEGACY_NOTES_FILE = 'mailmax-notes.json';
 let notesFileId: string | undefined;
+const SETTINGS_FILE = 'maillo-settings.json';
+let settingsFileId: string | undefined;
 
 // Notes live in Drive's hidden per-app folder: invisible in Drive and Gmail, synced across devices.
 async function findNotesFile(): Promise<string | undefined> {
@@ -564,6 +567,29 @@ export const gmailBackend: MailBackend = {
       method: 'PATCH',
       body: JSON.stringify({ status: done ? 'completed' : 'needsAction' })
     });
+  },
+  loadSettings: async () => {
+    if (!settingsFileId) {
+      const r = await request<{ files?: { id: string }[] }>(DRIVE, {
+        query: { spaces: 'appDataFolder', q: `name = '${SETTINGS_FILE}' and trashed = false`, fields: 'files(id)', pageSize: 1 }
+      });
+      settingsFileId = r.files?.[0]?.id;
+    }
+    if (!settingsFileId) return null;
+    return request<SyncedSettings>(`${DRIVE}/${settingsFileId}`, { query: { alt: 'media' } });
+  },
+  saveSettings: async (data) => {
+    if (!settingsFileId) {
+      await gmailBackend.loadSettings();
+      if (!settingsFileId) {
+        const f = await request<{ id: string }>(DRIVE, {
+          method: 'POST',
+          body: JSON.stringify({ name: SETTINGS_FILE, parents: ['appDataFolder'], mimeType: 'application/json' })
+        });
+        settingsFileId = f.id;
+      }
+    }
+    await request(`${DRIVE_UPLOAD}/${settingsFileId}`, { method: 'PATCH', query: { uploadType: 'media' }, body: JSON.stringify(data) });
   },
   loadNotes: async () => {
     const id = await findNotesFile();

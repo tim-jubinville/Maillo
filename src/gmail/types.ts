@@ -178,6 +178,13 @@ export interface ThreadNote {
 
 export type NotesMap = Record<string, ThreadNote>;
 
+/** Settings shared between devices (a hidden file in Drive's app folder). */
+export interface SyncedSettings {
+  version: 1;
+  updated: number;
+  prefs: Record<string, unknown>;
+}
+
 export interface ListThreadsParams {
   q?: string;
   labelIds?: string[];
@@ -237,6 +244,8 @@ export interface MailBackend {
   listTasks(): Promise<TaskItem[]>;
   addTask(title: string, notes?: string): Promise<TaskItem>;
   completeTask(id: string, done: boolean): Promise<void>;
+  loadSettings(): Promise<SyncedSettings | null>;
+  saveSettings(data: SyncedSettings): Promise<void>;
   loadNotes(): Promise<NotesMap>;
   saveNotes(notes: NotesMap): Promise<void>;
 }
