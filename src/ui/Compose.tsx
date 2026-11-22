@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { fileToBase64, htmlToText, parseAddressList, type Address } from '../gmail/mime';
 import { t, type StringKey } from '../i18n';
 import { sizeLabel } from '../model';
-import { closeCompose, discardCompose, getState, saveDraft, sendCompose, signatureBlock, updateCompose, type AppState, type ComposeState } from '../store';
+import { closeCompose, discardCompose, getState, saveDraft, sendCompose, signatureBlock, signatureHtml, updateCompose, type AppState, type ComposeState } from '../store';
 import { Avatar } from './common';
 import { Icon } from './Icon';
 
@@ -46,6 +46,29 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
     if (immediate) run();
     else htmlTimer.current = window.setTimeout(run, 300);
     scheduleSave();
+  };
+
+  // Switching the From address swaps in that address's signature (or removes it when it has none).
+  const changeFrom = (from: string) => {
+    const ed = editor.current;
+    if (ed) {
+      const inner = DOMPurify.sanitize(signatureHtml(from));
+      const block = ed.querySelector<HTMLElement>('.mm-signature');
+      if (block) {
+        if (inner) block.innerHTML = inner;
+        else {
+          const prev = block.previousElementSibling;
+          if (prev?.tagName === 'BR') prev.remove();
+          block.remove();
+        }
+      } else if (inner) {
+        const div = document.createElement('div');
+        div.className = 'mm-signature';
+        div.innerHTML = inner;
+        ed.append(document.createElement('br'), div);
+      }
+    }
+    patch({ from, ...(ed ? { html: ed.innerHTML } : {}) });
   };
 
   const exec = (cmd: string, value?: string) => {
@@ -116,7 +139,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
         {fromOptions.length > 1 && (
           <div class="field">
             <label for={`from-${c.key}`}>{t('compose.from')}</label>
-            <select id={`from-${c.key}`} class="bare" value={c.from} onChange={(e) => patch({ from: (e.target as HTMLSelectElement).value })}>
+            <select id={`from-${c.key}`} class="bare" value={c.from} onChange={(e) => changeFrom((e.target as HTMLSelectElement).value)}>
               {fromOptions.map((x) => (
                 <option value={x.sendAsEmail}>{x.displayName ? `${x.displayName} <${x.sendAsEmail}>` : x.sendAsEmail}</option>
               ))}
@@ -232,7 +255,7 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
               style={{ color: 'var(--c-drafts)' }}
               aria-label={t('compose.signature')}
               title={t('compose.signature')}
-              onClick={() => exec('insertHTML', `<div>${signatureBlock(DOMPurify.sanitize(s.sendAs.find((x) => x.sendAsEmail === c.from)!.signature!))}</div>`)}
+              onClick={() => exec('insertHTML', `<div class="mm-signature">${signatureBlock(DOMPurify.sanitize(s.sendAs.find((x) => x.sendAsEmail === c.from)!.signature!))}</div>`)}
             >
               <Icon name="signature" />
             </button>

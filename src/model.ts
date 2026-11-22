@@ -1,4 +1,4 @@
-import { header, parseAddress, displayName, decodeEntities, type Address } from './gmail/mime';
+import { header, parseAddress, displayName, decodeEntities, repairMojibake, type Address } from './gmail/mime';
 import type { GLabel, GThread, ListThreadsParams } from './gmail/types';
 import { t, locale, type StringKey } from './i18n';
 import type { Category, Folder, MailRoute } from './route';
@@ -84,8 +84,8 @@ export function rowFromThread(th: GThread, me: string): ThreadRow {
   return {
     id: th.id,
     historyId: th.historyId,
-    subject: header(first?.payload?.headers, 'Subject'),
-    snippet: decodeEntities(last?.snippet ?? th.snippet ?? ''),
+    subject: repairMojibake(header(first?.payload?.headers, 'Subject')),
+    snippet: repairMojibake(decodeEntities(last?.snippet ?? th.snippet ?? '')),
     senders: [...seen.values()],
     firstFrom: parseAddress(header(first?.payload?.headers, 'From')),
     lastFrom,

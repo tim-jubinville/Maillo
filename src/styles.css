@@ -175,6 +175,8 @@ a:hover { color: var(--violet); }
 .sugg-dot { width: 10px; height: 10px; border-radius: 3px; }
 .sugg-t { flex: 1; min-width: 0; }
 .sugg-sub { color: var(--muted); font-size: calc(13px * var(--ts, 1)); }
+.mi-kbd { margin-left: auto; }
+.sugg-clear { color: var(--muted); font-size: calc(13px * var(--ts, 1)); }
 .sugg-d { flex: none; font-size: calc(12px * var(--ts, 1)); color: var(--muted); }
 .sugg-loading { display: flex; gap: 5px; justify-content: center; padding: 10px; }
 .sugg-loading span { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); animation: sugg-dot 1s infinite ease-in-out; }

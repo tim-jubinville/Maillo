@@ -16,6 +16,7 @@ export const THEMES: Theme[] = [
   { id: 'plum', accent: '#7D4795', top: '#E2CEEB', bottom: '#FAF5FC' },
   { id: 'coral', accent: '#C0533B', top: '#F6CFC5', bottom: '#FFF6F3' },
   { id: 'tangerine', accent: '#B85A1A', top: '#FBDBBC', bottom: '#FFF8F1' },
+  { id: 'sunflower', accent: '#946B00', top: '#F9E39A', bottom: '#FFFBEB' },
   { id: 'cocoa', accent: '#8A5A3A', top: '#E8D9C7', bottom: '#FBF7F2' },
   { id: 'steel', accent: '#3F587E', top: '#CAD5E3', bottom: '#F4F7FA' }
 ];

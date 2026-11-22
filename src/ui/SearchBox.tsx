@@ -15,6 +15,7 @@ const FOLDERS: Folder[] = ['inbox', 'starred', 'snoozed', 'important', 'sent', '
 
 type Item =
   | { kind: 'search'; q: string; recent?: boolean }
+  | { kind: 'clear' }
   | { kind: 'place'; name: string; hash: string; color?: string }
   | { kind: 'person'; a: Address; photo?: string }
   | { kind: 'message'; id: string; subject: string; from: string; date: Date };
@@ -34,6 +35,14 @@ function remember(q: string) {
   const next = [v, ...readRecent().filter((x) => x.toLowerCase() !== v.toLowerCase())].slice(0, 8);
   try {
     localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function forgetRecent() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
   } catch {
     /* storage unavailable */
   }
@@ -67,10 +76,15 @@ export function SearchBox({ s }: { s: AppState }) {
   const r = s.route;
   const [q, setQ] = useState(r.view === 'mail' && r.q !== undefined ? r.q : '');
   const [open, setOpen] = useState(false);
+  // Suggestions wait for the field to finish widening, so the menu doesn't stretch along with it.
+  const [wide, setWide] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
+  const wideTimer = useRef<number | undefined>(undefined);
   const [active, setActive] = useState(-1);
   const [people, setPeople] = useState<PersonHit[]>([]);
   const [messages, setMessages] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
+  const [, bump] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const seq = useRef(0);
   const timer = useRef<number | undefined>(undefined);
@@ -115,7 +129,7 @@ export function SearchBox({ s }: { s: AppState }) {
   const sections: { title?: string; items: Item[] }[] = [];
   if (!v) {
     const recent = readRecent();
-    if (recent.length) sections.push({ title: t('search.recent'), items: recent.map((x) => ({ kind: 'search', q: x, recent: true })) });
+    if (recent.length) sections.push({ title: t('search.recent'), items: [...recent.map((x): Item => ({ kind: 'search', q: x, recent: true })), { kind: 'clear' }] });
   } else {
     sections.push({ items: [{ kind: 'search', q: v }] });
     const pl = places(s, v);
@@ -135,14 +149,38 @@ export function SearchBox({ s }: { s: AppState }) {
     if (messages.length) sections.push({ title: t('search.messages'), items: messages });
   }
   const flat = sections.flatMap((x) => x.items);
-  const show = open && flat.length > 0;
+  const show = open && wide && flat.length > 0;
 
   const close = () => {
     setOpen(false);
     setActive(-1);
   };
 
+  const focus = () => {
+    setOpen(true);
+    clearTimeout(wideTimer.current);
+    const el = form.current;
+    const dur = el ? parseFloat(getComputedStyle(el).transitionDuration) || 0 : 0;
+    // Narrow screens and reduced motion don't animate the width.
+    if (!el || dur === 0 || el.getBoundingClientRect().width >= el.parentElement!.getBoundingClientRect().width * 0.9) setWide(true);
+    else wideTimer.current = window.setTimeout(() => setWide(true), 260);
+  };
+
+  const blur = () => {
+    clearTimeout(wideTimer.current);
+    setTimeout(() => {
+      close();
+      if (document.activeElement !== input.current) setWide(false);
+    }, 120);
+  };
+
   const pick = (it: Item) => {
+    if (it.kind === 'clear') {
+      forgetRecent();
+      setActive(-1);
+      bump((n) => n + 1);
+      return;
+    }
     close();
     input.current?.blur();
     if (it.kind === 'search') {
@@ -175,7 +213,18 @@ export function SearchBox({ s }: { s: AppState }) {
   let i = -1;
 
   return (
-    <form class="search" role="search" onSubmit={submit}>
+    <form
+      class="search"
+      role="search"
+      ref={form}
+      onSubmit={submit}
+      onTransitionEnd={(e) => {
+        if (e.target === form.current && e.propertyName === 'width' && document.activeElement === input.current) {
+          clearTimeout(wideTimer.current);
+          setWide(true);
+        }
+      }}
+    >
       <Icon name="search" />
       <label for="mm-search" class="sr-only">{t('search.label')}</label>
       <input
@@ -191,8 +240,8 @@ export function SearchBox({ s }: { s: AppState }) {
         aria-controls="mm-suggestions"
         aria-autocomplete="list"
         aria-activedescendant={show && active >= 0 ? optId(active) : undefined}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(close, 120)}
+        onFocus={focus}
+        onBlur={blur}
         onInput={(e) => {
           setQ((e.target as HTMLInputElement).value);
           setOpen(true);
@@ -241,6 +290,12 @@ export function SearchBox({ s }: { s: AppState }) {
                       <>
                         <span class="sugg-ic"><Icon name={it.recent ? 'clock' : 'search'} size={16} /></span>
                         <span class="sugg-t ell">{it.recent ? it.q : t('search.for', { q: it.q })}</span>
+                      </>
+                    )}
+                    {it.kind === 'clear' && (
+                      <>
+                        <span class="sugg-ic"><Icon name="x" size={16} /></span>
+                        <span class="sugg-t sugg-clear ell">{t('search.clearRecent')}</span>
                       </>
                     )}
                     {it.kind === 'place' && (
