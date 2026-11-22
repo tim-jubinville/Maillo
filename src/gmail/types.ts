@@ -205,6 +205,12 @@ export interface MailBackend {
   deleteLabel(id: string): Promise<void>;
   listThreads(p: ListThreadsParams): Promise<GThreadList>;
   getThread(id: string, format: 'metadata' | 'full'): Promise<GThread>;
+  /** Several threads' headers in one go (missing threads come back undefined). */
+  getThreads(ids: string[]): Promise<(GThread | undefined)[]>;
+  /** Several labels with their counts in one go. */
+  getLabels(ids: string[]): Promise<(GLabel | undefined)[]>;
+  /** Whether anything changed in the mailbox since a history ID, and the newest history ID. */
+  history(startHistoryId: string): Promise<{ changed: boolean; historyId?: string }>;
   modifyThread(id: string, add: string[], remove: string[]): Promise<void>;
   trashThread(id: string): Promise<void>;
   untrashThread(id: string): Promise<void>;

@@ -40,6 +40,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 
 **Writing**
 - Quick reply box at the bottom of every conversation, with a button to open the full reply
+- Light on Google's API quota: checks for changes with Gmail's history (2 units) before reloading anything, fetches conversation headers in batches, remembers them on the device between visits, and slows down instead of failing when Google rate-limits
 - Compose, reply, reply all, forward (with the original attachments)
 - Rich text formatting, links, signatures, attachments (drag and drop works)
 - Send from any of your Gmail "Send mail as" addresses

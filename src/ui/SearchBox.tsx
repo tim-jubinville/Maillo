@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Address } from '../gmail/mime';
 import type { PersonHit } from '../gmail/types';
 import { t, type StringKey } from '../i18n';
-import { labelColor, labelDisplayName, listDate, rowFromThread } from '../model';
+import { labelColor, labelDisplayName, listDate } from '../model';
 import { go, type Folder } from '../route';
-import { api, getState, pileLabelIds, type AppState } from '../store';
-import { pool } from '../gmail/api';
+import { api, fetchRows, pileLabelIds, type AppState } from '../store';
 import { Avatar, Photo } from './common';
 import { Icon } from './Icon';
 import { SEARCH_KEY } from './Keys';
@@ -96,9 +95,8 @@ export function SearchBox({ s }: { s: AppState }) {
         api.searchPeople(v),
         (async () => {
           const list = await api.listThreads({ q: v, maxResults: 4 });
-          const ths = await pool(list.threads ?? [], 4, (x) => api.getThread(x.id, 'metadata'));
-          return ths.map((th): Item => {
-            const row = rowFromThread(th, getState().me);
+          const rows = await fetchRows(list.threads ?? []);
+          return rows.map((row): Item => {
             return { kind: 'message', id: row.id, subject: row.subject || t('list.noSubject'), from: row.lastFrom.name || row.lastFrom.email, date: row.date };
           });
         })()

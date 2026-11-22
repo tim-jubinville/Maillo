@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { config, isAllowedAccount } from './config';
 import { currentToken, onAuthChange, prepareAuth, rememberAccount, signIn, signOut, tokenExpiresSoon } from './auth';
-import { AuthRequired, gmailBackend, pool } from './gmail/api';
+import { AuthRequired, gmailBackend, pool, RateLimited } from './gmail/api';
 import { demoBackend } from './gmail/demo';
 import {
   buildMime,
@@ -17,7 +17,7 @@ import {
 } from './gmail/mime';
 import type { GLabel, GSendAs, MailBackend, NotesMap } from './gmail/types';
 import { t } from './i18n';
-import { listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
+import { CATEGORY_LABEL, listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
 import { CATEGORIES, go, listHash, parseHash, threadHash, type Category, type MailRoute, type Route } from './route';
@@ -189,7 +189,68 @@ export function useApp(): AppState {
   return state;
 }
 
+const ROW_CACHE = 'maillo.rows';
+const ROW_CACHE_MAX = 1500;
 const rowCache = new Map<string, ThreadRow>();
+let rowCacheOwner = '';
+let rowSaveTimer: number | undefined;
+
+// Conversation headers are kept between visits on this device, so opening Maillo only fetches what changed.
+function loadRowCache(me: string) {
+  rowCacheOwner = me.toLowerCase();
+  try {
+    const c = JSON.parse(localStorage.getItem(ROW_CACHE) || 'null') as { me: string; rows: ThreadRow[] } | null;
+    if (!c || c.me !== rowCacheOwner || !Array.isArray(c.rows)) return;
+    for (const r of c.rows) if (r?.id && r.historyId) rowCache.set(r.id, { ...r, date: new Date(r.date) });
+  } catch {
+    /* start empty */
+  }
+}
+
+function saveRowCache() {
+  clearTimeout(rowSaveTimer);
+  rowSaveTimer = window.setTimeout(() => {
+    if (!rowCacheOwner) return;
+    while (rowCache.size > ROW_CACHE_MAX) rowCache.delete(rowCache.keys().next().value!);
+    const rows = [...rowCache.values()].filter((r) => r.historyId);
+    try {
+      localStorage.setItem(ROW_CACHE, JSON.stringify({ me: rowCacheOwner, rows }));
+    } catch {
+      try {
+        localStorage.setItem(ROW_CACHE, JSON.stringify({ me: rowCacheOwner, rows: rows.slice(-400) }));
+      } catch {
+        /* storage full: memory only */
+      }
+    }
+  }, 1500);
+}
+
+export function clearRowCache() {
+  rowCache.clear();
+  localStorage.removeItem(ROW_CACHE);
+}
+
+/** Rows for listed threads, fetching only those that are new or changed since last time (in batches). */
+async function fetchRows(list: { id: string; historyId?: string }[]): Promise<ThreadRow[]> {
+  const stale = list.filter((x) => {
+    const c = rowCache.get(x.id);
+    return !c || !x.historyId || c.historyId !== x.historyId;
+  });
+  if (stale.length) {
+    const ths = await api.getThreads(stale.map((x) => x.id));
+    ths.forEach((th) => {
+      if (!th) return;
+      const row = rowFromThread(th, state.me);
+      // Re-insert so the most recently seen rows are the last to be evicted.
+      rowCache.delete(row.id);
+      rowCache.set(row.id, row);
+    });
+    saveRowCache();
+  }
+  return list.map((x) => rowCache.get(x.id)).filter((r): r is ThreadRow => !!r);
+}
+
+export { fetchRows };
 let toastSeq = 1;
 let listSeq = 0;
 let openSeq = 0;
@@ -240,6 +301,7 @@ export async function boot() {
 export async function signInClick(switchAccount = false) {
   setState({ authError: undefined });
   if (switchAccount) {
+    clearRowCache();
     sessionStorage.removeItem(PHOTO_CACHE);
     setState({ contactPhotos: {} });
   }
@@ -259,6 +321,7 @@ export async function signInClick(switchAccount = false) {
 
 export function signOutClick() {
   signOut();
+  clearRowCache();
   sessionStorage.removeItem(PHOTO_CACHE);
   location.hash = '';
   location.reload();
@@ -273,6 +336,8 @@ async function start() {
       return;
     }
     if (!config.demo) rememberAccount(p.emailAddress);
+    historyId = p.historyId;
+    loadRowCache(p.emailAddress);
     setState({ phase: 'ready', me: p.emailAddress, route: parseHash(), sessionExpired: false });
     loadLabels().then(() => loadPiles());
     loadSendAs();
@@ -345,14 +410,65 @@ function onHash() {
 }
 
 let pollTimer: number | undefined;
+let historyId: string | undefined;
+let mailVersion = 0;
+let seenVersion = 0;
+let lastCheck = 0;
+let checking: Promise<number> | null = null;
+
+/**
+ * Asks Gmail whether anything changed since the last look (2 quota units, instead of reloading
+ * the list, piles and counts). Returns a version number that goes up with each change; calls
+ * within a few seconds of each other share one check.
+ */
+export function pollChanges(): Promise<number> {
+  if (checking) return checking;
+  if (Date.now() - lastCheck < 10_000) return Promise.resolve(mailVersion);
+  checking = (async () => {
+    try {
+      if (!historyId) {
+        historyId = (await api.profile()).historyId;
+        mailVersion++;
+      } else {
+        const h = await api.history(historyId);
+        if (h.changed) mailVersion++;
+        historyId = h.historyId ?? (h.changed ? (await api.profile()).historyId : historyId);
+      }
+      lastCheck = Date.now();
+    } catch (e) {
+      if (e instanceof AuthRequired) throw e;
+      // Can't tell: assume something changed so nothing is missed.
+      mailVersion++;
+    } finally {
+      checking = null;
+    }
+    return mailVersion;
+  })();
+  return checking;
+}
+
+async function pollTick() {
+  if (state.phase !== 'ready' || state.sessionExpired) return;
+  try {
+    const v = await pollChanges();
+    if (v === seenVersion) return;
+    seenVersion = v;
+    refresh(true);
+  } catch (e) {
+    fail(e);
+  }
+}
+
 function startPolling() {
   clearInterval(pollTimer);
+  seenVersion = mailVersion;
   pollTimer = window.setInterval(() => {
-    if (document.visibilityState === 'visible' && !state.sessionExpired) refresh(true);
+    if (document.visibilityState === 'visible') pollTick();
   }, 45_000);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && state.phase === 'ready') refresh(true);
+    if (document.visibilityState === 'visible') pollTick();
   });
+  window.addEventListener('online', () => pollTick());
 }
 
 export async function loadLabels() {
@@ -365,9 +481,32 @@ export async function loadLabels() {
   }
 }
 
-async function loadCounts(labels = state.labels) {
+let countsTimer: number | undefined;
+let countsWaiters: (() => void)[] = [];
+let catAt = 0;
+let catKey = '';
+
+/** Label counts, coalesced: several calls in quick succession make one batched request. */
+function loadCounts(labels?: GLabel[]): Promise<void> {
+  return new Promise((resolve) => {
+    countsWaiters.push(resolve);
+    clearTimeout(countsTimer);
+    countsTimer = window.setTimeout(async () => {
+      const done = countsWaiters;
+      countsWaiters = [];
+      try {
+        await loadCountsNow(labels ?? state.labels);
+      } catch (e) {
+        if (e instanceof AuthRequired) fail(e);
+      }
+      done.forEach((d) => d());
+    }, 400);
+  });
+}
+
+async function loadCountsNow(labels: GLabel[]) {
   const ids = ['INBOX', 'DRAFT', 'SPAM', ...labels.filter((l) => l.type === 'user').map((l) => l.id)];
-  const details = await pool(ids, 6, (id) => api.getLabel(id).catch(() => undefined));
+  const details = await api.getLabels(ids);
   const counts: Record<string, number> = {};
   details.forEach((d) => {
     if (!d) return;
@@ -375,12 +514,16 @@ async function loadCounts(labels = state.labels) {
   });
   setState({ counts });
   const r = state.route;
-  if (getPrefs().tabs && r.view === 'mail' && r.folder === 'inbox' && r.q === undefined) {
-    const est = await pool(CATEGORIES.filter((c) => c !== 'primary'), 4, (c) =>
-      api.listThreads({ q: `in:inbox category:${c} is:unread`, maxResults: 1 }).then((x) => [c, x.resultSizeEstimate ?? 0] as const).catch(() => [c, 0] as const)
-    );
-    setState({ catNew: Object.fromEntries(est) });
-  }
+  if (!getPrefs().tabs || r.view !== 'mail' || r.folder !== 'inbox' || r.q !== undefined) return;
+  // The "N new" figures on the category tabs cost 10 units each, so refresh them at most once a minute unless mail changed.
+  const key = `${mailVersion}:${counts.INBOX ?? 0}`;
+  if (key === catKey && Date.now() - catAt < 60_000) return;
+  catKey = key;
+  catAt = Date.now();
+  const est = await pool(CATEGORIES.filter((c) => c !== 'primary'), 4, (c) =>
+    api.listThreads({ labelIds: ['INBOX', CATEGORY_LABEL[c], 'UNREAD'], maxResults: 1 }).then((x) => [c, x.resultSizeEstimate ?? 0] as const).catch(() => [c, 0] as const)
+  );
+  setState({ catNew: Object.fromEntries(est) });
 }
 
 async function loadSendAs() {
@@ -401,17 +544,19 @@ export async function loadList(reset = false, silent = false) {
   const tokens = reset ? [undefined] : state.list.tokens;
   if (!silent) setState({ list: { ...state.list, key, loading: true, error: undefined, page, tokens, rows: state.list.key === key ? state.list.rows : [] } });
   try {
-    const res = await api.listThreads({ ...listParams(r, getPrefs().tabs), pageToken: tokens[page], maxResults: getPrefs().pageSize });
+    let res = await api.listThreads({ ...listParams(r, getPrefs().tabs), pageToken: tokens[page], maxResults: getPrefs().pageSize });
+    // Mailboxes Gmail never sorted into categories have no Primary label: fall back to Gmail's search.
+    if (!res.threads?.length && !page && getPrefs().tabs && r.q === undefined && !r.label && (r.folder ?? 'inbox') === 'inbox' && r.category === 'primary')
+      res = await api.listThreads({ q: 'in:inbox category:primary', maxResults: getPrefs().pageSize });
     const ids = res.threads ?? [];
-    const rows = await pool(ids, 8, async (x) => {
-      const c = rowCache.get(x.id);
-      if (c && c.historyId === x.historyId) return c;
-      const th = await api.getThread(x.id, 'metadata');
-      const row = rowFromThread(th, state.me);
-      rowCache.set(x.id, row);
-      return row;
-    });
+    // Show what's cached right away while the changed rows load.
+    if (!silent && state.list.key !== key) {
+      const cached = ids.map((x) => rowCache.get(x.id)).filter((x): x is ThreadRow => !!x);
+      if (cached.length === ids.length && cached.length) setState({ list: { ...state.list, key, rows: byDate(cached) } });
+    }
+    const rows = byDate(await fetchRows(ids));
     if (mine !== listSeq) return;
+    clearTimeout(retryTimer);
     const visible = new Set(rows.map((x) => x.id));
     const selected = new Set([...state.selected].filter((id) => visible.has(id)));
     const recent = collectRecent(rows);
@@ -419,8 +564,22 @@ export async function loadList(reset = false, silent = false) {
   } catch (e) {
     if (mine !== listSeq) return;
     if (e instanceof AuthRequired) return fail(e);
-    setState({ list: { ...state.list, key, loading: false, error: e instanceof Error ? e.message : String(e) } });
+    const limited = e instanceof RateLimited;
+    // Keep showing what's there when a background refresh hits Google's rate limit; try again shortly.
+    if (limited) {
+      clearTimeout(retryTimer);
+      retryTimer = window.setTimeout(() => loadList(false, true), 30_000);
+      if (state.list.key === key && state.list.rows.length) return setState({ list: { ...state.list, loading: false } });
+    }
+    setState({ list: { ...state.list, key, loading: false, error: limited ? t('list.rateLimited') : e instanceof Error ? e.message : String(e) } });
   }
+}
+
+let retryTimer: number | undefined;
+
+/** Newest first, by the date each row shows (Gmail's order can differ when a thread has drafts or chats). */
+function byDate(rows: ThreadRow[]): ThreadRow[] {
+  return [...rows].sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 function pileLabelName(p: PileId): string {
@@ -441,13 +600,7 @@ async function loadPile(p: PileId) {
   if (!labelId) return setPile(p, { rows: [] });
   try {
     const res = await api.listThreads({ labelIds: [labelId], maxResults: 100 });
-    const rows = await pool(res.threads ?? [], 8, async (x) => {
-      const c = rowCache.get(x.id);
-      if (c && c.historyId === x.historyId) return c;
-      const row = rowFromThread(await api.getThread(x.id, 'metadata'), state.me);
-      rowCache.set(x.id, row);
-      return row;
-    });
+    const rows = await fetchRows(res.threads ?? []);
     setPile(p, { labelId, rows });
   } catch (e) {
     if (e instanceof AuthRequired) fail(e);
@@ -541,6 +694,7 @@ export function prevPage() {
 }
 
 export function refresh(silent = false) {
+  seenVersion = mailVersion;
   loadList(false, silent);
   loadPiles();
   loadCounts().catch(() => undefined);
