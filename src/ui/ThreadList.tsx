@@ -54,18 +54,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
   return (
     <section class={`listcol ${split ? 'split' : 'full'}`} aria-label={t('list.label')}>
       <div class="listhead">
-      <div class="toolbar">
-        <input type="checkbox" class="cb" aria-label={t('list.selectAll')} checked={all} indeterminate={sel.length > 0 && !all} onChange={() => selectAll(!all)} />
-          <>
-            <button class="ib" style={{ color: 'var(--c-scheduled)' }} aria-label={t('list.refresh')} title={t('list.refresh')} onClick={() => refresh()}><Icon name="refresh" /></button>
-            <h1 class="ell">{title}</h1>
-            <span class="range">
-              {rows.length ? t('list.range', { from: start + 1, to: start + rows.length }) : ''}
-            </span>
-            <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={s.list.page === 0} onClick={prevPage}><Icon name="chevLeft" /></button>
-            <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!s.list.next} onClick={nextPage}><Icon name="chevRight" /></button>
-          </>
-      </div>
+      <ListRibbon s={s} route={route} sel={sel} all={all} title={title} joined={split && !!s.open && !!route.thread} range={rows.length ? t('list.range', { from: start + 1, to: start + rows.length }) : ''} />
 
       {showTabs && (
         <div class="tabs" role="tablist" aria-label={t('cat.label')}>
@@ -141,7 +130,6 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
           <Row s={s} r={r} route={route} compact={compact} split={split} />
         ))}
       </div>
-      {sel.length > 0 && <BulkRibbon s={s} route={route} sel={sel} />}
     </section>
   );
 }
@@ -259,7 +247,8 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
           return (
             <RowAct
               label={here ? t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action') : t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action')}
-              icon={here ? 'inbox' : PILE_ICON[p]}
+              icon={PILE_ICON[p]}
+              pressed={here}
               run={() => (here ? actions.unpin([r.id], true) : actions.pin(p, [r.id]))}
             />
           );
@@ -269,15 +258,11 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
   );
 }
 
-function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: string[] }) {
-  const bar = useRef<HTMLDivElement>(null);
-  const count = useRef<HTMLSpanElement>(null);
-  const width = useWidth(bar);
-  const countW = useWidth(count);
+function bulkItems(s: AppState, route: MailRoute, sel: string[]): BarItem[] {
   const folder = route.folder;
   const selRows = s.list.rows.filter((r) => s.selected.has(r.id));
   const anyUnread = selRows.some((r) => r.unread);
-  const items: BarItem[] = [
+  return [
     ...(folder === 'spam'
       ? [{ id: 'notspam', group: 1, prio: 10, w: 104, label: t('act.notSpam'), icon: 'spam' as const, text: true, run: () => actions.notSpam(sel) }]
       : folder === 'trash'
@@ -289,8 +274,8 @@ function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: str
             ...PILES.map((p, i) => {
               const inPile = selRows.length > 0 && selRows.every((r) => pileOf(r.labelIds) === p);
               return inPile
-                ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: 'inbox' as const, run: () => actions.unpin(sel, true) }
-                : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], run: () => actions.pin(p, sel) };
+                ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: PILE_ICON[p], pressed: true, run: () => actions.unpin(sel, true) }
+                : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], pressed: false, run: () => actions.pin(p, sel) };
             })
           ]),
     { id: 'read', group: 2, prio: 7, w: 38, label: anyUnread ? t('act.markRead') : t('act.markUnread'), icon: anyUnread ? 'mail' : 'unread', run: () => actions.read(sel, anyUnread) },
@@ -299,26 +284,58 @@ function BulkRibbon({ s, route, sel }: { s: AppState; route: MailRoute; sel: str
     { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move', menu: <MoveMenu s={s} ids={sel} />, sub: (close) => <MoveList s={s} ids={sel} onDone={close} /> },
     { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label', menu: <LabelMenu s={s} ids={sel} />, sub: (close) => <LabelList s={s} ids={sel} onDone={close} /> }
   ];
-  // Padding, the count, "…" and the clear button.
-  const fixed = 20 + (countW > 1000 ? 110 : countW + 14) + 38 + 38;
-  const { shown } = fitItems(items, width - fixed);
+}
+
+/**
+ * The list's ribbon: select all, refresh, title and paging. Selecting conversations swaps the
+ * title for the count and the actions, in place. Beside an open conversation it joins that ribbon.
+ */
+function ListRibbon({ s, route, sel, all, title, range, joined }: { s: AppState; route: MailRoute; sel: string[]; all: boolean; title: string; range: string; joined: boolean }) {
+  const bar = useRef<HTMLDivElement>(null);
+  const count = useRef<HTMLSpanElement>(null);
+  const width = useWidth(bar);
+  const countW = useWidth(count);
+  const selecting = sel.length > 0;
+  const items = selecting ? bulkItems(s, route, sel) : [];
+  // Padding, checkbox, count, clear, "…", paging arrows.
+  const fixed = 16 + 34 + (countW > 1000 ? 110 : countW + 8) + 38 + 38 + 76;
+  const { shown, room } = fitItems(items, width - fixed);
   const hidden = items.filter((i) => !shown.has(i.id));
+  const showRange = !!range && (!selecting || (hidden.length === 0 && room >= 64));
+  const checkbox = (
+    <input type="checkbox" class="cb" aria-label={t('list.selectAll')} checked={all} indeterminate={selecting && !all} onChange={() => selectAll(!all)} />
+  );
   return (
-    <Ribbon label={t('list.selected', { n: sel.length })} bottom>
-      <div class="toolbar nowrap" data-bar="bulk" ref={bar}>
-        <span class="sel-n" ref={count}>{t('list.selected', { n: sel.length })}</span>
-        <BarButtons items={items} shown={shown} />
-        <MoreMenu hidden={hidden} align="right" />
-        <button class="ib clear-sel" aria-label={t('list.clearSelection')} title={t('list.clearSelection')} onClick={() => selectAll(false)}><Icon name="x" /></button>
+    <Ribbon label={selecting ? t('list.selected', { n: sel.length }) : title} inline class={`list-ribbon ${joined ? 'joined' : ''}`}>
+      <div class="toolbar nowrap" data-bar={selecting ? 'bulk' : 'list'} ref={bar}>
+        {checkbox}
+        {selecting ? (
+          <>
+            <span class="sel-n" ref={count}>{t('list.selected', { n: sel.length })}</span>
+            <button class="ib clear-sel" aria-label={t('list.clearSelection')} title={t('list.clearSelection')} onClick={() => selectAll(false)}><Icon name="x" /></button>
+            <span class="sep" />
+            <BarButtons items={items} shown={shown} />
+            {hidden.length > 0 && <MoreMenu hidden={hidden} align="right" />}
+          </>
+        ) : (
+          <>
+            <button class="ib" style={{ color: 'var(--c-scheduled)' }} aria-label={t('list.refresh')} title={t('list.refresh')} onClick={() => refresh()}><Icon name="refresh" /></button>
+            <h1 class="ell">{title}</h1>
+          </>
+        )}
+        <span class="range">{showRange ? range : ''}</span>
+        <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={s.list.page === 0} onClick={prevPage}><Icon name="chevLeft" /></button>
+        <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!s.list.next} onClick={nextPage}><Icon name="chevRight" /></button>
       </div>
     </Ribbon>
   );
 }
 
-function RowAct({ label, icon, run }: { label: string; icon: ColorIconName; run: () => void }) {
+function RowAct({ label, icon, run, pressed }: { label: string; icon: ColorIconName; run: () => void; pressed?: boolean }) {
   return (
     <button
-      class="row-act"
+      class={`row-act ${pressed ? 'pressed' : ''}`}
+      aria-pressed={pressed}
       aria-label={label}
       title={label}
       draggable={false}

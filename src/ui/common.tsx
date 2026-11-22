@@ -236,12 +236,12 @@ export function downloadBase64(b64: string, filename: string, mimeType: string) 
 }
 
 /** Frosted ribbon floating over its parent; sets `--rh` (or `--rhb` at the bottom) so content can make room. */
-export function Ribbon({ children, label, bottom }: { children: ComponentChildren; label: string; bottom?: boolean }) {
+export function Ribbon({ children, label, bottom, inline, class: cls = '' }: { children: ComponentChildren; label: string; bottom?: boolean; inline?: boolean; class?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     const parent = el?.parentElement;
-    if (!el || !parent) return;
+    if (!el || !parent || inline) return;
     const prop = bottom ? '--rhb' : '--rh';
     const set = () => parent.style.setProperty(prop, `${el.offsetHeight + 20}px`);
     set();
@@ -253,7 +253,7 @@ export function Ribbon({ children, label, bottom }: { children: ComponentChildre
     };
   }, []);
   return (
-    <div class={`ribbon ${bottom ? 'bottom' : ''}`} ref={ref} role="group" aria-label={label}>
+    <div class={`ribbon ${bottom ? 'bottom' : ''} ${inline ? 'inline' : ''} ${cls}`} ref={ref} role="group" aria-label={label}>
       {children}
     </div>
   );
