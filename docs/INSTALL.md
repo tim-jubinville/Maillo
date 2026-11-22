@@ -199,6 +199,8 @@ This needs PHP 7.4 or later with the zip extension, and write permission on the 
 
 If you do not want browser updates at all, delete `update.php` from the server.
 
+**Upgrading from 0.6.1 or earlier to 0.6.2 or later.** 0.6.2 adds a server file (`session.php`) that older updaters refuse ("unexpected file"). Upload the new `update.php` from the release zip by hand once, then install the zip from **Settings → Updates**. From then on, the updater accepts new server files a release declares itself.
+
 **Upgrading to 0.4.0.** The browser updater installs 0.4.0 as usual, but it never replaces `.htaccess`. On Apache, upload the new `.htaccess` by hand once (it fixes `config.js` being cached for too long and makes sure `sw.js` and the app manifest are always fresh), or add the same lines to yours.
 
 **Upgrading from Mailmax (0.2.x and earlier).** The app was renamed Maillo in 0.3.0, and the Mailmax updater does not accept a Maillo release. Upload 0.3.0 by hand once:

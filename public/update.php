@@ -18,7 +18,22 @@ const KEEP_BACKUPS = 3;
 const PROTECTED_PATHS = ['config.js', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
 const MAX_LOGO = 1024 * 1024;
 // Server files shipped in the release; any other .php file in a package is refused.
-const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php'];
+// A newer release may add server files: they're accepted when that release's own update.php lists
+// them here (no new risk, since the package's update.php replaces this one anyway).
+const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php'];
+
+/** SERVER_FILES as declared by the update.php inside a package (top-level .php names only). */
+function package_server_files(ZipArchive $zip, string $prefix): array
+{
+    $src = $zip->getFromName($prefix . 'update.php');
+    if (!is_string($src) || !preg_match('/const\s+SERVER_FILES\s*=\s*\[([^\]]*)\]/', $src, $m)) {
+        return [];
+    }
+    preg_match_all('/[\'"]([a-z0-9][a-z0-9.\-]*\.php)[\'"]/', $m[1], $all);
+    return array_values(array_filter($all[1], function ($n) {
+        return strpos($n, '/') === false && strpos($n, '..') === false;
+    }));
+}
 const ALLOWED_EXT = ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'woff', 'woff2', 'txt', 'webmanifest', 'map', 'htaccess'];
 
 $root = __DIR__;
@@ -214,6 +229,7 @@ if ($action === 'update') {
         }
     }
 
+    $serverFiles = array_unique(array_merge(SERVER_FILES, package_server_files($zip, $prefix)));
     $entries = [];
     $total = 0;
     foreach ($names as $i => $name) {
@@ -230,7 +246,7 @@ if ($action === 'update') {
         }
         $base = basename($rel);
         $ext = $base === '.htaccess' ? 'htaccess' : strtolower(pathinfo($base, PATHINFO_EXTENSION));
-        if (!in_array($rel, SERVER_FILES, true) && !in_array($ext, ALLOWED_EXT, true)) {
+        if (!in_array($rel, $serverFiles, true) && !in_array($ext, ALLOWED_EXT, true)) {
             fail(400, 'unexpected_file', ['path' => $rel]);
         }
         $stat = $zip->statIndex($i);
