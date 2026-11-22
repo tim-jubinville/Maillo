@@ -507,6 +507,9 @@ body.resizing iframe { pointer-events: none; }
 }
 .compose.max { right: 50%; transform: translateX(50%); bottom: 4vh; width: min(980px, 94vw); height: 88vh; border-radius: 24px; }
 .compose.min { height: auto; width: 320px; }
+/* In its own window: fills it. */
+.popout-body { margin: 0; background: var(--surface); color: var(--ink); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
+.compose.popped { position: fixed; inset: 0; width: auto; max-width: none; height: auto; border: 0; border-radius: 0; box-shadow: none; background: var(--surface); }
 .compose-head { display: flex; align-items: center; gap: 4px; padding: 10px 10px 10px 20px; border-bottom: 1px solid var(--line-soft); cursor: default; }
 .compose-head b { font-size: calc(14px * var(--ts, 1)); flex: 1; }
 .compose-head .st { font-size: calc(12px * var(--ts, 1)); color: var(--muted); margin-right: 6px; }
