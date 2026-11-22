@@ -62,6 +62,8 @@ export const SCOPES = (() => {
     );
   }
   if (config.features.tasks) s.push('https://www.googleapis.com/auth/tasks');
+  // Google Workspace only, and an admin must allow it (domain-wide delegation); see docs/INSTALL.md.
+  if (config.features.keep) s.push('https://www.googleapis.com/auth/keep');
   if (config.features.notes || config.features.syncSettings) s.push('https://www.googleapis.com/auth/drive.appdata');
   if (config.features.contactPhotos) {
     s.push(

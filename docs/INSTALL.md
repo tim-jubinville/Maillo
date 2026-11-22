@@ -132,6 +132,7 @@ window.MAILLO_CONFIG = {
 | `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
 | `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
 | `setAsideLabel` | Gmail label used for the Set aside pile. Maillo creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
+| `features.keep` | Google Keep side panel: your notes, a quick note field and delete. Workspace only; needs the Keep API and an admin's approval (see "Optional: Google Keep"). Off: the Keep icon is hidden. |
 | `features.staySignedIn` | Each device stays signed in instead of a new Google sign-in every hour. Needs PHP and your OAuth client secret on the server; see "Optional: stay signed in". |
 | `features.syncSettings` | Keeps Maillo's settings the same on all your devices through a hidden file in Google Drive. Adds the `drive.appdata` permission (shared with `features.notes`) and needs the Drive API. |
 | `features.contactPhotos` | Shows people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory. Read-only; photos are fetched once per browser session. Also lets search suggest people from your contacts and directory as you type, and turns on the Contacts side panel (your contacts, search, and full contact cards). Adds the three contacts/directory permissions and needs the People API. |
@@ -183,6 +184,14 @@ Maillo can call the Gemini API through `ai.php`, a small relay on your server, s
 5. Click **Test the connection**.
 
 Use a paid Gemini API plan for email. On the free tier, Google may use what you send to improve its products. Each account is limited to `aiDailyLimit` requests per day (300 by default), and Google's own spending cap applies on top.
+
+## Optional: Google Keep (Workspace only)
+
+Google only opens its Keep API to Google Workspace accounts, and only once an administrator allows the app. The API can list, create and delete notes, but not edit them. Without `features.keep`, the Keep icon is hidden.
+
+1. In Google Cloud, enable the **Google Keep API**.
+2. In the Google Admin console, open **Security → Access and data control → API controls → Manage domain-wide delegation → Add new**. Client ID: your OAuth client ID. Scope: `https://www.googleapis.com/auth/keep`.
+3. Set `features.keep` to `true` in `config.js`, then sign out and in again.
 
 ## Optional: stay signed in
 

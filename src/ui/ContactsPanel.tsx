@@ -7,6 +7,7 @@ import { go } from '../route';
 import { api, getState, openCompose, setState, toast, type AppState } from '../store';
 import { Avatar } from './common';
 import { Icon } from './Icon';
+import { PanelEmpty } from './SidePanel';
 
 const SHOW = 80;
 
@@ -132,8 +133,7 @@ export function ContactsPanel({ s }: { s: AppState }) {
 
       {!enabled ? (
         <>
-          {inThread.length === 0 && <p class="ct-note">{t('ct.noThread')}</p>}
-          <p class="ct-note">{t('ct.enable')}</p>
+          <PanelEmpty icon="contacts" title={t('empty.ctOffTitle')} sub={inThread.length === 0 ? `${t('ct.noThread')} ${t('ct.enable')}` : t('ct.enable')} />
         </>
       ) : failed ? (
         <p class="ct-note">{t('ct.failed')}</p>
@@ -142,7 +142,7 @@ export function ContactsPanel({ s }: { s: AppState }) {
       ) : (
         <>
           <span class="caps">{query ? t('ct.results') : t('ct.all', { n: list.length })}</span>
-          {shown.length === 0 && extra.length === 0 && <p class="ct-note">{query ? t('ct.none') : t('ct.empty')}</p>}
+          {shown.length === 0 && extra.length === 0 && (query ? <p class="ct-note">{t('ct.none')}</p> : <PanelEmpty icon="contacts" title={t('ct.empty')} sub={t('empty.ctSub')} />)}
           <div class="ct-list">
             {shown.slice(0, SHOW).map((c) => (
               <PersonRow a={{ name: c.name, email: c.emails[0] ?? '' }} sub={c.title && c.org ? `${c.title} · ${c.org}` : c.org || c.emails[0] || c.phones[0]?.value || ''} onClick={() => setOpen(c)} />

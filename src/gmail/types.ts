@@ -171,6 +171,15 @@ export interface TaskItem {
   status?: 'needsAction' | 'completed';
 }
 
+/** A Google Keep note (enterprise Keep API: list, create and delete; no editing). */
+export interface KeepNote {
+  name: string;
+  title?: string;
+  text?: string;
+  items?: { text: string; checked: boolean }[];
+  updated?: string;
+}
+
 export interface ThreadNote {
   text: string;
   updated: number;
@@ -244,6 +253,9 @@ export interface MailBackend {
   listTasks(): Promise<TaskItem[]>;
   addTask(title: string, notes?: string): Promise<TaskItem>;
   completeTask(id: string, done: boolean): Promise<void>;
+  listKeepNotes(): Promise<KeepNote[]>;
+  createKeepNote(title: string, text: string): Promise<KeepNote>;
+  deleteKeepNote(name: string): Promise<void>;
   loadSettings(): Promise<SyncedSettings | null>;
   saveSettings(data: SyncedSettings): Promise<void>;
   loadNotes(): Promise<NotesMap>;

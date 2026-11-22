@@ -8,6 +8,7 @@ import type {
   GSendAs,
   GThread,
   GVacation,
+  KeepNote,
   MailBackend,
   NotesMap,
   SyncedSettings,
@@ -195,6 +196,10 @@ function latest(t: GThread) {
 
 let demoHistory = 100;
 let demoSettings: SyncedSettings | null = null;
+let keepNotes: KeepNote[] = [
+  { name: 'notes/demo-a', title: 'Q1 brief: open questions', text: 'Budget split 60/40?\nChannels for launch week\nAsk Léa about the audience section', updated: new Date(Date.now() - 3_600_000).toISOString() },
+  { name: 'notes/demo-b', title: 'Groceries', items: [{ text: 'Coffee beans', checked: false }, { text: 'Oat milk', checked: true }, { text: 'Lemons', checked: false }], updated: new Date(Date.now() - 86_400_000).toISOString() }
+];
 
 function bump(t: GThread) {
   t.historyId = String(Number(t.historyId ?? '1') + 1);
@@ -415,6 +420,16 @@ export const demoBackend: MailBackend = {
   },
   completeTask: (id, done) => {
     tasks = tasks.map((k) => (k.id === id ? { ...k, status: done ? 'completed' : 'needsAction' } : k));
+    return wait(undefined);
+  },
+  listKeepNotes: () => wait(keepNotes),
+  createKeepNote: (title, text) => {
+    const n: KeepNote = { name: `notes/demo${seq++}`, title, text, updated: new Date().toISOString() };
+    keepNotes.unshift(n);
+    return wait(n);
+  },
+  deleteKeepNote: (name) => {
+    keepNotes = keepNotes.filter((n) => n.name !== name);
     return wait(undefined);
   },
   loadSettings: () => wait(demoSettings),

@@ -15,6 +15,7 @@ import type {
   GThread,
   GThreadList,
   GVacation,
+  KeepNote,
   ListThreadsParams,
   MailBackend,
   NotesMap,
@@ -247,6 +248,26 @@ const EVENT_COLORS: Record<string, string> = {
   '11': '#d50000' // Tomato
 };
 const CALENDAR_DEFAULT = '#039be5';
+
+const KEEP = 'https://keep.googleapis.com/v1';
+
+interface GKeepListItem {
+  text?: { text?: string };
+  checked?: boolean;
+  childListItems?: GKeepListItem[];
+}
+interface GKeepNote {
+  name: string;
+  title?: string;
+  updateTime?: string;
+  body?: { text?: { text?: string }; list?: { listItems?: GKeepListItem[] } };
+}
+
+function toKeepNote(n: GKeepNote): KeepNote {
+  const flat = (items: GKeepListItem[] = []): { text: string; checked: boolean }[] =>
+    items.flatMap((i) => [{ text: i.text?.text ?? '', checked: !!i.checked }, ...flat(i.childListItems)]);
+  return { name: n.name, title: n.title, text: n.body?.text?.text, items: n.body?.list ? flat(n.body.list.listItems) : undefined, updated: n.updateTime };
+}
 
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -567,6 +588,23 @@ export const gmailBackend: MailBackend = {
       method: 'PATCH',
       body: JSON.stringify({ status: done ? 'completed' : 'needsAction' })
     });
+  },
+  listKeepNotes: async () => {
+    const out: KeepNote[] = [];
+    let pageToken: string | undefined;
+    for (let page = 0; page < 3; page++) {
+      const r = await request<{ notes?: GKeepNote[]; nextPageToken?: string }>(`${KEEP}/notes`, { query: { pageSize: 50, filter: 'trashed = false', pageToken } });
+      out.push(...(r.notes ?? []).map(toKeepNote));
+      pageToken = r.nextPageToken;
+      if (!pageToken) break;
+    }
+    return out.sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
+  },
+  createKeepNote: async (title, text) =>
+    toKeepNote(await request<GKeepNote>(`${KEEP}/notes`, { method: 'POST', body: JSON.stringify({ title, body: { text: { text } } }) })),
+  deleteKeepNote: async (name) => {
+    if (!/^notes\/[\w-]+$/.test(name)) throw new ApiError(400, 'bad note');
+    await request(`${KEEP}/${name}`, { method: 'DELETE' });
   },
   loadSettings: async () => {
     if (!settingsFileId) {
