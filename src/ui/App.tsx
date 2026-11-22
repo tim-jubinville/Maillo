@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { config, configMissing } from '../config';
 import { t } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
@@ -22,6 +22,10 @@ import { ThreadList } from './ThreadList';
 export function App() {
   const s = useApp();
   useShortcuts(s);
+  const unread = s.phase === 'ready' ? s.counts.INBOX ?? 0 : 0;
+  useEffect(() => {
+    document.title = unread ? `(${unread > 999 ? '999+' : unread}) ${config.appName}` : config.appName;
+  }, [unread]);
   if (s.phase === 'boot') return <div class="center"><p>{t('app.loading')}</p></div>;
   if (s.phase === 'signin' || s.phase === 'denied') return <SignIn s={s} />;
   return (
@@ -106,9 +110,6 @@ function Header({ s }: { s: AppState }) {
       </div>
       <SearchBox s={s} />
       <div class="header-right">
-        <button class="ib" aria-label={t('header.help')} title={t('header.help')} onClick={() => setState({ showKeys: true })}>
-          <Icon name="help" style={{ color: 'var(--c-sent)' }} />
-        </button>
         <Menu
           label={t('header.account', { email: s.me })}
           class={`avatar-btn ${online || config.demo ? '' : 'offline'}`}
@@ -126,6 +127,7 @@ function Header({ s }: { s: AppState }) {
                 </span>
               </div>
               <a class="mi" href="#/settings/general" onClick={close}><Icon name="gear" />{t('header.settings')}</a>
+              <button class="mi" onClick={() => { close(); setState({ showKeys: true }); }}><Icon name="keyboard" />{t('header.help')}<span class="kbd mi-kbd" aria-hidden="true">?</span></button>
               {!config.demo && (
                 <button class="mi" onClick={() => { close(); signInClick(true); }}><Icon name="user" />{t('auth.switch')}</button>
               )}

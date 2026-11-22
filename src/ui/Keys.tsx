@@ -3,7 +3,7 @@ import { t, type StringKey } from '../i18n';
 import { openBarMenu } from './BarItems';
 import { getPrefs } from '../prefs';
 import { go, listHash, threadHash, type MailRoute } from '../route';
-import { actions, closeThread, getState, notesEnabled, pileOf, openCompose, openRow, setState, targetIds, toggleSelect, type AppState } from '../store';
+import { actions, closeThread, defaultReplyMode, getState, notesEnabled, pileOf, openCompose, openRow, setState, targetIds, toggleSelect, type AppState } from '../store';
 import { Icon } from './Icon';
 
 export const SEARCH_KEY = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl + K';
@@ -127,7 +127,7 @@ export function useShortcuts(s: AppState) {
             return true;
           }
           case 'x': if (cur) toggleSelect(cur); return !!cur;
-          case 'r': if (last) openCompose('reply', last); return !!last;
+          case 'r': if (last) openCompose(defaultReplyMode(last), last); return !!last;
           case 'a': if (last) openCompose('replyAll', last); return !!last;
           case 'f': if (last) openCompose('forward', last); return !!last;
           case 'v':

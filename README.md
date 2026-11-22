@@ -54,8 +54,8 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Signatures for each sending address, edited as rich text or HTML, with or without the `--` line
 - Vacation responder
 - Read-only status for forwarding, IMAP and POP
-- Display options: density, reading pane (beside the list, or none for a Gmail-style one-line list that opens conversations in its place), inbox categories, images, page size, language, keyboard shortcuts
-- Appearance: light, dark or system mode, nine colour themes, interface text size, colour or outline icons, hover tooltips on icon buttons, and a custom logo upload
+- Display options: density, reading pane (beside the list, or none for a Gmail-style one-line list that opens conversations in its place), inbox categories, default reply (sender or everyone), images, page size, language, keyboard shortcuts
+- Appearance: light, dark or system mode, ten colour themes, interface text size, colour or outline icons, hover tooltips on icon buttons, and a custom logo upload
 - Updates: upload a newer release zip from Settings, with an automatic backup and one-click restore (PHP hosts)
 
 **App and notifications**
@@ -66,7 +66,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 
 **Extras**
 - Optional Gemini relay (`ai.php`): the API key stays on your server, with a daily limit per account. Set it up in Settings → AI
-- Keyboard shortcuts (press `?`), including `p` to set aside, `t` for Action required, `n` to add a note, and `v` / `l` to open Move to / Label as
+- Keyboard shortcuts (press `?`, or open them from the account menu), including `p` to set aside, `t` for Action required, `n` to add a note, and `v` / `l` to open Move to / Label as
 - Optional side panels: today's Calendar agenda (in your Google Calendar colours, with a Join button for Meet, Zoom, Teams and Webex calls) and Google Tasks
 - Responsive layout for phones and tablets
 - Demo mode with sample data
