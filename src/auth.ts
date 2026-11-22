@@ -12,6 +12,10 @@ interface TokenClient {
   requestAccessToken(overrides?: { prompt?: string; login_hint?: string }): void;
 }
 
+interface CodeClient {
+  requestCode(): void;
+}
+
 interface GoogleOAuth2 {
   initTokenClient(cfg: {
     client_id: string;
@@ -21,6 +25,16 @@ interface GoogleOAuth2 {
     login_hint?: string;
     include_granted_scopes?: boolean;
   }): TokenClient;
+  initCodeClient(cfg: {
+    client_id: string;
+    scope: string;
+    ux_mode: 'popup';
+    callback: (r: { code?: string; error?: string; error_description?: string }) => void;
+    error_callback?: (e: { type: string; message?: string }) => void;
+    login_hint?: string;
+    prompt?: string;
+    include_granted_scopes?: boolean;
+  }): CodeClient;
   revoke(token: string, done?: () => void): void;
 }
 
@@ -48,7 +62,7 @@ export const SCOPES = (() => {
     );
   }
   if (config.features.tasks) s.push('https://www.googleapis.com/auth/tasks');
-  if (config.features.notes) s.push('https://www.googleapis.com/auth/drive.appdata');
+  if (config.features.notes || config.features.syncSettings) s.push('https://www.googleapis.com/auth/drive.appdata');
   if (config.features.contactPhotos) {
     s.push(
       'https://www.googleapis.com/auth/contacts.readonly',
@@ -120,7 +134,9 @@ function loadScript(): Promise<void> {
 
 export async function prepareAuth(): Promise<void> {
   if (config.demo || !config.googleClientId) return;
+  const ready = staySignedIn() ? sessionCall({ action: 'ready' }).then((r) => (serverReady = !!(r.ok && r.configured))) : undefined;
   await loadScript();
+  await ready;
   client = window.google!.accounts.oauth2.initTokenClient({
     client_id: config.googleClientId,
     scope: SCOPES.join(' '),
@@ -143,7 +159,145 @@ export async function prepareAuth(): Promise<void> {
   });
 }
 
+// ---- Staying signed in (features.staySignedIn, through public/session.php) ----
+
+export const staySignedIn = () => config.features.staySignedIn && !config.demo;
+let renewTimer: number | undefined;
+/** Whether this device has a server session (so tokens renew without a Google popup). */
+let serverSession = false;
+
+export interface SessionReply {
+  ok: boolean;
+  error?: string;
+  access_token?: string;
+  expires_in?: number;
+  persistent?: boolean;
+  configured?: boolean;
+  source?: 'stored' | 'environment';
+  writable?: boolean;
+  crypto?: boolean;
+}
+
+export async function sessionCall(fields: Record<string, string>, withToken = false): Promise<SessionReply> {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  if (withToken && session) form.append('token', session.token);
+  let res: Response;
+  try {
+    res = await fetch('./session.php', { method: 'POST', body: form, credentials: 'same-origin', headers: { 'X-Maillo': '1' } });
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+  try {
+    return (await res.json()) as SessionReply;
+  } catch {
+    return { ok: false, error: 'unavailable' };
+  }
+}
+
+function useServerToken(r: SessionReply): boolean {
+  if (!r.ok || !r.access_token) return false;
+  writeSession({ token: r.access_token, expiresAt: Date.now() + (r.expires_in ?? 3600) * 1000 });
+  scheduleRenew();
+  return true;
+}
+
+// Fetch a fresh token a few minutes before this one runs out; no popup needed.
+function scheduleRenew() {
+  clearTimeout(renewTimer);
+  if (!serverSession || !session) return;
+  const wait = Math.max(30_000, session.expiresAt - Date.now() - 5 * 60_000);
+  renewTimer = window.setTimeout(() => {
+    renewFromServer().catch(() => undefined);
+  }, wait);
+}
+
+let renewing: Promise<boolean> | null = null;
+
+/** A new access token from this device's server session. False when there is none (or it ended). */
+export function renewFromServer(): Promise<boolean> {
+  if (!staySignedIn()) return Promise.resolve(false);
+  if (renewing) return renewing;
+  renewing = (async () => {
+    const r = await sessionCall({ action: 'token' });
+    serverSession = !!r.ok;
+    // Offline or a server hiccup: keep the session and try again in a minute.
+    if (!r.ok && (r.error === 'network' || r.error === 'google_unreachable')) {
+      serverSession = true;
+      clearTimeout(renewTimer);
+      renewTimer = window.setTimeout(() => renewFromServer().catch(() => undefined), 60_000);
+      return false;
+    }
+    return useServerToken(r);
+  })().finally(() => {
+    renewing = null;
+  });
+  return renewing;
+}
+
+export function hasServerSession() {
+  return serverSession;
+}
+
+let codeClient: CodeClient | null = null;
+let codePending: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null;
+
+function initCode(hint?: string) {
+  codeClient = window.google!.accounts.oauth2.initCodeClient({
+    client_id: config.googleClientId,
+    scope: SCOPES.join(' '),
+    ux_mode: 'popup',
+    include_granted_scopes: true,
+    login_hint: hint,
+    // Google only hands out a refresh token when consent is shown, so each device can get its own.
+    prompt: hint ? 'consent' : 'select_account consent',
+    callback: async (r) => {
+      const p = codePending;
+      codePending = null;
+      if (r.error || !r.code) return p?.reject(new Error(r.error_description || r.error || 'auth_failed'));
+      const res = await sessionCall({ action: 'exchange', code: r.code });
+      if (!res.ok || !res.access_token) return p?.reject(new Error(res.error || 'auth_failed'));
+      serverSession = !!res.persistent;
+      useServerToken(res);
+      p?.resolve(res.access_token);
+    },
+    error_callback: (e) => {
+      const p = codePending;
+      codePending = null;
+      p?.reject(new Error(e.type || 'auth_failed'));
+    }
+  });
+}
+
+/** Signs in through session.php so this device stays signed in. Rejects with "no_secret" if the server isn't set up. */
+function signInWithCode(switchAccount: boolean): Promise<string> {
+  codePending?.reject(new Error('superseded'));
+  initCode(switchAccount ? undefined : localStorage.getItem(HINT_KEY) || undefined);
+  return new Promise((resolve, reject) => {
+    codePending = { resolve, reject };
+    codeClient!.requestCode();
+  });
+}
+
 export function signIn(opts: { switchAccount?: boolean } = {}): Promise<string> {
+  if (!client) return Promise.reject(new Error('auth_not_ready'));
+  // Signed in on the server already: no popup needed.
+  if (serverSession && !opts.switchAccount) {
+    return renewFromServer().then((ok) => (ok && session ? session.token : signInPopup(opts)));
+  }
+  // Without the client secret on the server (or without PHP), sign-in is the hourly kind.
+  if (staySignedIn() && serverReady) return signInWithCode(!!opts.switchAccount);
+  return signInPopup(opts);
+}
+
+/** Lets Settings switch to the lasting sign-in as soon as the secret is saved. */
+export function setServerReady(v: boolean) {
+  serverReady = v;
+}
+
+let serverReady: boolean | undefined;
+
+function signInPopup(opts: { switchAccount?: boolean } = {}): Promise<string> {
   if (!client) return Promise.reject(new Error('auth_not_ready'));
   pending?.reject(new Error('superseded'));
   return new Promise((resolve, reject) => {
@@ -156,11 +310,15 @@ export function signIn(opts: { switchAccount?: boolean } = {}): Promise<string> 
   });
 }
 
-export function signOut() {
+export async function signOut(): Promise<void> {
   const token = session?.token;
+  clearTimeout(renewTimer);
+  const ending = serverSession ? sessionCall({ action: 'signout' }) : undefined;
+  serverSession = false;
   writeSession(null);
   localStorage.removeItem(HINT_KEY);
   if (token && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(token);
+  await ending;
 }
 
 export function dropSession() {

@@ -10,6 +10,7 @@ import type {
   GVacation,
   MailBackend,
   NotesMap,
+  SyncedSettings,
   TaskItem
 } from './types';
 
@@ -193,6 +194,7 @@ function latest(t: GThread) {
 }
 
 let demoHistory = 100;
+let demoSettings: SyncedSettings | null = null;
 
 function bump(t: GThread) {
   t.historyId = String(Number(t.historyId ?? '1') + 1);
@@ -413,6 +415,11 @@ export const demoBackend: MailBackend = {
   },
   completeTask: (id, done) => {
     tasks = tasks.map((k) => (k.id === id ? { ...k, status: done ? 'completed' : 'needsAction' } : k));
+    return wait(undefined);
+  },
+  loadSettings: () => wait(demoSettings),
+  saveSettings: (d) => {
+    demoSettings = structuredClone(d);
     return wait(undefined);
   },
   loadNotes: () => wait(notes),

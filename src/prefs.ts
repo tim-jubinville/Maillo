@@ -117,10 +117,22 @@ export function getPrefs(): Prefs {
   return prefs;
 }
 
-export function setPrefs(patch: Partial<Prefs>) {
+const patchListeners = new Set<(patch: Partial<Prefs>, remote: boolean) => void>();
+
+/** `remote` marks changes that came from another device (so they aren't sent back). */
+export function setPrefs(patch: Partial<Prefs>, opts: { remote?: boolean } = {}) {
   prefs = { ...prefs, ...patch };
   localStorage.setItem(KEY, JSON.stringify(prefs));
+  patchListeners.forEach((l) => l(patch, !!opts.remote));
   listeners.forEach((l) => l());
+}
+
+/** Called with what changed in each setPrefs call. */
+export function onPrefsPatch(fn: (patch: Partial<Prefs>, remote: boolean) => void) {
+  patchListeners.add(fn);
+  return () => {
+    patchListeners.delete(fn);
+  };
 }
 
 export function onPrefs(fn: () => void) {
