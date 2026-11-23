@@ -619,6 +619,7 @@ function findPileLabel(p: PileId, labels = state.labels): string | undefined {
 
 async function loadPile(p: PileId) {
   const labelId = state.piles[p].labelId ?? findPileLabel(p);
+  if (labelId?.startsWith('pending:')) return;
   if (!labelId) return setPile(p, { rows: [] });
   try {
     const res = await api.listThreads({ labelIds: [labelId], maxResults: 100 });
@@ -634,11 +635,26 @@ export function loadPiles() {
 }
 
 async function ensurePileLabel(p: PileId): Promise<string> {
-  const known = state.piles[p].labelId ?? findPileLabel(p);
+  const cur = state.piles[p].labelId;
+  const known = (cur && !cur.startsWith('pending:') ? cur : undefined) ?? findPileLabel(p);
   if (known) return known;
   const l = await api.createLabel(pileLabelName(p));
   setState((st) => ({ labels: [...st.labels, l], piles: { ...st.piles, [p]: { ...st.piles[p], labelId: l.id } } }));
   return l.id;
+}
+
+/** Swaps a stand-in label id for the real one everywhere it's shown. */
+function renameLocalLabel(from: string, to: string) {
+  const fix = (r: ThreadRow) => (r.labelIds.includes(from) ? { ...r, labelIds: r.labelIds.map((l) => (l === from ? to : l)) } : r);
+  const piles = { ...state.piles };
+  for (const p of PILES) piles[p] = { ...piles[p], rows: piles[p].rows.map(fix) };
+  const o = state.open;
+  setState({
+    piles,
+    list: { ...state.list, rows: state.list.rows.map(fix) },
+    open: o && o.labelIds.includes(from) ? { ...o, labelIds: o.labelIds.map((l) => (l === from ? to : l)) } : o
+  });
+  for (const [id, r] of rowCache) if (r.labelIds.includes(from)) rowCache.set(id, fix(r));
 }
 
 export function pileOf(labelIds: string[]): PileId | undefined {
@@ -733,8 +749,9 @@ export async function openThread(id: string, quiet = false) {
     const labelIds = [...new Set(messages.flatMap((m) => m.labelIds))];
     setState({ open: { id, loading: false, messages, labelIds } });
     if (labelIds.includes('UNREAD')) {
-      patchRows([id], (r) => ({ ...r, unread: false }));
-      api.modifyThread(id, [], ['UNREAD']).then(() => loadCounts()).catch(fail);
+      const snap = snapshot([id]);
+      applyLocal([id], { add: [], remove: ['UNREAD'] }, false);
+      api.modifyThread(id, [], ['UNREAD']).then(() => loadCounts()).catch((e) => rollback(snap, e));
     }
   } catch (e) {
     if (mine !== openSeq) return;
@@ -760,17 +777,6 @@ export function closeThread() {
   if (r.view === 'mail') go(listHash(r));
 }
 
-function patchRows(ids: string[], fn: (r: ThreadRow) => ThreadRow) {
-  const set = new Set(ids);
-  const rows = state.list.rows.map((r) => {
-    if (!set.has(r.id)) return r;
-    const n = fn(r);
-    rowCache.set(n.id, { ...n, historyId: undefined });
-    return n;
-  });
-  setState({ list: { ...state.list, rows } });
-}
-
 function dropRows(ids: string[]) {
   const set = new Set(ids);
   const rows = state.list.rows;
@@ -787,7 +793,110 @@ function dropRows(ids: string[]) {
   }
 }
 
-type Op = { add: string[]; remove: string[] } | 'trash' | 'untrash';
+type LabelOp = { add: string[]; remove: string[] };
+type Op = LabelOp | 'trash' | 'untrash';
+
+function opLabels(op: Op): LabelOp {
+  if (op === 'trash') return { add: ['TRASH'], remove: [] };
+  if (op === 'untrash') return { add: [], remove: ['TRASH'] };
+  return op;
+}
+
+/** A row with labels added and removed, and the flags that follow from them. */
+function withLabels(r: ThreadRow, add: string[], remove: string[]): ThreadRow {
+  const labelIds = [...new Set([...r.labelIds.filter((l) => !remove.includes(l)), ...add])];
+  return { ...r, labelIds, unread: labelIds.includes('UNREAD'), starred: labelIds.includes('STARRED'), important: labelIds.includes('IMPORTANT') };
+}
+
+/** What the affected conversations looked like before a change, so it can be put back exactly. */
+interface Snapshot {
+  listKey: string;
+  rows: Map<string, ThreadRow>;
+  inList: Set<string>;
+  piles: Record<PileId, Set<string>>;
+  open?: { id: string; labelIds: string[] };
+  counts: Record<string, number>;
+}
+
+function knownRow(id: string): ThreadRow | undefined {
+  return state.list.rows.find((x) => x.id === id) ?? PILES.flatMap((p) => state.piles[p].rows).find((x) => x.id === id) ?? rowCache.get(id);
+}
+
+function snapshot(ids: string[]): Snapshot {
+  const rows = new Map<string, ThreadRow>();
+  for (const id of ids) {
+    const r = knownRow(id);
+    if (r) rows.set(id, r);
+  }
+  const set = new Set(ids);
+  return {
+    listKey: state.list.key,
+    rows,
+    inList: new Set(state.list.rows.filter((r) => set.has(r.id)).map((r) => r.id)),
+    piles: Object.fromEntries(PILES.map((p) => [p, new Set(state.piles[p].rows.filter((r) => set.has(r.id)).map((r) => r.id))])) as Record<PileId, Set<string>>,
+    open: state.open && set.has(state.open.id) ? { id: state.open.id, labelIds: state.open.labelIds } : undefined,
+    counts: state.counts
+  };
+}
+
+// Unread figures beside folders and labels, moved by hand until Gmail's own come back.
+function adjustCounts(before: ThreadRow[], after: ThreadRow[]): Record<string, number> {
+  const counts = { ...state.counts };
+  const live = (r: ThreadRow, l: string) => r.unread && r.labelIds.includes(l) && !r.labelIds.includes('TRASH') && !r.labelIds.includes('SPAM');
+  for (let i = 0; i < before.length; i++) {
+    for (const l of Object.keys(counts)) {
+      if (l === 'DRAFT' || l === 'SPAM') continue;
+      const d = Number(live(after[i], l)) - Number(live(before[i], l));
+      if (d) counts[l] = Math.max(0, (counts[l] ?? 0) + d);
+    }
+  }
+  return counts;
+}
+
+/** Shows a change right away: the list, the piles, the open conversation and the counts. */
+function applyLocal(ids: string[], op: Op, drop: boolean) {
+  const { add, remove } = opLabels(op);
+  const set = new Set(ids);
+  const before = ids.map(knownRow).filter((r): r is ThreadRow => !!r);
+  const after = before.map((r) => withLabels(r, add, remove));
+  const changed = new Map(after.map((r) => [r.id, r]));
+  for (const r of after) rowCache.set(r.id, { ...r, historyId: undefined });
+  const gone = add.includes('TRASH') || add.includes('SPAM');
+  const piles = { ...state.piles };
+  for (const p of PILES) {
+    const labelId = piles[p].labelId;
+    let rows = piles[p].rows.map((r) => changed.get(r.id) ?? r);
+    if (labelId && (remove.includes(labelId) || gone)) rows = rows.filter((r) => !set.has(r.id));
+    if (labelId && add.includes(labelId) && !gone) {
+      const present = new Set(rows.map((r) => r.id));
+      rows = [...after.filter((r) => !present.has(r.id)), ...rows];
+    }
+    piles[p] = { ...piles[p], rows };
+  }
+  const o = state.open;
+  const open = o && set.has(o.id) ? { ...o, labelIds: [...new Set([...o.labelIds.filter((l) => !remove.includes(l)), ...add])] } : o;
+  setState({ piles, open, counts: adjustCounts(before, after) });
+  if (drop) dropRows(ids);
+  else setState({ list: { ...state.list, rows: state.list.rows.map((r) => changed.get(r.id) ?? r) } });
+}
+
+/** Puts the affected conversations back as they were, leaving everything else alone. */
+function restore(snap: Snapshot) {
+  const ids = new Set(snap.rows.keys());
+  for (const r of snap.rows.values()) rowCache.set(r.id, { ...r, historyId: undefined });
+  const piles = { ...state.piles };
+  for (const p of PILES) {
+    const back = [...snap.piles[p]].map((id) => snap.rows.get(id)).filter((r): r is ThreadRow => !!r);
+    piles[p] = { ...piles[p], rows: byDate([...piles[p].rows.filter((r) => !ids.has(r.id)), ...back]) };
+  }
+  const patch: Partial<AppState> = { piles, counts: snap.counts };
+  if (state.list.key === snap.listKey) {
+    const back = [...snap.inList].map((id) => snap.rows.get(id)).filter((r): r is ThreadRow => !!r);
+    patch.list = { ...state.list, rows: byDate([...state.list.rows.filter((r) => !ids.has(r.id)), ...back]) };
+  }
+  if (snap.open && state.open?.id === snap.open.id) patch.open = { ...state.open, labelIds: snap.open.labelIds };
+  setState(patch);
+}
 
 async function applyOp(ids: string[], op: Op) {
   await pool(ids, 6, (id) =>
@@ -795,38 +904,51 @@ async function applyOp(ids: string[], op: Op) {
   );
 }
 
-function invert(op: Op): Op {
-  if (op === 'trash') return 'untrash';
-  if (op === 'untrash') return 'trash';
-  return { add: op.remove, remove: op.add };
+/** For each conversation, the change that gives it back exactly the labels it had. */
+function inverseOps(snap: Snapshot, ids: string[], op: Op): [string, Op][] {
+  if (op === 'trash') return ids.map((id) => [id, 'untrash']);
+  if (op === 'untrash') return ids.map((id) => [id, 'trash']);
+  return ids.map((id) => {
+    const had = snap.rows.get(id)?.labelIds;
+    if (!had) return [id, { add: op.remove, remove: op.add }];
+    return [id, { add: op.remove.filter((l) => had.includes(l)), remove: op.add.filter((l) => !had.includes(l)) }];
+  });
 }
 
-async function run(ids: string[], op: Op, opts: { drop: boolean; message?: string; patch?: (r: ThreadRow) => ThreadRow }) {
+/** Google refused a change: quietly put things back and say so. */
+function rollback(snap: Snapshot, e: unknown) {
+  restore(snap);
+  if (e instanceof AuthRequired) return fail(e);
+  toast(e instanceof RateLimited ? t('list.rateLimited') : t('toast.rolledBack'));
+  refresh(true);
+}
+
+async function run(ids: string[], op: Op, opts: { drop: boolean; message?: string }) {
   if (!ids.length) return;
-  if (opts.drop) dropRows(ids);
-  else if (opts.patch) patchRows(ids, opts.patch);
+  const snap = snapshot(ids);
+  applyLocal(ids, op, opts.drop);
   try {
     await applyOp(ids, op);
-    if (opts.message)
-      toast(opts.message, {
-        action: {
-          label: t('toast.undo'),
-          run: async () => {
-            try {
-              await applyOp(ids, invert(op));
-              refresh(true);
-            } catch (e) {
-              fail(e);
-            }
-          }
-        }
-      });
-    loadCounts().catch(() => undefined);
-    if (state.open && ids.includes(state.open.id) && !opts.drop) openThread(state.open.id, true);
   } catch (e) {
-    fail(e);
-    refresh(true);
+    return rollback(snap, e);
   }
+  if (opts.message)
+    toast(opts.message, {
+      action: {
+        label: t('toast.undo'),
+        run: () => {
+          // Undo shows at once too; Google catches up behind it.
+          const redo = snapshot(ids);
+          restore(snap);
+          pool(inverseOps(snap, ids, op), 6, ([id, inv]) =>
+            inv === 'trash' ? api.trashThread(id) : inv === 'untrash' ? api.untrashThread(id) : api.modifyThread(id, inv.add, inv.remove)
+          )
+            .then(() => loadCounts())
+            .catch((e) => rollback(redo, e));
+        }
+      }
+    });
+  loadCounts().catch(() => undefined);
 }
 
 function currentFolder(): string | undefined {
@@ -837,11 +959,10 @@ function currentFolder(): string | undefined {
 export const actions = {
   archive(ids: string[]) {
     const f = currentFolder();
-    const remove = ['INBOX'];
-    run(ids, { add: [], remove }, { drop: f === 'inbox' || !!(state.route as MailRoute).label || f === undefined, message: t('toast.archived', { n: ids.length }), patch: (r) => ({ ...r, labelIds: r.labelIds.filter((l) => l !== 'INBOX') }) });
+    run(ids, { add: [], remove: ['INBOX'] }, { drop: f === 'inbox' || !!(state.route as MailRoute).label || f === undefined, message: t('toast.archived', { n: ids.length }) });
   },
   moveToInbox(ids: string[]) {
-    run(ids, { add: ['INBOX'], remove: ['SPAM'] }, { drop: currentFolder() === 'spam', message: t('toast.restored'), patch: (r) => ({ ...r, labelIds: [...r.labelIds, 'INBOX'] }) });
+    run(ids, { add: ['INBOX'], remove: ['SPAM'] }, { drop: currentFolder() === 'spam', message: t('toast.restored') });
   },
   trash(ids: string[]) {
     if (currentFolder() === 'trash') return;
@@ -857,31 +978,18 @@ export const actions = {
     run(ids, { add: ['INBOX'], remove: ['SPAM'] }, { drop: true, message: t('toast.notSpam') });
   },
   read(ids: string[], read: boolean) {
-    run(ids, read ? { add: [], remove: ['UNREAD'] } : { add: ['UNREAD'], remove: [] }, {
-      drop: false,
-      patch: (r) => ({ ...r, unread: !read })
-    });
+    run(ids, read ? { add: [], remove: ['UNREAD'] } : { add: ['UNREAD'], remove: [] }, { drop: false });
     if (!read && state.open && ids.includes(state.open.id)) closeThread();
   },
   star(ids: string[], on: boolean) {
-    run(ids, on ? { add: ['STARRED'], remove: [] } : { add: [], remove: ['STARRED'] }, {
-      drop: !on && currentFolder() === 'starred',
-      patch: (r) => ({ ...r, starred: on })
-    });
+    run(ids, on ? { add: ['STARRED'], remove: [] } : { add: [], remove: ['STARRED'] }, { drop: !on && currentFolder() === 'starred' });
   },
   important(ids: string[], on: boolean) {
-    run(ids, on ? { add: ['IMPORTANT'], remove: [] } : { add: [], remove: ['IMPORTANT'] }, {
-      drop: !on && currentFolder() === 'important',
-      patch: (r) => ({ ...r, important: on })
-    });
+    run(ids, on ? { add: ['IMPORTANT'], remove: [] } : { add: [], remove: ['IMPORTANT'] }, { drop: !on && currentFolder() === 'important' });
   },
   label(ids: string[], add: string[], remove: string[]) {
     const r = state.route as MailRoute;
-    run(ids, { add, remove }, {
-      drop: !!r.label && remove.includes(r.label),
-      message: t('toast.labelled'),
-      patch: (row) => ({ ...row, labelIds: [...new Set([...row.labelIds.filter((l) => !remove.includes(l)), ...add])] })
-    });
+    run(ids, { add, remove }, { drop: !!r.label && remove.includes(r.label), message: t('toast.labelled') });
   },
   moveTo(ids: string[], labelId: string) {
     const l = state.labels.find((x) => x.id === labelId);
@@ -892,48 +1000,57 @@ export const actions = {
   // Piles are exclusive: moving a conversation to one pile takes it out of the other.
   async pin(p: PileId, ids: string[]) {
     if (!ids.length) return;
+    const f = currentFolder();
+    const r = state.route as MailRoute;
+    const others = PILES.filter((x) => x !== p).map((x) => state.piles[x].labelId).filter((x): x is string => !!x);
+    const known = state.piles[p].labelId ?? findPileLabel(p);
+    const drop = (labelId: string) => f === 'inbox' || (!!r.label && r.label !== labelId) || f === undefined;
+    const message = t(p === 'aside' ? 'toast.pin.aside' : 'toast.pin.action', { n: ids.length });
+    if (known) {
+      if (!state.piles[p].labelId) setPile(p, { ...state.piles[p], labelId: known });
+      await run(ids, { add: [known], remove: ['INBOX', ...others] }, { drop: drop(known), message });
+      loadPiles();
+      return;
+    }
+    // First use: the pile's label doesn't exist yet. Show the move now under a stand-in label, then swap in the real one.
+    const temp = `pending:${p}`;
+    const snap = snapshot(ids);
+    setPile(p, { ...state.piles[p], labelId: temp });
+    applyLocal(ids, { add: [temp], remove: ['INBOX', ...others] }, drop(temp));
     let labelId: string;
     try {
       labelId = await ensurePileLabel(p);
     } catch (e) {
-      return fail(e);
+      setPile(p, { ...state.piles[p], labelId: undefined });
+      return rollback(snap, e);
     }
-    const others = PILES.filter((x) => x !== p).map((x) => state.piles[x].labelId).filter((x): x is string => !!x);
-    const remove = ['INBOX', ...others];
-    const f = currentFolder();
-    const r = state.route as MailRoute;
-    const set = new Set(ids);
-    const known = new Set(state.piles[p].rows.map((x) => x.id));
-    const move = (row: ThreadRow) => ({ ...row, labelIds: [...row.labelIds.filter((l) => !remove.includes(l)), labelId] });
-    const adding = ids
-      .map((id) => state.list.rows.find((x) => x.id === id) ?? PILES.flatMap((x) => state.piles[x].rows).find((x) => x.id === id))
-      .filter((x): x is ThreadRow => !!x && !known.has(x.id))
-      .map(move);
-    const piles = { ...state.piles };
-    for (const x of PILES) piles[x] = x === p ? { labelId, rows: [...adding, ...piles[x].rows] } : { ...piles[x], rows: piles[x].rows.filter((row) => !set.has(row.id)) };
-    setState({ piles });
-    await run(ids, { add: [labelId], remove }, {
-      drop: f === 'inbox' || (!!r.label && r.label !== labelId) || f === undefined,
-      message: t(p === 'aside' ? 'toast.pin.aside' : 'toast.pin.action', { n: ids.length }),
-      patch: move
-    });
+    renameLocalLabel(temp, labelId);
+    setPile(p, { ...state.piles[p], labelId });
+    try {
+      await applyOp(ids, { add: [labelId], remove: ['INBOX', ...others] });
+    } catch (e) {
+      return rollback(snap, e);
+    }
+    toast(message);
+    loadCounts().catch(() => undefined);
     loadPiles();
   },
   async unpin(ids: string[], toInbox: boolean) {
     const labels = pileLabelIds();
     if (!labels.length || !ids.length) return;
-    const set = new Set(ids);
-    const piles = { ...state.piles };
-    for (const x of PILES) piles[x] = { ...piles[x], rows: piles[x].rows.filter((row) => !set.has(row.id)) };
-    setState({ piles });
     const r = state.route as MailRoute;
+    const back = toInbox && currentFolder() === 'inbox';
     await run(ids, { add: toInbox ? ['INBOX'] : [], remove: labels }, {
       drop: (!!r.label && labels.includes(r.label)) || (toInbox ? false : currentFolder() === 'inbox'),
-      message: toInbox ? t('toast.backToInbox') : t('toast.asideDone'),
-      patch: (row) => ({ ...row, labelIds: [...row.labelIds.filter((l) => !labels.includes(l)), ...(toInbox ? ['INBOX'] : [])] })
+      message: toInbox ? t('toast.backToInbox') : t('toast.asideDone')
     });
+    // Back in the Inbox: show it there at once, then let the list catch up.
+    if (back) {
+      const rows = ids.map((id) => rowCache.get(id)).filter((x): x is ThreadRow => !!x && !state.list.rows.some((y) => y.id === x.id));
+      if (rows.length) setState({ list: { ...state.list, rows: byDate([...state.list.rows, ...rows]) } });
+    }
     loadPiles();
-    if (toInbox && currentFolder() === 'inbox') loadList(false, true);
+    if (back) loadList(false, true);
   },
   async addTask(id: string) {
     const row = state.list.rows.find((r) => r.id === id);
