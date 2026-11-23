@@ -99,9 +99,9 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
               >
                 <span class="tab-ic">
                   <CIcon name={CAT_ICON[c]} size={20} />
-                  {fresh && !on && <span class="tab-dot" aria-hidden="true" />}
                 </span>
                 {on && <span aria-hidden="true">{name}</span>}
+                {fresh && !on && <span class="tab-n" aria-hidden="true">{n > 99 ? '99+' : n}</span>}
               </button>
             );
           })}
