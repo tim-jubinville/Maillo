@@ -19,6 +19,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Move to and Label as open with a search field ready to type in; Enter picks the first match
 - Quoted earlier messages (Gmail, Outlook, Apple Mail, plain-text "> " replies…) are folded behind a ··· button in every message; forwards stay visible
 - Search suggestions as you type: folders and labels, people (recent correspondents, plus your Google Contacts and Workspace directory with `features.contactPhotos`), matching conversations, and your recent searches
+- The message list only renders the rows on screen, so long pages scroll smoothly; keyboard navigation, selection, drag and drop and screen readers (position and count of each row) work as before
 - Resizable columns (folder list, message list, side panel); widths, the open side panel and a hidden folder list are remembered in this browser. Double-click a divider to reset it
 - Hover actions on each row: archive, delete, mark read/unread, set aside, Action required
 - Drag and drop: drag conversations (or the whole selection) onto a label, Inbox, Starred, Important, All mail, Spam, Trash or a pile; drag a label from the sidebar onto a conversation to apply it

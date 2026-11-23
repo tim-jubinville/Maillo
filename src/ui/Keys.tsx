@@ -5,6 +5,7 @@ import { getPrefs } from '../prefs';
 import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, closeThread, defaultReplyMode, getState, notesEnabled, pileOf, openCompose, openRow, setState, targetIds, toggleSelect, type AppState } from '../store';
 import { Icon } from './Icon';
+import { revealRow } from './ThreadList';
 
 export const SEARCH_KEY = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl + K';
 
@@ -80,7 +81,7 @@ export function useShortcuts(s: AppState) {
         if (st.open) go(threadHash(r as MailRoute, next.id), true);
         else {
           setState({ focusId: next.id });
-          document.querySelector(`[data-id="${CSS.escape(next.id)}"]`)?.scrollIntoView({ block: 'nearest' });
+          revealRow(next.id);
         }
       };
       const last = st.open?.messages.filter((m) => !m.labelIds.includes('DRAFT')).at(-1);

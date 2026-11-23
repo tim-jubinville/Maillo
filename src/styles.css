@@ -326,6 +326,9 @@ a:hover { color: var(--violet); }
 .chips { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid rgba(213, 218, 229, 0.7); overflow-x: auto; scrollbar-width: none; }
 .rows { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: calc(var(--rhb, 0px) + 12px); }
 .rows.in { animation: rows-in 220ms ease-out; }
+/* Only the rows on screen are rendered, each placed at its offset in a box as tall as the whole list. */
+.vspace { position: relative; contain: layout; }
+.vspace > .row { position: absolute; top: 0; left: 0; right: 0; }
 .rows.in.from-right { --rows-from: 14px; }
 .rows.in.from-left { --rows-from: -14px; }
 @keyframes rows-in { from { opacity: 0; transform: translateX(var(--rows-from, 0)); } }
