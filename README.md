@@ -2,7 +2,7 @@
 
 A self-hosted web interface for Gmail. Your mail stays in your Google account; Maillo is a set of static files you upload to your own web server. It talks to Gmail directly from your browser through Google's official API.
 
-- No database and no third-party service in between; the only server-side files are an optional updater (`update.php`) and an optional Gemini relay (`ai.php`), both for PHP hosts
+- No database and no third-party service in between; one settings file (`maillo-config.php`) and a few small PHP files: settings for the browser (`config.php`), an updater (`update.php`), lasting sign-in (`session.php`) and a Gemini relay (`ai.php`)
 - Sign in with Google; access tokens stay in the browser tab and are never stored on a server
 - Works on any static host: shared hosting (Apache, cPanel), Nginx, Cloudflare Pages, Netlify, and others
 - English and French interface
@@ -93,12 +93,14 @@ Some Gmail features are not available to third-party apps through the Gmail API:
 See [docs/INSTALL.md](docs/INSTALL.md). In short:
 
 1. Create an OAuth Client ID in Google Cloud.
-2. Upload the files from the release zip to your web server.
-3. Put your Client ID in `config.js`.
+2. Fill in `maillo-config.php` from the release zip: your Client ID and who may sign in. It's the only file to edit.
+3. Upload the files to your web server and open the address. If anything is missing, Maillo shows a checklist.
+
+Hosts without PHP use `config.js` instead (rename `config.example.js`). Installs made before 0.6.9 keep using `config.js` until you move to `maillo-config.php` (see INSTALL.md).
 
 ## Try it without Google
 
-Open the app with `?demo` at the end of the address (for example `https://mail.example.com/?demo`), or set `demo: true` in `config.js`. Demo mode uses sample data and never contacts Google.
+Open the app with `?demo` at the end of the address (for example `https://mail.example.com/?demo`), or set `demo` to true in `maillo-config.php`. Demo mode uses sample data and never contacts Google.
 
 ## Develop
 
@@ -123,13 +125,15 @@ Local development needs `http://localhost:5173` listed as an authorised JavaScri
 ### Project layout
 
 ```
-public/config.js      runtime configuration, copied as-is into the build
+public/maillo-config.php  the one settings file (never served; config.php hands the browser its safe part)
+public/config.php     gives the browser its settings as window.MAILLO_CONFIG, or the setup checklist
+public/config.example.js  settings for hosts without PHP (renamed to config.js there)
 public/.htaccess      headers for Apache hosts
 public/manifest.webmanifest  web app manifest (installable app)
 sw/sw.js              service worker template; the build fills in the version and file list
 public/update.php     optional in-browser updater for PHP hosts
 public/ai.php         optional Gemini relay for PHP hosts (key stays server-side)
-public/maillo-common.php  sign-in check shared by the PHP files
+public/maillo-common.php  settings reader and sign-in check shared by the PHP files
 src/ai.ts             client for ai.php
 src/auth.ts           Google sign-in (token flow, no server)
 src/gmail/api.ts      Gmail, Calendar and Tasks API calls

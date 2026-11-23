@@ -15,9 +15,10 @@
  *   set_secret     store the OAuth client secret (token, secret)
  *   remove_secret  delete the stored secret and every session (token)
  *
- * The client secret and the encryption key live in .maillo-oauth.php; sessions in
- * .maillo-sessions/. Neither is ever served, backed up or replaced by updates. A
- * GOOGLE_CLIENT_SECRET environment variable takes priority if the host sets one.
+ * The client secret comes from maillo-config.php (googleClientSecret) if it's set there, else a
+ * GOOGLE_CLIENT_SECRET environment variable, else the one saved from Settings in .maillo-oauth.php.
+ * The encryption key lives in .maillo-oauth.php; sessions in .maillo-sessions/. Neither is ever
+ * served, backed up or replaced by updates.
  */
 declare(strict_types=1);
 
@@ -53,13 +54,15 @@ function oauth_store(string $file): array
     return is_array($data) ? $data : [];
 }
 
-function client_secret(string $file): string
+/** The OAuth client secret and where it came from: maillo-config.php, the environment, or Settings. */
+function secret_info(array $cfg, string $file): array
 {
-    $env = getenv('GOOGLE_CLIENT_SECRET');
-    if (is_string($env) && $env !== '') {
-        return $env;
-    }
-    return (string) (oauth_store($file)['secret'] ?? '');
+    return pick_secret($cfg['clientSecret'], 'GOOGLE_CLIENT_SECRET', (string) (oauth_store($file)['secret'] ?? ''));
+}
+
+function client_secret(array $cfg, string $file): string
+{
+    return secret_info($cfg, $file)[0];
 }
 
 /** The key that encrypts refresh tokens at rest, created the first time it's needed. */
@@ -189,11 +192,11 @@ $action = (string) ($_POST['action'] ?? '');
 
 // Whether signing in here can work at all (only says yes or no, nothing about any account).
 if ($action === 'ready') {
-    out(200, ['ok' => true, 'configured' => client_secret($secretFile) !== '' && function_exists('openssl_encrypt')]);
+    out(200, ['ok' => true, 'configured' => client_secret($cfg, $secretFile) !== '' && function_exists('openssl_encrypt')]);
 }
 
 if ($action === 'exchange') {
-    $secret = client_secret($secretFile);
+    $secret = client_secret($cfg, $secretFile);
     if ($secret === '') {
         fail(409, 'no_secret');
     }
@@ -243,7 +246,7 @@ if ($action === 'token') {
     if (!$s) {
         fail(401, 'no_session');
     }
-    $secret = client_secret($secretFile);
+    $secret = client_secret($cfg, $secretFile);
     $refresh = unseal((string) ($s['rt'] ?? ''), crypto_key($secretFile));
     if ($secret === '' || $refresh === '') {
         @unlink($s['file']);
@@ -300,8 +303,11 @@ if ($action === 'signout') {
 
 if ($action === 'secret_status' || $action === 'set_secret' || $action === 'remove_secret') {
     authorize($cfg);
-    $env = getenv('GOOGLE_CLIENT_SECRET');
-    $fromEnv = is_string($env) && $env !== '';
+    $fixed = in_array(secret_info($cfg, $secretFile)[1], ['config', 'environment'], true);
+    if ($fixed && $action !== 'secret_status') {
+        // Set in maillo-config.php or by the host: change it there.
+        fail(409, 'secret_fixed');
+    }
     if ($action === 'set_secret') {
         $secret = trim((string) ($_POST['secret'] ?? ''));
         if (!preg_match('/^[A-Za-z0-9_\-]{10,128}$/', $secret)) {
@@ -332,10 +338,11 @@ if ($action === 'secret_status' || $action === 'set_secret' || $action === 'remo
             @unlink($f);
         }
     }
+    [$secret, $source] = secret_info($cfg, $secretFile);
     out(200, [
         'ok' => true,
-        'configured' => client_secret($secretFile) !== '',
-        'source' => $fromEnv ? 'environment' : 'stored',
+        'configured' => $secret !== '',
+        'source' => $source ?: 'stored',
         'writable' => is_writable($root),
         'crypto' => function_exists('openssl_encrypt'),
     ]);
