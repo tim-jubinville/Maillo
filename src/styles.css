@@ -283,7 +283,7 @@ a:hover { color: var(--violet); }
 .settings-card { display: flex; }
 .settings-card .settings { flex: 1; }
 .settings-card .section { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border: 1px solid var(--line-soft); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.06); }
-.side-icons { width: 56px; flex: 0 0 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 4px; }
+.side-icons { width: 68px; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 4px; }
 .sp { position: relative; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 .sp .ic { width: 20px; height: 20px; stroke-width: 1.9; }
 .sp:hover { background: var(--hover); }
@@ -330,8 +330,8 @@ a:hover { color: var(--violet); }
 .rows.in.from-left { --rows-from: -14px; }
 @keyframes rows-in { from { opacity: 0; transform: translateX(var(--rows-from, 0)); } }
 .tab.on > span:last-child { animation: fadein 200ms ease-out; }
-.listhead { flex: none; border-bottom: 1px solid var(--line-soft); background: var(--surface); position: relative; z-index: 7; }
-.listhead .tabs, .listhead .chips { border-top: 1px solid var(--line-soft); }
+.listhead { flex: none; background: var(--surface); position: relative; z-index: 7; }
+.listhead .tabs, .listhead .chips { border-top: 0; }
 .row { display: flex; align-items: flex-start; gap: 4px; padding: 12px 14px 12px 6px; border-bottom: 1px solid var(--row-line); cursor: pointer; position: relative; }
 .row.compact { padding: 5px 14px 5px 6px; align-items: center; }
 .row:hover { background: var(--surface-2); }

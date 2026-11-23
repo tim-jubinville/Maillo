@@ -59,7 +59,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Signatures for each sending address, edited as rich text or HTML, with or without the `--` line
 - Vacation responder
 - Read-only status for forwarding, IMAP and POP
-- Display options: density, reading pane (beside the list, or none for a Gmail-style one-line list that opens conversations in its place), inbox categories, default reply (sender or everyone), images, page size, language, keyboard shortcuts
+- Display options: density, reading pane (none by default, like Gmail: a one-line list that opens conversations in its place; or beside the list), inbox categories, default reply (sender or everyone), images, page size, language, keyboard shortcuts
 - Appearance: light, dark or system mode, ten colour themes, interface text size, colour or outline icons, hover tooltips on icon buttons, and a custom logo upload
 - Updates: upload a newer release zip from Settings, with an automatic backup and one-click restore (PHP hosts)
 
