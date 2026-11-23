@@ -126,6 +126,10 @@ Either way, the Release workflow builds the install zip and attaches it to the r
 
 Local development needs `http://localhost:5173` listed as an authorised JavaScript origin on your OAuth client, or use `?demo`.
 
+### Website
+
+The landing page lives in `site/` (plain HTML, no build). On every push to `main`, the Website workflow publishes it to GitHub Pages, with a demo build of the app at `/demo/` (sample data only). To turn it on: Settings → Pages → Source: **GitHub Actions**. For a custom domain, add it in the same screen.
+
 ### Project layout
 
 ```
