@@ -25,7 +25,14 @@ function fail(int $code, string $error, array $extra = []): void
 }
 
 const CONFIG_FILE = 'maillo-config.php';
-const FEATURES = ['calendar', 'tasks', 'notes', 'ai', 'contactPhotos', 'staySignedIn', 'syncSettings', 'keep'];
+const FEATURES = ['calendar', 'tasks', 'notes', 'ai', 'contactPhotos', 'staySignedIn', 'syncSettings', 'keep', 'push'];
+
+/** A Pub/Sub topic's full name (projects/…/topics/…), or '' when it isn't one. */
+function push_topic(string $t): string
+{
+    $t = trim($t);
+    return preg_match('#^projects/[a-z][a-z0-9\-]{4,61}[a-z0-9]/topics/[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$#', $t) ? $t : '';
+}
 
 /**
  * Loads maillo-config.php: null when there is none, ['__error' => line] when it has a typo.
@@ -91,6 +98,8 @@ function read_config(string $root): array
             'aiDailyLimit' => max(0, (int) ($c['aiDailyLimit'] ?? 0)),
             'aiEnabled' => !empty($features['ai']),
             'staySignedIn' => !empty($features['staySignedIn']),
+            'pushEnabled' => !empty($features['push']),
+            'pushTopic' => push_topic((string) ($c['pushTopic'] ?? '')),
             'accounts' => clean_list($c['allowedAccounts'] ?? []),
             'domains' => array_map(function ($d) {
                 return ltrim($d, '@');
@@ -129,6 +138,8 @@ function read_config_js(string $root): array
         'aiDailyLimit' => preg_match('/\baiDailyLimit\s*:\s*(\d+)/', $js, $m) ? (int) $m[1] : 0,
         'aiEnabled' => (bool) preg_match('/\bai\s*:\s*true\b/', $js),
         'staySignedIn' => (bool) preg_match('/\bstaySignedIn\s*:\s*true\b/', $js),
+        'pushEnabled' => (bool) preg_match('/\bpush\s*:\s*true\b/', $js),
+        'pushTopic' => push_topic($str('pushTopic')),
         'accounts' => $list('allowedAccounts'),
         'domains' => array_map(function ($d) {
             return ltrim($d, '@');

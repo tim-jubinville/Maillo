@@ -91,6 +91,8 @@ Every setting is explained in the file itself, in plain language. Text goes betw
 | `features.staySignedIn` | Each device stays signed in instead of a new Google sign-in every hour. Needs the client secret; see "Optional: stay signed in". |
 | `features.syncSettings` | Keeps Maillo's settings the same on all your devices through a hidden file in Google Drive. Adds the `drive.appdata` permission (shared with `features.notes`) and needs the Drive API. |
 | `features.contactPhotos` | Shows people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory. Read-only; photos are fetched once per browser session. Also lets search suggest people from your contacts and directory as you type, and turns on the Contacts side panel (your contacts, search, and full contact cards). Adds the three contacts/directory permissions and needs the People API. |
+| `features.push` | New mail within seconds, and notifications while Maillo is closed. Needs staying signed in and a Pub/Sub topic; see "Optional: new mail within seconds". |
+| `pushTopic` | The Pub/Sub topic for `features.push`, such as `'projects/my-project/topics/maillo'`. |
 | `features.ai` | Turns on the Gemini relay (`ai.php`) and **Settings → AI**. See "Optional: AI with Gemini". |
 | `geminiApiKey` | Optional Gemini API key for the AI features. It takes priority over a key saved in Settings or set as an environment variable. |
 | `aiModel` | Gemini model used by the relay. Empty uses `gemini-flash-latest`. |
@@ -211,6 +213,32 @@ How it works: signing in hands `session.php` a one-time code. It trades it for a
 
 If your consent screen is in **Testing** (External user type), Google expires refresh tokens after 7 days; publish the app or use the Internal user type to avoid that. Needs PHP's OpenSSL extension (standard).
 
+## Optional: new mail within seconds, and notifications while Maillo is closed
+
+Without this, Maillo checks for new mail about once a minute, and only notifies while it's open (in a tab or as an installed app). With `features.push`, Gmail tells your server the moment mail arrives, and your server sends a notification to each device that turned it on, even when Maillo is closed. Mail also shows up in an open Maillo within seconds.
+
+How it works: Gmail can only announce new mail through **Google Cloud Pub/Sub**, so there's a little setup in Google Cloud. Pub/Sub posts each announcement to `push.php` on your server. `push.php` asks Gmail what's new (using the sign-in that `session.php` keeps, so staying signed in is needed), applies each device's notification rules from **Settings → Notifications** (scope, people, labels, preview, sound, quiet hours), and sends an encrypted web push to that device. Push messages are encrypted for the device and signed with your install's own key, so the browser's push service (Google, Mozilla, Apple or Microsoft, depending on the browser) only carries them.
+
+**You need:** PHP 7.3 or later with OpenSSL, staying signed in set up (see above), and the same Google Cloud project (Google may ask you to add billing details to use Pub/Sub; its free monthly allowance covers a personal mailbox many times over).
+
+1. **Enable Pub/Sub.** In Google Cloud (the same project as your OAuth client), open **APIs & Services → Library** and enable the **Cloud Pub/Sub API**.
+2. **Create a topic.** Open **Pub/Sub → Topics → Create topic**. Name it `maillo`, untick "Add a default subscription", and create it. Copy its full name, `projects/your-project-id/topics/maillo`.
+3. **Let Gmail publish to it.** On the topic, open **Permissions** (or the info panel) → **Add principal**: `gmail-api-push@system.gserviceaccount.com`, role **Pub/Sub Publisher**. On Workspace, if your organisation restricts sharing to its own domain ("Domain restricted sharing"), an admin has to allow this one service account first.
+4. **Turn it on.** Set `features.push` to `true` and `pushTopic` to the topic's full name, in your settings file. Reload Maillo.
+5. **Copy your push address.** Open **Settings → Notifications → When Maillo is closed**. It shows a **Pub/Sub push endpoint** like `https://mail.example.com/push.php?key=…`. Copy it. The key in it is your install's own; keep it private.
+6. **Create the subscription.** Back on the topic, **Create subscription**: any name, **Delivery type: Push**, endpoint URL: the address you copied. Leave the rest as is (no authentication needed: the key in the address is the check) and create it.
+7. **Turn it on for each device.** In **Settings → Notifications → When Maillo is closed**, click **Turn on** and allow notifications. **Send a test** checks the whole path to this device. Notifications follow the rules above it, and changes to the rules reach the server on their own.
+
+**Good to know:**
+
+- **Renewal.** Gmail stops announcing a mailbox after 7 days unless it's renewed. Maillo renews it whenever mail arrives and whenever you open Maillo, which is usually enough. For quiet weeks, add a daily cron job in your hosting panel that opens the **Daily renewal** address shown in Settings, for example `curl -fsS "https://mail.example.com/push.php?renew=…"` (or run `php push.php renew` in Maillo's folder).
+- **What's watched.** The Inbox, plus labels a device chose under "Always notify for these labels". Mail from "always notify" people that skips the Inbox (because of a filter, say) only notifies if it also gets one of those labels.
+- **Testing consent screens.** If your OAuth consent screen is in **Testing**, Google ends the server's sign-in after 7 days, and pushes stop until you sign in again. Publish the app or use the Internal user type.
+- **iPhone and iPad** receive web push only from Maillo added to the Home Screen (iOS 16.4 or later).
+- **Behind a login wall.** Pub/Sub must be able to reach `push.php`. With Cloudflare Access, add a bypass for the path `/push.php` (the key in the address still guards it).
+- **Quota.** Each new message costs about 7 Gmail quota units on the server (history and one message header), far below Google's limits.
+- **What's stored.** `.maillo-push/` holds the endpoint key, the push signing key and, per account, each device's push address and notification rules. It's never served, backed up or replaced by updates. Turning push off on a device removes it; devices whose browser drops the subscription are removed automatically.
+
 ## Optional: the same settings on every device
 
 Set `features.syncSettings` to `true` (it needs the Drive API and the `drive.appdata` scope, like `features.notes`), then sign out and in again. Maillo saves your settings to a hidden file in your Drive's app folder (`maillo-settings.json`, invisible in Drive) and applies the newest copy on each device. Column widths, text size, the open side panel and whether notifications are turned on stay per device.
@@ -256,7 +284,7 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 
 ## Security notes
 
-- Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo), `ai.php` (optional Gemini relay) and `session.php` (optional lasting sign-in). They check your Google sign-in and allowed account before doing anything, using `maillo-common.php`. `config.php` gives the browser only the safe part of `maillo-config.php`; allowed accounts and secrets never leave the server, and `.htaccess` blocks `maillo-config.php` from the web. With `staySignedIn`, refresh tokens never reach the browser: they stay encrypted on the server behind an HttpOnly cookie, and `session.php` only answers requests carrying Maillo's own header (so other sites can't use the cookie).
+- Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo), `ai.php` (optional Gemini relay) and `session.php` (optional lasting sign-in). They check your Google sign-in and allowed account before doing anything, using `maillo-common.php`. `config.php` gives the browser only the safe part of `maillo-config.php`; allowed accounts and secrets never leave the server, and `.htaccess` blocks `maillo-config.php` from the web. With `staySignedIn`, refresh tokens never reach the browser: they stay encrypted on the server behind an HttpOnly cookie, and `session.php` only answers requests carrying Maillo's own header (so other sites can't use the cookie). With `push`, `push.php` uses those same server-side sign-ins to read new mail's sender, subject and snippet, and sends them to your devices encrypted end to end (RFC 8291), signed with your install's own key (RFC 8292).
 - To open instantly and work offline, Maillo keeps conversation headers (sender, subject, snippet), what each list showed, labels and counts, and the last 150 conversations you opened (or that were fetched ahead of you) in the browser's IndexedDB on this device. It's tied to your account (another account starts from empty) and deleted when you sign out. Nothing is kept in demo mode. On a shared computer, sign out when you're done.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
@@ -281,5 +309,7 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 | No Install button in Settings | The browser doesn't offer one (Safari, Firefox), the site isn't on HTTPS, or Maillo is already installed. Follow the steps shown on the page. |
 | Notifications don't appear | Check that the site is allowed to notify in the browser's site settings and in your system's notification settings (macOS: System Settings → Notifications → your browser; Windows: Settings → System → Notifications), and that Focus or Do Not Disturb is off. |
 | No chime in the background | Click once anywhere in Maillo after opening it; browsers block sound until then. |
+| Push: "Gmail couldn't watch your mailbox" | `pushTopic` is wrong, or `gmail-api-push@system.gserviceaccount.com` isn't a Publisher on the topic. |
+| Push: the test arrives but new mail doesn't | Check that the Pub/Sub subscription's endpoint is the address from Settings (Pub/Sub → Subscriptions → your subscription shows failed deliveries), and that a login wall lets Pub/Sub reach `/push.php`. |
 | "Notifications paused" | Your Google session ended while Maillo was in the background. Open it and sign in again. |
 | Asked to sign in again every week | External app in Testing mode. Publish it to Production, or use an Internal app on Workspace. |

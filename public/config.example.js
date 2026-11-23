@@ -52,9 +52,15 @@ window.MAILLO_CONFIG = {
                                 // secret in Settings > Account; it is stored on the server.
     syncSettings: false,        // keep Maillo's settings the same on all your devices, through
                                 // a hidden app folder in Google Drive (needs the Drive API)
-    keep: false                 // Google Keep side panel (Workspace only: needs the Keep API and an
+    keep: false,                // Google Keep side panel (Workspace only: needs the Keep API and an
                                 // admin to allow it, see INSTALL.md). Without it, Keep is hidden.
+    push: false                 // new mail within seconds, and notifications while Maillo is closed
+                                // (push.php; needs staySignedIn and a Pub/Sub topic, see INSTALL.md)
   },
+
+  // Google Cloud Pub/Sub topic that Gmail tells about new mail (features.push),
+  // for example "projects/my-project/topics/maillo".
+  pushTopic: "",
 
   // Gemini model used by the AI relay, and how many AI requests each account may
   // make per day. Leave empty or 0 for the defaults.

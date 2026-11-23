@@ -22,7 +22,7 @@ const MAX_LOGO = 1024 * 1024;
 // them here (no new risk, since the package's update.php replaces this one anyway).
 // maillo-config.php is listed so updaters before 0.6.9 accept the package; it's protected, so this one never
 // replaces it (and a blank copy doesn't take over from an existing config.js, see config_source()).
-const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php', 'config.php', 'maillo-config.php'];
+const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php', 'config.php', 'maillo-config.php', 'push.php'];
 
 /** SERVER_FILES as declared by the update.php inside a package (top-level .php names only). */
 function package_server_files(ZipArchive $zip, string $prefix): array

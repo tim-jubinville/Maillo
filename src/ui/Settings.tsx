@@ -6,11 +6,12 @@ import { currentToken, hasServerSession, sessionCall, setServerReady, staySigned
 import { changeLanguage, onSyncStatus, pull, syncEnabled, syncStatus } from '../sync';
 import { config } from '../config';
 import type { GFilter, GSendAs, GVacation } from '../gmail/types';
-import { t, type StringKey } from '../i18n';
+import { t, type StringKey, locale } from '../i18n';
 import { labelColor, sizeLabel } from '../model';
 import { THEMES, currentTheme } from '../theme';
 import { CHIMES, playChime } from '../chime';
 import { askPermission, permission, sendTest } from '../notify';
+import { disablePush, enablePush, pushStatus, pushSupported, testPush, type PushStatus } from '../push';
 import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs } from '../prefs';
 import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
@@ -62,6 +63,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
           {section === 'general' && <General />}
           {section === 'appearance' && <Appearance />}
           {section === 'notifications' && <NotificationSettings s={s} />}
+          {section === 'notifications' && <PushSettings />}
           {section === 'app' && <InstallApp />}
           {section === 'labels' && <Labels s={s} />}
           {section === 'filters' && <Filters s={s} />}
@@ -1101,6 +1103,85 @@ function NotificationSettings({ s }: { s: AppState }) {
           <Switch label={t('notify.badge')} on={n.badge} onChange={(v) => set({ badge: v })} />
         </Row>
       </fieldset>
+    </Section>
+  );
+}
+
+function pushError(r: PushStatus): string {
+  const key = `push.err.${r.error}` as StringKey;
+  const known = t(key, { detail: r.detail ?? '' });
+  return known === key ? t('push.err.generic', { code: r.error ?? 'unknown' }) : known;
+}
+
+function CopyRow({ title, help, value }: { title: string; help: string; value: string }) {
+  return (
+    <div class="srow">
+      <div class="slbl"><b>{title}</b><span>{help}</span></div>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: '1 1 320px', minWidth: 0 }}>
+        <input class="input" readOnly value={value} aria-label={title} style={{ flex: 1, fontFamily: 'ui-monospace, monospace', fontSize: 'calc(12px * var(--ts, 1))' }} onFocus={(e) => (e.target as HTMLInputElement).select()} />
+        <button class="btn sm" onClick={() => navigator.clipboard?.writeText(value).then(() => toast(t('push.copied')), () => undefined)}>
+          <Icon name="copy" size={15} />
+          {t('push.copy')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Notifications while Maillo is closed: this device's push subscription, and the server setup to finish in Google Cloud. */
+function PushSettings() {
+  const [status, setStatus] = useState<PushStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+  const load = () => {
+    pushStatus().then(setStatus);
+  };
+  useEffect(() => {
+    if (config.features.push && !config.demo && pushSupported) load();
+  }, []);
+  const run = async (fn: () => Promise<PushStatus>, done?: string) => {
+    setBusy(true);
+    setError('');
+    setNote('');
+    const r = await fn();
+    setBusy(false);
+    if (!r.ok) return setError(pushError(r));
+    if (done) setNote(done);
+    load();
+  };
+  const on = !!status?.device;
+  const blocker = status?.ok ? (!status.topic ? t('push.err.no_topic') : !status.staySignedIn ? t('push.err.needsStay') : !status.crypto ? t('push.err.no_crypto') : '') : '';
+  return (
+    <Section title={t('push.title')} note={t('push.help')}>
+      {!config.features.push && <div class="frow" style={{ color: 'var(--muted)' }}>{t('push.offHelp')}</div>}
+      {config.features.push && config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.demo')}</div>}
+      {config.features.push && !config.demo && !pushSupported && <div class="frow err">{t('push.unsupported')}</div>}
+      {config.features.push && !config.demo && pushSupported && status === null && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.checking')}</div>}
+      {status && !status.ok && <div class="frow err">{pushError(status)}</div>}
+      {status?.ok && (
+        <>
+          <Row title={t('push.device')} help={on && status.expiration ? t('push.watch', { date: new Date(status.expiration * 1000).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) }) : t('push.deviceHelp')}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{on ? t('push.on') : t('push.off')}</span>
+              {on ? (
+                <>
+                  <button class="btn sm" disabled={busy} onClick={() => run(testPush, t('push.testSent'))}><Icon name="bell" size={16} />{t('push.test')}</button>
+                  <button class="btn sm" disabled={busy} onClick={() => run(disablePush)}>{t('push.turnOff')}</button>
+                </>
+              ) : (
+                <button class="btn primary sm" disabled={busy || !!blocker} onClick={() => run(() => enablePush(status.vapidPublic ?? ''))}>{t('push.turnOn')}</button>
+              )}
+            </div>
+          </Row>
+          {blocker && <div class="frow err">{blocker}</div>}
+          {status.watchError && <div class="frow err">{t('push.err.watch_failed', { detail: status.watchError })}</div>}
+          {status.tokenError && <div class="frow err">{t('push.err.tokenError')}</div>}
+          {status.endpoint && <CopyRow title={t('push.endpoint')} help={t('push.endpointHelp')} value={status.endpoint} />}
+          {status.renewUrl && <CopyRow title={t('push.renew')} help={t('push.renewHelp')} value={status.renewUrl} />}
+        </>
+      )}
+      {(error || note) && <div class={`frow ${error ? 'err' : ''}`} role="status">{error || note}</div>}
     </Section>
   );
 }

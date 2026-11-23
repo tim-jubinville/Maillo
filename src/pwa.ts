@@ -51,7 +51,7 @@ export function swRegistration() {
   return registration;
 }
 
-export function initPwa(onOpenThread: (threadId: string) => void) {
+export function initPwa(onOpenThread: (threadId: string) => void, onNewMail: () => void = () => undefined) {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferred = e as InstallPromptEvent;
@@ -71,5 +71,6 @@ export function initPwa(onOpenThread: (threadId: string) => void) {
   navigator.serviceWorker.addEventListener('message', (e) => {
     const d = e.data as { type?: string; threadId?: string } | null;
     if (d?.type === 'maillo:open') onOpenThread(d.threadId ?? '');
+    if (d?.type === 'maillo:mail') onNewMail();
   });
 }

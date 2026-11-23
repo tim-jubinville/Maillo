@@ -104,8 +104,8 @@ function setup_checks(string $root, ?array $c): array
         'curl' => function_exists('curl_init'),
     ];
     $required = ['configFile', 'configValid', 'clientId', 'allowed', 'php', 'htaccess'];
-    // Staying signed in can't work without encryption.
-    if (!empty($features['staySignedIn'])) {
+    // Staying signed in and push can't work without encryption.
+    if (!empty($features['staySignedIn']) || !empty($features['push'])) {
         $required[] = 'openssl';
     }
     $ready = true;

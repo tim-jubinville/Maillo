@@ -38,7 +38,8 @@ return [
     // ending in .apps.googleusercontent.com.
     'googleClientId' => '',
 
-    // Optional. The same client's secret. Only needed to stay signed in (features.staySignedIn).
+    // Optional. The same client's secret. Only needed to stay signed in (features.staySignedIn),
+    // which Gmail push (features.push) also uses.
     // You can also add it later in Settings > Account.
     'googleClientSecret' => '',
 
@@ -73,7 +74,13 @@ return [
                                     // hidden app folder in Google Drive (needs the Drive API)
         'keep' => false,            // Google Keep side panel (Workspace only, needs an admin's
                                     // approval, see INSTALL.md)
+        'push' => false,            // new mail within seconds, and notifications while Maillo is
+                                    // closed (needs staySignedIn and pushTopic, see INSTALL.md)
     ],
+
+    // Google Cloud Pub/Sub topic that Gmail tells about new mail (features.push),
+    // for example 'projects/my-project/topics/maillo'.
+    'pushTopic' => '',
 
     // Optional. Gemini API key for the AI features, the model to use, and how many AI
     // requests each account may make per day. Leave empty or 0 for the defaults
