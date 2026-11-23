@@ -7,7 +7,8 @@ import { t } from './i18n';
 import { getPrefs, type NotifyPrefs, type NotifyScope } from './prefs';
 import { swRegistration } from './pwa';
 import { go, parseHash, threadHash, type MailRoute } from './route';
-import { api, getState, onState, pollChanges, refresh } from './store';
+import { api, checkNow, getState, onState, pollChanges, refresh } from './store';
+import { pushActive } from './push';
 
 export interface NewMail {
   id: string;
@@ -154,6 +155,13 @@ export function handleOpenFromNotification(threadId: string) {
   openThread(threadId);
 }
 
+/** A push said new mail arrived: refresh the list and notify by this page's rules, now rather than within the minute. */
+export function handleNewMailPush() {
+  if (getState().phase !== 'ready') return;
+  checkNow();
+  check().catch(() => undefined);
+}
+
 interface Popup {
   title: string;
   body: string;
@@ -200,6 +208,8 @@ export async function announce(items: NewMail[], opts: { test?: boolean } = {}) 
   const n = getPrefs().notify;
   if (!opts.test && inQuietHours(n)) return;
   const front = document.visibilityState === 'visible' && document.hasFocus();
+  // With push on this device, the service worker already notified while Maillo was out of sight.
+  if (!opts.test && pushActive() && document.visibilityState !== 'visible') return;
   const wantPopup = opts.test || !front || n.focused === 'notify';
   const wantSound = n.sound && (opts.test || !front || n.focused !== 'silent');
   const played = wantSound ? await playChime(n.chime, n.volume) : false;

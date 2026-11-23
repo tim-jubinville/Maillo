@@ -469,6 +469,12 @@ export function pollChanges(): Promise<number> {
   return checking;
 }
 
+/** Looks for changes right away (a push said new mail arrived), skipping the usual few seconds between checks. */
+export function checkNow() {
+  lastCheck = 0;
+  pollTick();
+}
+
 async function pollTick() {
   if (state.phase !== 'ready' || state.sessionExpired) return;
   try {

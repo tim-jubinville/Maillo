@@ -88,3 +88,28 @@ self.addEventListener('notificationclick', (event) => {
     await self.clients.openWindow(target);
   })());
 });
+
+// New mail pushed by push.php (features.push). With Maillo visible, the page refreshes and notifies by its own
+// rules; otherwise the worker shows the notification push.php prepared for this device.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    all.forEach((c) => c.postMessage({ type: 'maillo:mail' }));
+    if (data.tag !== 'maillo-test' && all.some((c) => c.visibilityState === 'visible')) return;
+    await self.registration.showNotification(data.title || 'Maillo', {
+      body: data.body || '',
+      tag: data.tag || 'maillo-mail',
+      renotify: true,
+      silent: !!data.silent,
+      icon: './icon-192.png',
+      badge: './badge-96.png',
+      data: { threadId: data.threadId || '', url: data.threadId ? `./#/inbox/t/${encodeURIComponent(data.threadId)}` : './#/inbox' }
+    });
+  })());
+});

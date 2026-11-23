@@ -49,6 +49,8 @@ function read_config(string $root): array
         'aiDailyLimit' => preg_match('/\baiDailyLimit\s*:\s*(\d+)/', $js, $m) ? (int) $m[1] : 0,
         'aiEnabled' => (bool) preg_match('/\bai\s*:\s*true\b/', $js),
         'staySignedIn' => (bool) preg_match('/\bstaySignedIn\s*:\s*true\b/', $js),
+        'pushEnabled' => (bool) preg_match('/\bpush\s*:\s*true\b/', $js),
+        'pushTopic' => preg_match('#^projects/[a-z][a-z0-9\-]{4,61}[a-z0-9]/topics/[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$#', $str('pushTopic')) ? $str('pushTopic') : '',
         'accounts' => $list('allowedAccounts'),
         'domains' => array_map(function ($d) {
             return ltrim($d, '@');

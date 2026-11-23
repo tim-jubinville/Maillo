@@ -20,7 +20,7 @@ const MAX_LOGO = 1024 * 1024;
 // Server files shipped in the release; any other .php file in a package is refused.
 // A newer release may add server files: they're accepted when that release's own update.php lists
 // them here (no new risk, since the package's update.php replaces this one anyway).
-const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php'];
+const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php', 'push.php'];
 
 /** SERVER_FILES as declared by the update.php inside a package (top-level .php names only). */
 function package_server_files(ZipArchive $zip, string $prefix): array
