@@ -52,8 +52,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   const path = url.pathname.slice(new URL(self.registration.scope).pathname.length);
-  // Server endpoints, updater files and logos always go to the network.
-  if (/\.php$/.test(path) || path === 'version.json' || path.startsWith('branding') || path.startsWith('.')) return;
+  // Server endpoints, updater files and logos always go to the network (config.php is kept for offline use).
+  if ((/\.php$/.test(path) && path !== 'config.php') || path === 'version.json' || path.startsWith('branding') || path.startsWith('.')) return;
 
   if (req.mode === 'navigate') {
     // Navigations keep their own redirect handling (Cloudflare Access sign-in); the cache only helps offline.

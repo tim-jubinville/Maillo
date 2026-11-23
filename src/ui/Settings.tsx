@@ -417,7 +417,10 @@ function StaySignedIn() {
           <Row title={t('stay.device')} help={hasServerSession() ? t('stay.deviceOn') : configured ? t('stay.deviceOff') : t('stay.deviceNeedsSecret')}>
             <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{hasServerSession() ? t('stay.on') : t('stay.hourly')}</span>
           </Row>
-          {status.source !== 'environment' && (
+          {(status.source === 'environment' || status.source === 'config') && (
+            <div class="frow" style={{ fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)' }}>{t('stay.secretFixed')}</div>
+          )}
+          {status.source !== 'environment' && status.source !== 'config' && (
             <div class="srow">
               <div class="slbl">
                 <b><label for="oauth-secret">{configured ? t('stay.replace') : t('stay.add')}</label></b>
@@ -679,7 +682,7 @@ function AiSettings() {
       {status && !status.ok && <div class="frow err">{aiError(status.error)}</div>}
       {status?.ok && (
         <>
-          <Row title={t('ai.key')} help={configured ? (status.source === 'environment' ? t('ai.keyEnv') : t('ai.keyStored')) : t('ai.keyMissing')}>
+          <Row title={t('ai.key')} help={configured ? (status.source === 'environment' ? t('ai.keyEnv') : status.source === 'config' ? t('ai.keyConfig') : t('ai.keyStored')) : t('ai.keyMissing')}>
             <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{configured ? t('ai.keySet') : t('ai.keyNotSet')}</span>
           </Row>
           <Row title={t('ai.model')} help={t('ai.modelHelp')}>
@@ -688,7 +691,7 @@ function AiSettings() {
           <Row title={t('ai.usage')}>
             <span style={{ fontSize: 'calc(13px * var(--ts, 1))' }}>{t('ai.usageValue', { used: status.used ?? 0, limit: status.limit ?? 0 })}</span>
           </Row>
-          {status.source !== 'environment' && (
+          {status.source !== 'environment' && status.source !== 'config' && (
             <div class="srow">
               <div class="slbl">
                 <b><label for="ai-key">{configured ? t('ai.replace') : t('ai.add')}</label></b>

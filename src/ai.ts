@@ -7,7 +7,7 @@ export interface AiStatus {
   ok: boolean;
   error?: string;
   configured?: boolean;
-  source?: 'stored' | 'environment' | null;
+  source?: 'stored' | 'environment' | 'config' | null;
   model?: string;
   used?: number;
   limit?: number;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { config, isAllowedAccount } from './config';
+import { config, isAllowedAccount, setup } from './config';
 import { currentToken, hadServerSession, hasServerSession, onAuthChange, prepareAuth, rememberAccount, rememberedAccount, renewFromServer, signIn, signOut, staySignedIn, tokenExpiresSoon } from './auth';
 import { AuthRequired, gmailBackend, pool, quotaHeadroom, RateLimited } from './gmail/api';
 import { demoBackend } from './gmail/demo';
@@ -359,7 +359,7 @@ export async function boot() {
     setState({ sessionExpired: true });
   });
   if (config.demo) return start();
-  if (!config.googleClientId) return setState({ phase: 'signin' });
+  if (!config.googleClientId || (setup && !setup.ready)) return setState({ phase: 'signin' });
   // Signed in on this device before: show the mail it kept right away, while Google confirms the sign-in.
   const known = rememberedAccount();
   if (known && (currentToken() || hadServerSession())) await showCached(known);
@@ -457,6 +457,7 @@ async function start() {
       return;
     }
     if (!config.demo) rememberAccount(p.emailAddress);
+    checkAccountOnServer(p.emailAddress);
     historyId = p.historyId;
     const warm = state.phase === 'ready' && shownFrom === p.emailAddress.toLowerCase();
     if (!warm) {
@@ -480,6 +481,34 @@ async function start() {
   } catch (e) {
     if (e instanceof AuthRequired) setState({ phase: 'signin' });
     else setState({ phase: 'signin', authError: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+const ALLOWED_KEY = 'maillo.allowed';
+
+/**
+ * With maillo-config.php the browser doesn't know who is allowed, so it asks config.php once a day per
+ * account, without holding up the inbox. Only an explicit "not allowed" signs out; Google still guards the mail.
+ */
+async function checkAccountOnServer(email: string) {
+  if (!config.accountCheck || config.demo) return;
+  const mark = `${email.toLowerCase()}|${new Date().toDateString()}`;
+  if (localStorage.getItem(ALLOWED_KEY) === mark) return;
+  try {
+    const form = new FormData();
+    form.set('action', 'check_account');
+    form.set('token', currentToken() ?? '');
+    const r = await fetch('./config.php', { method: 'POST', body: form, credentials: 'same-origin' });
+    const j = (await r.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+    if (r.ok && j?.ok) localStorage.setItem(ALLOWED_KEY, mark);
+    else if (j?.error === 'not_allowed') {
+      localStorage.removeItem(ALLOWED_KEY);
+      await clearRowCache();
+      await signOut().catch(() => undefined);
+      setState({ phase: 'denied', deniedEmail: email, open: undefined });
+    }
+  } catch {
+    /* can't tell: carry on */
   }
 }
 
