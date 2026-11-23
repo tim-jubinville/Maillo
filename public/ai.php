@@ -10,8 +10,9 @@
  *   remove_key   delete the stored key
  *   generate     run instructions on input text (instructions, input, json=1 for JSON output)
  *
- * The key is kept in .maillo-ai.php (.mailmax-ai.php before the rename), which the updater never replaces, backs up or serves.
- * A GEMINI_API_KEY environment variable takes priority if the host sets one.
+ * The key comes from maillo-config.php (geminiApiKey) if it's set there, else a GEMINI_API_KEY
+ * environment variable, else the one saved from Settings in .maillo-ai.php (.mailmax-ai.php before
+ * the rename), which the updater never replaces, backs up or serves.
  */
 declare(strict_types=1);
 
@@ -54,23 +55,16 @@ $email = authorize($cfg);
 $model = preg_match('/^[a-z0-9.\-]{1,64}$/', $cfg['aiModel']) ? $cfg['aiModel'] : DEFAULT_MODEL;
 $limit = $cfg['aiDailyLimit'] > 0 ? $cfg['aiDailyLimit'] : DEFAULT_DAILY_LIMIT;
 
-function stored_key(string $file): string
+/** The Gemini key and where it came from: maillo-config.php, the environment, or Settings. */
+function key_info(array $cfg, string $file): array
 {
-    $env = getenv('GEMINI_API_KEY');
-    if (is_string($env) && $env !== '') {
-        return $env;
-    }
-    if (!is_file($file)) {
-        return '';
-    }
-    $data = include $file;
-    return is_array($data) ? (string) ($data['key'] ?? '') : '';
+    $data = is_file($file) ? include $file : null;
+    return pick_secret($cfg['geminiKey'], 'GEMINI_API_KEY', is_array($data) ? (string) ($data['key'] ?? '') : '');
 }
 
-function key_source(): string
+function stored_key(array $cfg, string $file): string
 {
-    $env = getenv('GEMINI_API_KEY');
-    return is_string($env) && $env !== '' ? 'environment' : 'stored';
+    return key_info($cfg, $file)[0];
 }
 
 function usage_today(string $file, string $email): int
@@ -104,16 +98,21 @@ function count_use(string $file, string $email): void
 $action = (string) ($_POST['action'] ?? '');
 
 if ($action === 'status') {
-    $key = stored_key($secretFile);
+    $key = stored_key($cfg, $secretFile);
     out(200, [
         'ok' => true,
         'configured' => $key !== '',
-        'source' => $key !== '' ? key_source() : null,
+        'source' => $key !== '' ? key_info($cfg, $secretFile)[1] : null,
         'model' => $model,
         'used' => usage_today($usageFile, $email),
         'limit' => $limit,
         'writable' => is_writable($root),
     ]);
+}
+
+if (($action === 'set_key' || $action === 'remove_key') && in_array(key_info($cfg, $secretFile)[1], ['config', 'environment'], true)) {
+    // Set in maillo-config.php or by the host: change it there.
+    fail(409, 'key_fixed');
 }
 
 if ($action === 'set_key') {
@@ -143,11 +142,11 @@ if ($action === 'remove_key') {
     if (is_file($secretFile) && !@unlink($secretFile)) {
         fail(500, 'not_writable');
     }
-    out(200, ['ok' => true, 'configured' => stored_key($secretFile) !== '']);
+    out(200, ['ok' => true, 'configured' => stored_key($cfg, $secretFile) !== '']);
 }
 
 if ($action === 'generate') {
-    $key = stored_key($secretFile);
+    $key = stored_key($cfg, $secretFile);
     if ($key === '') {
         fail(409, 'no_key');
     }

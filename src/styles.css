@@ -32,6 +32,8 @@
   --nav-on: linear-gradient(90deg, var(--accent-tint), color-mix(in srgb, var(--accent-tint) 45%, #ffffff));
   --warn-bg: #fff6d6;
   --danger-bg: #fcebef;
+  --ok: #1d7a45;
+  --ok-bg: #e3f5ea;
   --info-bg: linear-gradient(135deg, #e6eef9, #efebfb);
   --skel: linear-gradient(90deg, #eef1f6, #f6f8fb, #eef1f6);
   --bg-top: #bcd6f8;
@@ -592,6 +594,19 @@ body.resizing iframe { pointer-events: none; }
 .signin p { margin: 0; color: var(--muted); line-height: 1.5; }
 .err { color: var(--danger); font-size: calc(13px * var(--ts, 1)); }
 
+/* First-run checklist */
+.setup { max-width: 560px; }
+.setup-list { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.setup-list li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.setup-list .mark { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px; }
+.setup-list .ok .mark { background: var(--ok-bg); color: var(--ok); }
+.setup-list .no .mark { background: var(--danger-bg); color: var(--danger); }
+.setup-list .soft.no .mark { background: var(--warn-bg); color: var(--ink-2); }
+.setup-list b { display: block; font-size: calc(14px * var(--ts, 1)); font-weight: 600; }
+.setup-list span { display: block; font-size: calc(13px * var(--ts, 1)); color: var(--muted); line-height: 1.45; margin-top: 2px; }
+.setup-list .tagline { font-size: calc(11px * var(--ts, 1)); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.setup-note { font-size: calc(13px * var(--ts, 1)); }
+
 /* Settings */
 .settings { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 20px 64px; }
 .settings-inner { max-width: 1180px; margin: 0 auto; display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
@@ -706,6 +721,8 @@ body.resizing iframe { pointer-events: none; }
   --nav-on: linear-gradient(90deg, var(--accent-tint), color-mix(in srgb, var(--accent-tint) 50%, #161f34));
   --warn-bg: #3a3218;
   --danger-bg: #3e2229;
+  --ok: #6fd99a;
+  --ok-bg: #1d3a2a;
   --info-bg: linear-gradient(135deg, #1e2a46, #262443);
   --skel: linear-gradient(90deg, #1c2640, #232e4b, #1c2640);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 48px rgba(0, 0, 0, 0.35);
