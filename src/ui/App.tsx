@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
-import { config, configMissing } from '../config';
-import { t } from '../i18n';
+import { config, configMissing, setup } from '../config';
+import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
 import { getPrefs, setPrefs } from '../prefs';
 import { go, listHash, type Folder, type MailRoute } from '../route';
@@ -65,7 +65,48 @@ export function App() {
   );
 }
 
+const SETUP_ITEMS = ['configFile', 'configValid', 'clientId', 'allowed', 'php', 'htaccess', 'writable', 'openssl', 'curl'] as const;
+
+/** First run: what's still missing in maillo-config.php or on the server, as plain yes/no items. */
+function SetupChecklist() {
+  const st = setup!;
+  // Nothing else matters until the file exists and can be read.
+  const items = SETUP_ITEMS.filter((k) => (k === 'configFile' ? true : st.checks.configFile && (k === 'configValid' || st.checks.configValid)));
+  return (
+    <div class="center">
+      <div class="glass signin setup">
+        <Brand />
+        <h1>{t('setup.title')}</h1>
+        <p>{t('setup.body')}</p>
+        <ul class="setup-list">
+          {items.map((k) => {
+            const ok = !!st.checks[k];
+            const needed = st.required.includes(k);
+            const fix = k === 'configValid' && st.line ? t('setup.configValid.line', { line: st.line }) : t(`setup.${k}.fix` as StringKey);
+            return (
+              <li class={`${ok ? 'ok' : 'no'} ${needed ? '' : 'soft'}`}>
+                <span class="mark" aria-hidden="true"><Icon name={ok ? 'tick' : needed ? 'x' : 'info'} size={15} /></span>
+                <div>
+                  <b>{t(`setup.${k}` as StringKey)}<span class="sr-only">: {ok ? t('setup.ok') : t('setup.missing')}</span></b>
+                  {!ok && <span>{fix}</span>}
+                  {!ok && <span class="tagline">{needed ? t('setup.needed') : t('setup.forFeatures')}</span>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <p class="setup-note">{t('setup.private')}</p>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button class="btn primary" onClick={() => location.reload()}>{t('setup.again')}</button>
+          <a class="btn" href="?demo">{t('auth.demo')}</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SignIn({ s }: { s: AppState }) {
+  if (setup && !setup.ready && !config.demo) return <SetupChecklist />;
   return (
     <div class="center">
       <div class="glass signin">

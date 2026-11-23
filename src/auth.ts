@@ -175,7 +175,7 @@ export interface SessionReply {
   expires_in?: number;
   persistent?: boolean;
   configured?: boolean;
-  source?: 'stored' | 'environment';
+  source?: 'stored' | 'environment' | 'config';
   writable?: boolean;
   crypto?: boolean;
 }

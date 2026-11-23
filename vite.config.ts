@@ -18,7 +18,7 @@ export default defineConfig({
       apply: 'build',
       generateBundle(_, bundle) {
         const assets = Object.keys(bundle).filter((f) => f.startsWith('assets/'));
-        const shell = ['./', './config.js', './manifest.webmanifest', './icon-192.png', ...assets.map((f) => `./${f}`)];
+        const shell = ['./', './config.js', './config.php', './manifest.webmanifest', './icon-192.png', ...assets.map((f) => `./${f}`)];
         const source = readFileSync(new URL('./sw/sw.js', import.meta.url), 'utf8')
           .replace("'__VERSION__'", JSON.stringify(pkg.version))
           .replace('__SHELL__', JSON.stringify(shell));

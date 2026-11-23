@@ -1,7 +1,8 @@
 /*
- * Maillo configuration.
- * Edit this file after uploading. No rebuild is needed.
- * See docs/INSTALL.md for every option.
+ * Maillo configuration for hosts that can't run PHP (Netlify, Cloudflare Pages, GitHub Pages…).
+ * On those hosts, rename this file to config.js, fill it in, and don't upload maillo-config.php.
+ * With PHP hosting, use maillo-config.php instead: it keeps allowed accounts and secrets on the server.
+ * No rebuild is needed. See INSTALL.md for every option.
  */
 window.MAILLO_CONFIG = {
   // Name shown in the header and the browser tab. With the default name the

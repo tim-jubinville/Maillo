@@ -21,11 +21,22 @@ export interface AppConfig {
     gmailSettings: string;
   };
   demo: boolean;
+  /** Settings come from maillo-config.php, which keeps the allowed accounts on the server: ask it after signing in. */
+  accountCheck: boolean;
+}
+
+/** config.php's setup checklist (yes/no answers), present while required settings are missing. */
+export interface SetupState {
+  ready: boolean;
+  required: string[];
+  checks: Record<string, boolean>;
+  line?: number;
 }
 
 declare global {
   interface Window {
     MAILLO_CONFIG?: Partial<AppConfig>;
+    MAILLO_SETUP?: SetupState;
     /** Former name, still read so older config.js files keep working. */
     MAILMAX_CONFIG?: Partial<AppConfig>;
   }
@@ -55,7 +66,8 @@ const defaults: AppConfig = {
     contacts: 'https://contacts.google.com/',
     gmailSettings: 'https://mail.google.com/mail/u/0/#settings/general'
   },
-  demo: false
+  demo: false,
+  accountCheck: false
 };
 
 function list(v: unknown): string[] {
@@ -79,8 +91,14 @@ export function applyBranding(b: Branding | null | undefined) {
   if (typeof b.logoInvertDark === 'boolean') config.logoInvertDark = b.logoInvertDark;
 }
 
-/** True when config.js is missing or has a syntax error, so the sign-in screen can say so. */
+/** True when no settings could be read (config.js missing or with a syntax error), so the sign-in screen can say so. */
 export const configMissing = !window.MAILLO_CONFIG && !window.MAILMAX_CONFIG;
+
+/** The setup checklist from config.php, while maillo-config.php isn't filled in or the server isn't ready. */
+export const setup: SetupState | undefined = window.MAILLO_SETUP && typeof window.MAILLO_SETUP === 'object' ? window.MAILLO_SETUP : undefined;
+
+/** The settings file this install uses, for messages that say where to change something. */
+export const configFile = window.MAILLO_CONFIG?.accountCheck || setup ? 'maillo-config.php' : 'config.js';
 
 function load(): AppConfig {
   const raw = (window.MAILLO_CONFIG ?? window.MAILMAX_CONFIG ?? {}) as Partial<AppConfig>;
@@ -110,7 +128,8 @@ function load(): AppConfig {
       push: !!raw.features?.push
     },
     links: { ...defaults.links, ...(raw.links ?? {}) },
-    demo: !!raw.demo || params.has('demo')
+    demo: !!raw.demo || params.has('demo'),
+    accountCheck: raw.accountCheck === true
   };
 }
 

@@ -1,8 +1,9 @@
 <?php
 /*
- * Shared helpers for Maillo's server files (update.php, ai.php).
+ * Shared helpers for Maillo's server files (update.php, ai.php, session.php, config.php).
+ * Settings come from maillo-config.php (or config.js on older installs).
  * authorize() accepts a request only if it carries a Google access token issued to
- * this install's OAuth client, for an account allowed in config.js.
+ * this install's OAuth client, for an allowed account.
  */
 declare(strict_types=1);
 
@@ -23,12 +24,99 @@ function fail(int $code, string $error, array $extra = []): void
     out($code, ['ok' => false, 'error' => $error] + $extra);
 }
 
+const CONFIG_FILE = 'maillo-config.php';
+const FEATURES = ['calendar', 'tasks', 'notes', 'ai', 'contactPhotos', 'staySignedIn', 'syncSettings', 'keep', 'push'];
+
+/** A Pub/Sub topic's full name (projects/…/topics/…), or '' when it isn't one. */
+function push_topic(string $t): string
+{
+    $t = trim($t);
+    return preg_match('#^projects/[a-z][a-z0-9\-]{4,61}[a-z0-9]/topics/[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$#', $t) ? $t : '';
+}
+
+/**
+ * Loads maillo-config.php: null when there is none, ['__error' => line] when it has a typo.
+ * Kept in its own function so the file can't see or change anything here.
+ */
+function load_php_config(string $root): ?array
+{
+    $file = $root . '/' . CONFIG_FILE;
+    if (!is_file($file)) {
+        return null;
+    }
+    try {
+        $data = (static function (string $f) {
+            return include $f;
+        })($file);
+    } catch (Throwable $e) {
+        return ['__error' => $e instanceof ParseError ? $e->getLine() : 0];
+    }
+    return is_array($data) ? $data : ['__error' => 0];
+}
+
+/**
+ * Where this install's settings come from: maillo-config.php, or config.js for installs made
+ * before it existed. maillo-config.php wins once it has a client ID; a blank one (as an older
+ * updater may have copied in) leaves an existing config.js in charge.
+ * Returns ['source' => 'php'|'js'|'none', 'php' => array|null].
+ */
+function config_source(string $root): array
+{
+    $php = load_php_config($root);
+    $hasJs = is_file($root . '/config.js');
+    if ($php !== null && (isset($php['__error']) || trim((string) ($php['googleClientId'] ?? '')) !== '' || !$hasJs)) {
+        return ['source' => 'php', 'php' => $php];
+    }
+    return ['source' => $hasJs ? 'js' : 'none', 'php' => null];
+}
+
+function clean_list($v): array
+{
+    if (!is_array($v)) {
+        return [];
+    }
+    return array_values(array_filter(array_map(function ($s) {
+        return strtolower(trim(is_scalar($s) ? (string) $s : ''));
+    }, $v)));
+}
+
 function read_config(string $root): array
 {
-    $js = @file_get_contents($root . '/config.js');
-    if ($js === false) {
+    $src = config_source($root);
+    if ($src['source'] === 'php') {
+        $c = $src['php'];
+        if (isset($c['__error'])) {
+            fail(500, 'config_error');
+        }
+        $features = is_array($c['features'] ?? null) ? $c['features'] : [];
+        return [
+            'source' => 'php',
+            'clientId' => trim((string) ($c['googleClientId'] ?? '')),
+            'clientSecret' => trim((string) ($c['googleClientSecret'] ?? '')),
+            'geminiKey' => trim((string) ($c['geminiApiKey'] ?? '')),
+            'aiModel' => trim((string) ($c['aiModel'] ?? '')),
+            'aiDailyLimit' => max(0, (int) ($c['aiDailyLimit'] ?? 0)),
+            'aiEnabled' => !empty($features['ai']),
+            'staySignedIn' => !empty($features['staySignedIn']),
+            'pushEnabled' => !empty($features['push']),
+            'pushTopic' => push_topic((string) ($c['pushTopic'] ?? '')),
+            'accounts' => clean_list($c['allowedAccounts'] ?? []),
+            'domains' => array_map(function ($d) {
+                return ltrim($d, '@');
+            }, clean_list($c['allowedDomains'] ?? [])),
+            'raw' => $c,
+        ];
+    }
+    if ($src['source'] === 'none') {
         fail(500, 'config_missing');
     }
+    return read_config_js($root);
+}
+
+/** Settings from config.js (installs made before maillo-config.php), read without running it. */
+function read_config_js(string $root): array
+{
+    $js = (string) @file_get_contents($root . '/config.js');
     $js = preg_replace('#/\*.*?\*/#s', '', $js);
     $js = preg_replace('#^\s*//.*$#m', '', $js);
     $str = function (string $key) use ($js): string {
@@ -39,23 +127,38 @@ function read_config(string $root): array
             return [];
         }
         preg_match_all('/["\']([^"\']+)["\']/', $m[1], $all);
-        return array_values(array_filter(array_map(function ($s) {
-            return strtolower(trim($s));
-        }, $all[1])));
+        return clean_list($all[1]);
     };
     return [
+        'source' => 'js',
         'clientId' => $str('googleClientId'),
+        'clientSecret' => '',
+        'geminiKey' => '',
         'aiModel' => $str('aiModel'),
         'aiDailyLimit' => preg_match('/\baiDailyLimit\s*:\s*(\d+)/', $js, $m) ? (int) $m[1] : 0,
         'aiEnabled' => (bool) preg_match('/\bai\s*:\s*true\b/', $js),
         'staySignedIn' => (bool) preg_match('/\bstaySignedIn\s*:\s*true\b/', $js),
         'pushEnabled' => (bool) preg_match('/\bpush\s*:\s*true\b/', $js),
-        'pushTopic' => preg_match('#^projects/[a-z][a-z0-9\-]{4,61}[a-z0-9]/topics/[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$#', $str('pushTopic')) ? $str('pushTopic') : '',
+        'pushTopic' => push_topic($str('pushTopic')),
         'accounts' => $list('allowedAccounts'),
         'domains' => array_map(function ($d) {
             return ltrim($d, '@');
         }, $list('allowedDomains')),
+        'raw' => null,
     ];
+}
+
+/** A secret from, in order: maillo-config.php, the host's environment, then what Settings stored. Returns [value, source]. */
+function pick_secret(string $fromConfig, string $envName, string $stored): array
+{
+    if ($fromConfig !== '') {
+        return [$fromConfig, 'config'];
+    }
+    $env = getenv($envName);
+    if (is_string($env) && $env !== '') {
+        return [$env, 'environment'];
+    }
+    return [$stored, $stored !== '' ? 'stored' : ''];
 }
 
 function http_get(string $url, array $headers = []): array

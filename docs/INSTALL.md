@@ -1,8 +1,8 @@
 # Installing Maillo
 
-Maillo is a static website. You need:
+Maillo is mostly a static website, with a few small PHP files for the server side. You need:
 
-- A web server or static host that serves files over **HTTPS** (Google sign-in requires it)
+- A web server that serves files over **HTTPS** (Google sign-in requires it). Shared hosting with PHP 7.4 or later (cPanel and similar) is the easiest: you fill in one settings file. Hosts without PHP work too, with fewer features (see "Hosts without PHP").
 - An address for it, such as `https://mail.example.com`
 - A Google account with Gmail, and access to [Google Cloud Console](https://console.cloud.google.com/)
 
@@ -55,26 +55,75 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 2. Application type: **Web application**.
 3. Under **Authorised JavaScript origins**, add the exact address of your install, with no trailing slash, for example `https://mail.example.com`.
 4. No redirect URI is needed.
-5. Create it and copy the **Client ID** (it ends in `.apps.googleusercontent.com`). There is no client secret to keep: Maillo does not use one.
+5. Create it and copy the **Client ID** (it ends in `.apps.googleusercontent.com`). Copy the **Client secret** too if you want to stay signed in (optional, see below).
 
-## 4. Upload the files
+## 4. Fill in maillo-config.php
 
-Unzip the release and upload the contents of the `maillo-x.y.z` folder to the folder your address points to. It should look like this:
+Unzip the release. Open `maillo-config.php` (in the `maillo-x.y.z` folder) in a text editor and fill in at least these two settings:
+
+```php
+'googleClientId' => '1234567890-abc123.apps.googleusercontent.com',
+
+'allowedAccounts' => ['you@example.com'],    // or 'allowedDomains' => ['example.com'],
+```
+
+Every setting is explained in the file itself, in plain language. Text goes between straight single quotes, lists between square brackets, and every line ends with a comma.
+
+`maillo-config.php` never leaves your server. Browsers get only the safe settings (name, logo, client ID, language, theme, accent, features, links) through `config.php`; the allowed accounts, the client secret and the Gemini key stay on the server. Updates never replace this file.
+
+| Setting | What it does |
+|---|---|
+| `appName` | Name in the browser tab, and in the header when there is no logo. The default, `'Maillo'`, shows the Maillo icon and wordmark; any other name is shown as text next to the icon. |
+| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the Maillo icon and name. A logo uploaded in **Settings → Appearance** takes priority. |
+| `logoText` | Optional text shown after the logo, such as `'Mail'`. Empty (the default) shows the logo alone. |
+| `logoInvertDark` | SVG logos are recoloured to match the theme automatically. For PNG, JPG or WebP logos, `true` turns a dark single-colour logo white in dark mode. |
+| `googleClientId` | Required. The Client ID from step 3. |
+| `googleClientSecret` | Optional. The client secret from step 3, needed only to stay signed in. It takes priority over a secret saved in Settings or set as an environment variable. |
+| `allowedAccounts` | Email addresses allowed to use this install. Anyone else is signed out right away. Required, unless you use `allowedDomains`. |
+| `allowedDomains` | Domains allowed to use this install, such as `'example.com'`. |
+| `language` | `'auto'`, `'en'` or `'fr'`. People can also change it in Settings. |
+| `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `sunflower`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
+| `accentColor` | Optional hex colour that replaces the default theme's accent. |
+| `features.calendar` | Shows today's events in the side panel, in their Google Calendar colours, with a Join button for video calls (Meet, Zoom, Teams, Webex). Adds three read-only Calendar permissions at sign-in. |
+| `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
+| `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
+| `features.keep` | Google Keep side panel: your notes, a quick note field and delete. Workspace only; needs the Keep API and an admin's approval (see "Optional: Google Keep"). Off: the Keep icon is hidden. |
+| `features.staySignedIn` | Each device stays signed in instead of a new Google sign-in every hour. Needs the client secret; see "Optional: stay signed in". |
+| `features.syncSettings` | Keeps Maillo's settings the same on all your devices through a hidden file in Google Drive. Adds the `drive.appdata` permission (shared with `features.notes`) and needs the Drive API. |
+| `features.contactPhotos` | Shows people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory. Read-only; photos are fetched once per browser session. Also lets search suggest people from your contacts and directory as you type, and turns on the Contacts side panel (your contacts, search, and full contact cards). Adds the three contacts/directory permissions and needs the People API. |
+| `features.push` | New mail within seconds, and notifications while Maillo is closed. Needs staying signed in and a Pub/Sub topic; see "Optional: new mail within seconds". |
+| `pushTopic` | The Pub/Sub topic for `features.push`, such as `'projects/my-project/topics/maillo'`. |
+| `features.ai` | Turns on the Gemini relay (`ai.php`) and **Settings → AI**. See "Optional: AI with Gemini". |
+| `geminiApiKey` | Optional Gemini API key for the AI features. It takes priority over a key saved in Settings or set as an environment variable. |
+| `aiModel` | Gemini model used by the relay. Empty uses `gemini-flash-latest`. |
+| `aiDailyLimit` | Maximum AI requests per account per day. `0` uses the default (300). |
+| `setAsideLabel` | Gmail label used for the Set aside pile. Maillo creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
+| `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
+| `links` | Addresses opened by Chat, Meet, Calendar, Keep, Contacts and Gmail settings. Change them if you use a different Google account index (`/u/1/`) or other apps. |
+| `demo` | `true` shows sample data and never contacts Google. |
+
+Changes take effect on the next page load. No rebuild is needed.
+
+## 5. Upload the files
+
+Upload the contents of the `maillo-x.y.z` folder, with your filled-in `maillo-config.php`, to the folder your address points to. It should look like this:
 
 ```
 index.html
-config.js
+maillo-config.php
+config.php
 .htaccess
+update.php  session.php  ai.php  maillo-common.php
 manifest.webmanifest
 sw.js
 assets/
 ```
 
-`.htaccess` is a hidden file; make sure your upload tool includes it if you use Apache.
+`.htaccess` is a hidden file; make sure your upload tool includes it. It keeps `maillo-config.php` and Maillo's private `.maillo-*` files from ever being served, even as plain text if PHP stops working.
 
 **Shared hosting (cPanel and similar).** Create the subdomain in your hosting panel, then upload the files to the subdomain's folder with the File Manager or SFTP. Turn on HTTPS for the subdomain (most hosts offer free certificates under "SSL/TLS").
 
-**Nginx.** Serve the folder as static files. Suggested headers:
+**Nginx with PHP-FPM.** `.htaccess` doesn't apply, so add the same protections yourself:
 
 ```nginx
 location / {
@@ -84,67 +133,25 @@ location / {
   add_header X-Frame-Options DENY;
   add_header Cross-Origin-Opener-Policy same-origin-allow-popups;
 }
-location ~ ^/(config\.js|sw\.js|manifest\.webmanifest)$ { add_header Cache-Control no-cache; }
+# Settings, secrets, sessions and backups are never served.
+location ~ (^|/)(maillo-config|maillo-common)\.php$ { return 404; }
+location ~ (^|/)\.(maillo|mailmax)- { return 404; }
+location ~ ^/(config\.js|config\.php|sw\.js|manifest\.webmanifest)$ { add_header Cache-Control no-cache; }
 ```
 
-**Static hosts** (Cloudflare Pages, Netlify, GitHub Pages, and others). Upload the folder as the site root.
+Maillo's setup checklist looks for these rules in `.htaccess`, so on Nginx keep the release's `.htaccess` file in the folder as well (Nginx ignores it).
 
 Maillo can also live in a sub-folder (for example `https://example.com/mail/`). The authorised origin is still just `https://example.com`.
 
-## 5. Edit config.js
+**The setup checklist.** If a required setting is missing or the server isn't ready, Maillo shows a checklist instead of the sign-in button: client ID set, allowed accounts set, PHP version, private files protected, folder writable, OpenSSL and cURL available. Each item says yes or no and how to fix it; none of your settings are shown. Fix what's marked, then click **Check again**.
 
-Open `config.js` on the server and set at least `googleClientId`:
+### Hosts without PHP
 
-```js
-window.MAILLO_CONFIG = {
-  appName: "Maillo",
-  logoUrl: "",
-  logoText: "",
-  logoInvertDark: true,
-  googleClientId: "1234567890-abc123.apps.googleusercontent.com",
-  allowedAccounts: ["you@example.com"],
-  allowedDomains: [],
-  language: "auto",
-  theme: "sky",
-  accentColor: "",
-  features: { calendar: false, tasks: false, notes: false },
-  setAsideLabel: "Set aside",
-  actionLabel: "Action required",
-  links: { /* see below */ },
-  demo: false
-};
-```
+Static hosts (Cloudflare Pages, Netlify, GitHub Pages and others) can't run `maillo-config.php`. On those:
 
-| Option | What it does |
-|---|---|
-| `appName` | Name in the browser tab, and in the header when there is no logo. The default, `"Maillo"`, shows the Maillo icon and wordmark; any other name is shown as text next to the icon. |
-| `logoUrl` | Optional logo image (path or URL), shown in the header instead of the Maillo icon and name. A logo uploaded in **Settings → Appearance** takes priority. |
-| `logoText` | Optional text shown after the logo, such as `"Mail"`. Empty (the default) shows the logo alone. |
-| `logoInvertDark` | SVG logos are recoloured to match the theme automatically. For PNG, JPG or WebP logos, `true` turns a dark single-colour logo white in dark mode. |
-| `googleClientId` | Required. The Client ID from step 3. |
-| `allowedAccounts` | Email addresses allowed to use this install. Anyone else is signed out right away. |
-| `allowedDomains` | Domains allowed to use this install, such as `"example.com"`. |
-| `language` | `"auto"`, `"en"` or `"fr"`. People can also change it in Settings. |
-| `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `sunflower`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
-| `accentColor` | Optional hex colour that replaces the default theme's accent. |
-| `features.calendar` | Shows today's events in the side panel, in their Google Calendar colours, with a Join button for video calls (Meet, Zoom, Teams, Webex). Adds three read-only Calendar permissions at sign-in. |
-| `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
-| `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
-| `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
-| `setAsideLabel` | Gmail label used for the Set aside pile. Maillo creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
-| `features.keep` | Google Keep side panel: your notes, a quick note field and delete. Workspace only; needs the Keep API and an admin's approval (see "Optional: Google Keep"). Off: the Keep icon is hidden. |
-| `features.staySignedIn` | Each device stays signed in instead of a new Google sign-in every hour. Needs PHP and your OAuth client secret on the server; see "Optional: stay signed in". |
-| `features.syncSettings` | Keeps Maillo's settings the same on all your devices through a hidden file in Google Drive. Adds the `drive.appdata` permission (shared with `features.notes`) and needs the Drive API. |
-| `features.contactPhotos` | Shows people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory. Read-only; photos are fetched once per browser session. Also lets search suggest people from your contacts and directory as you type, and turns on the Contacts side panel (your contacts, search, and full contact cards). Adds the three contacts/directory permissions and needs the People API. |
-| `features.ai` | Turns on the Gemini relay (`ai.php`) and **Settings → AI**. Needs a PHP host. See "Optional: AI with Gemini". |
-| `aiModel` | Gemini model used by the relay. Empty uses `gemini-flash-latest`. |
-| `aiDailyLimit` | Maximum AI requests per account per day. `0` uses the default (300). |
-| `links` | Addresses opened by Chat, Meet, Calendar, Keep, Contacts and Gmail settings. Change them if you use a different Google account index (`/u/1/`) or other apps. |
-| `demo` | `true` shows sample data and never contacts Google. |
-
-Leave `allowedAccounts` and `allowedDomains` empty only if Google's consent screen already limits who can sign in (Internal user type, or Testing with a test-user list).
-
-Changes to `config.js` take effect on the next page load. No rebuild is needed.
+1. **Don't upload `maillo-config.php`**: without PHP it would be served as plain text.
+2. Rename `config.example.js` to `config.js` and fill it in. It has the same settings as `maillo-config.php`, without the client secret and Gemini key. The allowed accounts in `config.js` are visible to anyone who opens the file, and only the browser enforces them.
+3. Staying signed in, AI and updating from the browser need PHP, so they aren't available.
 
 ## 6. Sign in
 
@@ -179,8 +186,8 @@ Maillo can call the Gemini API through `ai.php`, a small relay on your server, s
 
 1. In the same Google Cloud project, enable the **Generative Language API**.
 2. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) for that project. In Google Cloud, under **APIs & Services → Credentials**, restrict the key to the Generative Language API.
-3. Set `features.ai` to `true` in `config.js`.
-4. Open **Settings → AI**, paste the key and click **Save key**. Maillo checks it with Google, then stores it in `.maillo-ai.php` on the server. That file is never served, backed up or replaced by updates. If your host lets you set environment variables, you can set `GEMINI_API_KEY` instead.
+3. Set `features.ai` to `true` in `maillo-config.php`.
+4. Put the key in `geminiApiKey` in `maillo-config.php`. Or open **Settings → AI**, paste the key and click **Save key**: Maillo checks it with Google, then stores it in `.maillo-ai.php` on the server (never served, backed up or replaced by updates). A `GEMINI_API_KEY` environment variable also works. If more than one is set, `maillo-config.php` wins, then the environment variable.
 5. Click **Test the connection**.
 
 Use a paid Gemini API plan for email. On the free tier, Google may use what you send to improve its products. Each account is limited to `aiDailyLimit` requests per day (300 by default), and Google's own spending cap applies on top.
@@ -191,15 +198,15 @@ Google only opens its Keep API to Google Workspace accounts, and only once an ad
 
 1. In Google Cloud, enable the **Google Keep API**.
 2. In the Google Admin console, open **Security → Access and data control → API controls → Manage domain-wide delegation → Add new**. Client ID: your OAuth client ID. Scope: `https://www.googleapis.com/auth/keep`.
-3. Set `features.keep` to `true` in `config.js`, then sign out and in again.
+3. Set `features.keep` to `true` in `maillo-config.php`, then sign out and in again.
 
 ## Optional: stay signed in
 
 Browser-only sign-in lasts one hour, after which Google asks again. With `session.php` (PHP hosts), each device stays signed in until you sign out:
 
-1. Set `features.staySignedIn` to `true` in `config.js`.
+1. Set `features.staySignedIn` to `true` in `maillo-config.php`.
 2. In Google Cloud, open **APIs & Services → Credentials**, open your Web client and copy its **Client secret**. No redirect URI is needed.
-3. Sign in, open **Settings → Accounts & signatures → Stay signed in**, paste the secret and click **Save**. Maillo checks it with Google, then stores it in `.maillo-oauth.php` on the server (never served, backed up or replaced by updates). You can set a `GOOGLE_CLIENT_SECRET` environment variable instead.
+3. Put it in `googleClientSecret` in `maillo-config.php`. Or sign in, open **Settings → Accounts & signatures → Stay signed in**, paste the secret and click **Save**: Maillo checks it with Google, then stores it in `.maillo-oauth.php` on the server (never served, backed up or replaced by updates). A `GOOGLE_CLIENT_SECRET` environment variable also works. If more than one is set, `maillo-config.php` wins, then the environment variable.
 4. Sign out and sign in again on each device. Google shows its consent screen once per device.
 
 How it works: signing in hands `session.php` a one-time code. It trades it for a Google refresh token, which stays on the server, encrypted (AES-256-GCM, key in `.maillo-oauth.php`) in `.maillo-sessions/`. The browser gets only an HttpOnly, SameSite=Strict cookie and asks `session.php` for a fresh one-hour access token when it needs one, so notifications also keep working in the background. Sessions end when you sign out, after 180 days without use, when the account is removed from `allowedAccounts`/`allowedDomains`, or when access is revoked at [myaccount.google.com/permissions](https://myaccount.google.com/permissions). Removing the secret in Settings ends every session.
@@ -241,15 +248,23 @@ Set `features.syncSettings` to `true` (it needs the Drive API and the `drive.app
 **From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Maillo:
 
 - checks that the zip is a Maillo release and refuses unexpected files
-- keeps your `config.js` and `.htaccess`
+- keeps your `maillo-config.php` (or `config.js`) and `.htaccess`
 - backs up the current version to `.maillo-backup/` (the last three are kept, and the folder is blocked from the web)
 - installs the new files and reloads
 
 **Restore previous version** in the same section puts the last backup back.
 
-This needs PHP 7.4 or later with the zip extension, and write permission on the install folder (standard on cPanel hosting). It only works for accounts listed in `allowedAccounts` or `allowedDomains`: the server checks your Google sign-in against your OAuth Client ID before changing anything. If the upload is refused as too large, raise `upload_max_filesize` and `post_max_size` in your host's PHP settings.
+This needs PHP 7.4 or later with the zip extension, and write permission on the install folder (standard on cPanel hosting). It only works for accounts in `allowedAccounts` or `allowedDomains`: the server checks your Google sign-in against your OAuth Client ID before changing anything. If the upload is refused as too large, raise `upload_max_filesize` and `post_max_size` in your host's PHP settings.
 
-**By hand (any host).** Upload the files from a newer release and keep your existing `config.js`. Browsers pick up the new version on the next load.
+**By hand (any host).** Upload the files from a newer release, but keep your own `maillo-config.php` (or `config.js`): don't overwrite it with the blank one from the zip. Browsers pick up the new version on the next load.
+
+**Moving from config.js to maillo-config.php (0.6.9 and later).** Installs made before 0.6.9 use `config.js`, and keep working unchanged: Maillo uses `maillo-config.php` only once it has a client ID in it, so the blank copy an update may add changes nothing. To move over:
+
+1. Update to 0.6.9 or later as usual.
+2. Open `maillo-config.php` on the server (download it from the zip if it isn't there) and copy each value across from `config.js`. The names are the same; only the punctuation differs: `googleClientId: "…"` becomes `'googleClientId' => '…',` and `allowedAccounts: ["you@example.com"]` becomes `'allowedAccounts' => ['you@example.com'],`.
+3. Optionally move your secrets into it too (`googleClientSecret`, `geminiApiKey`); the ones saved from Settings keep working otherwise.
+4. Replace `.htaccess` with the one from the release (the updater never replaces it), or add its `maillo-config` block to yours, so the file can never be served.
+5. Reload Maillo. If anything is missing, the setup checklist says what. Once it signs in normally, delete `config.js`: until then it's still public, with your allowed accounts in it.
 
 If you do not want browser updates at all, delete `update.php` from the server.
 
@@ -269,7 +284,7 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 
 ## Security notes
 
-- Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo), `ai.php` (optional Gemini relay) and `session.php` (optional lasting sign-in). They check your Google sign-in and allowed account before doing anything, using `maillo-common.php`. With `staySignedIn`, refresh tokens never reach the browser: they stay encrypted on the server behind an HttpOnly cookie, and `session.php` only answers requests carrying Maillo's own header (so other sites can't use the cookie). With `push`, `push.php` uses those same server-side sign-ins to read new mail's sender, subject and snippet, and sends them to your devices encrypted end to end (RFC 8291), signed with your install's own key (RFC 8292).
+- Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo), `ai.php` (optional Gemini relay) and `session.php` (optional lasting sign-in). They check your Google sign-in and allowed account before doing anything, using `maillo-common.php`. `config.php` gives the browser only the safe part of `maillo-config.php`; allowed accounts and secrets never leave the server, and `.htaccess` blocks `maillo-config.php` from the web. With `staySignedIn`, refresh tokens never reach the browser: they stay encrypted on the server behind an HttpOnly cookie, and `session.php` only answers requests carrying Maillo's own header (so other sites can't use the cookie). With `push`, `push.php` uses those same server-side sign-ins to read new mail's sender, subject and snippet, and sends them to your devices encrypted end to end (RFC 8291), signed with your install's own key (RFC 8292).
 - Conversation headers (sender, subject, snippet) are cached in the browser's local storage so Maillo opens faster; the cache is tied to your account and cleared when you sign out.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
@@ -279,7 +294,8 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 
 | Problem | Fix |
 |---|---|
-| "This install is not configured yet" | `googleClientId` is empty in `config.js`. |
+| "Almost ready" checklist | A required setting is missing or the server isn't ready. Each item says how to fix it. |
+| "This install is not configured yet" | `googleClientId` is empty in `config.js` (installs without `maillo-config.php`). |
 | "config.js could not be read" | `config.js` is missing or has a syntax error. Open `https://your-address/config.js` to check it: every text value needs straight quotes (`"you@example.com"`, not `you@example.com` or curly quotes), and every line in the list needs its comma. If the file looks right, purge the Cloudflare cache (if you use it) and reload. |
 | `redirect_uri_mismatch` or `origin_mismatch` | The address in the browser does not exactly match an authorised JavaScript origin (check `https`, `www`, and the port). |
 | `access_denied` | Your account is not a test user (External, Testing) or not in the organisation (Internal). |
