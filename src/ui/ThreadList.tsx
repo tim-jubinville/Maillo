@@ -1,4 +1,4 @@
-import { useRef } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type ThreadRow } from '../model';
 import { getPrefs } from '../prefs';
@@ -12,6 +12,18 @@ import { CIcon, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { LabelList, LabelMenu, MoveList, MoveMenu } from './Menus';
 import { PILE_ICON } from './Piles';
+import { useVirtualRows } from './virtual';
+
+/** Scrolls the list so a conversation is visible, even when its row isn't rendered (the list only renders rows on screen). */
+let revealer: ((id: string) => void) | null = null;
+
+export function revealRow(id: string) {
+  if (revealer) revealer(id);
+  else document.querySelector(`[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
+}
+
+// First guesses at row heights (line or card layout, by density), corrected as rows are measured.
+const ROW_ESTIMATE = { line: { compact: 33, normal: 45 }, card: { compact: 39, normal: 92 } };
 
 const CAT_ICON: Record<Category, ColorIconName> = {
   primary: 'inbox',
@@ -50,6 +62,18 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
     lastCat.current = catIndex;
   }
   const rowsKey = `${s.list.key}|${s.list.loading && !rows.length ? 'loading' : 'ready'}`;
+  const scroller = useRef<HTMLDivElement>(null);
+  // Rows that stay rendered even off screen: keyboard focus, the open one, and the one being dragged.
+  const focusWithin = useRef<string | undefined>(undefined);
+  const dragFrom = useRef<string | undefined>(undefined);
+  const keep = new Set([s.focusId, s.open?.id, focusWithin.current, s.dragging ? dragFrom.current : undefined].filter((x): x is string => !!x));
+  const v = useVirtualRows(ids, ROW_ESTIMATE[split ? 'card' : 'line'][compact ? 'compact' : 'normal'], scroller, keep);
+  useEffect(() => {
+    revealer = (id) => v.reveal(ids.indexOf(id));
+    return () => {
+      revealer = null;
+    };
+  });
 
   return (
     <section class={`listcol ${split ? 'split' : 'full'}`} aria-label={t('list.label')}>
@@ -103,7 +127,15 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
 
       </div>
 
-      <div class={`rows ${showTabs ? `in ${slide.current}` : ''}`} role="list" key={rowsKey}>
+      <div
+        class={`rows ${showTabs ? `in ${slide.current}` : ''}`}
+        role="list"
+        aria-label={title}
+        key={rowsKey}
+        ref={scroller}
+        onFocusIn={(e) => (focusWithin.current = (e.target as HTMLElement).closest<HTMLElement>('[data-id]')?.dataset.id)}
+        onFocusOut={() => (focusWithin.current = undefined)}
+      >
         {s.list.loading && !rows.length && Array.from({ length: 6 }, () => <div class="skeleton" />)}
         {s.list.error && !rows.length && (
           <div class="empty">
@@ -126,15 +158,44 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
             <span>{route.q !== undefined ? t('list.emptySearch') : t('list.emptyFolder', { name: title })}</span>
           </div>
         )}
-        {rows.map((r) => (
-          <Row s={s} r={r} route={route} compact={compact} split={split} />
-        ))}
+        {rows.length > 0 && (
+          <div class="vspace" role="none" style={{ height: `${v.total}px` }}>
+            {v.indexes.map((i) => (
+              <Row
+                key={rows[i].id}
+                s={s}
+                r={rows[i]}
+                route={route}
+                compact={compact}
+                split={split}
+                pos={i + 1}
+                size={rows.length}
+                top={v.top(i)}
+                measure={v.measure}
+                onDragFrom={(id) => (dragFrom.current = id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route: MailRoute; compact: boolean; split: boolean }) {
+interface RowProps {
+  s: AppState;
+  r: ThreadRow;
+  route: MailRoute;
+  compact: boolean;
+  split: boolean;
+  pos: number;
+  size: number;
+  top: number;
+  measure: (el: HTMLElement | null) => void;
+  onDragFrom: (id: string) => void;
+}
+
+function Row({ s, r, route, compact, split, pos, size, top, measure, onDragFrom }: RowProps) {
   const checked = s.selected.has(r.id);
   const open = s.open?.id === r.id && split;
   const focus = s.focusId === r.id;
@@ -153,10 +214,17 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
     <div
       class={`${cls} ${s.dragging === 'label' ? 'drop-ok' : ''}`}
       role="listitem"
+      aria-posinset={pos}
+      aria-setsize={size}
       data-id={r.id}
+      ref={measure}
+      style={{ transform: `translateY(${top}px)` }}
       onClick={() => openRow(r.id)}
       draggable
-      onDragStart={(e) => startThreadDrag(e, checked ? [...s.selected] : [r.id])}
+      onDragStart={(e) => {
+        onDragFrom(r.id);
+        startThreadDrag(e, checked ? [...s.selected] : [r.id]);
+      }}
       onDragEnd={endDrag}
       {...dropZone('label', ([labelId]) => actions.label(checked ? [...s.selected] : [r.id], [labelId], []))}
     >
