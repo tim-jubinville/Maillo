@@ -295,7 +295,10 @@ function Sidebar({ s }: { s: AppState }) {
             onDragEnd={endDrag}
             {...(!on ? dropZone('threads', (ids) => actions.moveTo(ids, l.id)) : {})}
           >
-            <span class="ldot" aria-hidden="true" style={{ background: labelColor(l) }} />
+            <svg class="ldot" viewBox="0 0 24 24" aria-hidden="true" style={{ color: labelColor(l) }}>
+              <path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h7.4a2 2 0 0 1 1.4.6l7.1 7.1a2 2 0 0 1 0 2.8l-6.6 6.6a2 2 0 0 1-2.8 0L3.6 12.9A2 2 0 0 1 3 11.5z" fill="currentColor" />
+              <circle cx="8" cy="8" r="1.7" fill="var(--surface)" />
+            </svg>
             <span class="nav-t">{labelDisplayName(l)}</span>
             {n > 0 && <span class="nav-c quiet">{n}</span>}
           </a>
