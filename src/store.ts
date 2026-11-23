@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { config, isAllowedAccount } from './config';
-import { currentToken, hasServerSession, onAuthChange, prepareAuth, rememberAccount, renewFromServer, signIn, signOut, staySignedIn, tokenExpiresSoon } from './auth';
-import { AuthRequired, gmailBackend, pool, RateLimited } from './gmail/api';
+import { currentToken, hadServerSession, hasServerSession, onAuthChange, prepareAuth, rememberAccount, rememberedAccount, renewFromServer, signIn, signOut, staySignedIn, tokenExpiresSoon } from './auth';
+import { AuthRequired, gmailBackend, pool, quotaHeadroom, RateLimited } from './gmail/api';
 import { demoBackend } from './gmail/demo';
 import {
   buildMime,
@@ -15,12 +15,13 @@ import {
   type OutgoingAttachment,
   type ParsedMessage
 } from './gmail/mime';
-import type { GLabel, GSendAs, MailBackend, NotesMap } from './gmail/types';
+import type { GLabel, GSendAs, GThread, MailBackend, NotesMap } from './gmail/types';
 import { t } from './i18n';
 import { CATEGORY_LABEL, listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
 import { startSync } from './sync';
+import { clearCache, getThread as cachedThread, openCache, putThread, saveMeta, saveRows, type ListSnap, type Warm } from './cache';
 import { CATEGORIES, go, listHash, parseHash, threadHash, type Category, type MailRoute, type Route } from './route';
 
 export const api: MailBackend = config.demo ? demoBackend : gmailBackend;
@@ -192,45 +193,100 @@ export function useApp(): AppState {
   return state;
 }
 
-const ROW_CACHE = 'maillo.rows';
+const LEGACY_ROW_CACHE = 'maillo.rows';
 const ROW_CACHE_MAX = 1500;
-const rowCache = new Map<string, ThreadRow>();
-let rowCacheOwner = '';
-let rowSaveTimer: number | undefined;
 
-// Conversation headers are kept between visits on this device, so opening Maillo only fetches what changed.
-function loadRowCache(me: string) {
-  rowCacheOwner = me.toLowerCase();
-  try {
-    const c = JSON.parse(localStorage.getItem(ROW_CACHE) || 'null') as { me: string; rows: ThreadRow[] } | null;
-    if (!c || c.me !== rowCacheOwner || !Array.isArray(c.rows)) return;
-    for (const r of c.rows) if (r?.id && r.historyId) rowCache.set(r.id, { ...r, date: new Date(r.date) });
-  } catch {
-    /* start empty */
+/** Conversation headers in memory, written through to this device's cache (IndexedDB) a moment after each change. */
+class RowCache extends Map<string, ThreadRow> {
+  private dirty = new Set<string>();
+  private timer: number | undefined;
+  set(id: string, row: ThreadRow) {
+    super.set(id, row);
+    this.touch(id);
+    return this;
+  }
+  delete(id: string) {
+    const had = super.delete(id);
+    if (had) this.touch(id);
+    return had;
+  }
+  /** Fills the cache from disk without writing it back. */
+  load(rows: ThreadRow[]) {
+    for (const r of rows) super.set(r.id, r);
+  }
+  forget() {
+    super.clear();
+    this.dirty.clear();
+    clearTimeout(this.timer);
+  }
+  private touch(id: string) {
+    if (!persist) return;
+    this.dirty.add(id);
+    clearTimeout(this.timer);
+    this.timer = window.setTimeout(() => this.flush(), 1200);
+  }
+  private flush() {
+    while (this.size > ROW_CACHE_MAX) this.delete(this.keys().next().value!);
+    const put: ThreadRow[] = [];
+    const remove: string[] = [];
+    for (const id of this.dirty) {
+      const r = super.get(id);
+      if (r) put.push(r);
+      else remove.push(id);
+    }
+    this.dirty.clear();
+    saveRows(put, remove);
   }
 }
 
-function saveRowCache() {
-  clearTimeout(rowSaveTimer);
-  rowSaveTimer = window.setTimeout(() => {
-    if (!rowCacheOwner) return;
-    while (rowCache.size > ROW_CACHE_MAX) rowCache.delete(rowCache.keys().next().value!);
-    const rows = [...rowCache.values()].filter((r) => r.historyId);
-    try {
-      localStorage.setItem(ROW_CACHE, JSON.stringify({ me: rowCacheOwner, rows }));
-    } catch {
-      try {
-        localStorage.setItem(ROW_CACHE, JSON.stringify({ me: rowCacheOwner, rows: rows.slice(-400) }));
-      } catch {
-        /* storage full: memory only */
-      }
-    }
-  }, 1500);
+const rowCache = new RowCache();
+// Demo mode has its own sample data and never touches the device's cache.
+let persist = false;
+/** What each list last showed, by list key, so switching back to it is instant. */
+let listSnaps: Record<string, ListSnap> = {};
+
+/** Opens this device's cache for an account: headers, lists, labels, counts and piles from last time. */
+async function loadRowCache(me: string): Promise<Warm> {
+  if (config.demo) return { rows: [], meta: {} };
+  persist = false;
+  rowCache.forget();
+  const warm = await openCache(me);
+  rowCache.load(warm.rows);
+  listSnaps = (warm.meta.lists as Record<string, ListSnap> | undefined) ?? {};
+  persist = true;
+  // Headers kept in local storage before 0.6.10 move over once.
+  try {
+    const old = JSON.parse(localStorage.getItem(LEGACY_ROW_CACHE) || 'null') as { me: string; rows: ThreadRow[] } | null;
+    localStorage.removeItem(LEGACY_ROW_CACHE);
+    if (old?.me === me.toLowerCase() && Array.isArray(old.rows)) for (const r of old.rows) if (r?.id && !rowCache.has(r.id)) rowCache.set(r.id, { ...r, date: new Date(r.date) });
+  } catch {
+    /* start empty */
+  }
+  return warm;
 }
 
-export function clearRowCache() {
-  rowCache.clear();
-  localStorage.removeItem(ROW_CACHE);
+function saveListSnap(key: string, snap: ListSnap) {
+  listSnaps = { ...listSnaps, [key]: snap };
+  // Only the most recent lists are worth keeping.
+  const keys = Object.keys(listSnaps);
+  if (keys.length > 40) delete listSnaps[keys[0]];
+  if (persist) saveMeta('lists', listSnaps);
+}
+
+/** A list as it was last time, if every one of its rows is still known. */
+function snapRows(key: string): { rows: ThreadRow[]; snap: ListSnap } | undefined {
+  const snap = listSnaps[key];
+  if (!snap) return undefined;
+  const rows = snap.ids.map((id) => rowCache.get(id)).filter((r): r is ThreadRow => !!r);
+  return rows.length === snap.ids.length ? { rows, snap } : undefined;
+}
+
+export async function clearRowCache() {
+  persist = false;
+  rowCache.forget();
+  listSnaps = {};
+  localStorage.removeItem(LEGACY_ROW_CACHE);
+  if (!config.demo) await clearCache();
 }
 
 /** Rows for listed threads, fetching only those that are new or changed since last time (in batches). */
@@ -248,7 +304,6 @@ async function fetchRows(list: { id: string; historyId?: string }[]): Promise<Th
       rowCache.delete(row.id);
       rowCache.set(row.id, row);
     });
-    saveRowCache();
   }
   return list.map((x) => rowCache.get(x.id)).filter((r): r is ThreadRow => !!r);
 }
@@ -305,9 +360,17 @@ export async function boot() {
   });
   if (config.demo) return start();
   if (!config.googleClientId) return setState({ phase: 'signin' });
+  // Signed in on this device before: show the mail it kept right away, while Google confirms the sign-in.
+  const known = rememberedAccount();
+  if (known && (currentToken() || hadServerSession())) await showCached(known);
   try {
     await prepareAuth();
   } catch (e) {
+    // Google's sign-in script can't load offline: keep the kept mail on screen until the connection is back.
+    if (shownFrom && state.phase === 'ready' && !navigator.onLine) {
+      window.addEventListener('online', () => location.reload(), { once: true });
+      return;
+    }
     return setState({ phase: 'signin', authError: e instanceof Error ? e.message : String(e) });
   }
   if (staySignedIn()) {
@@ -316,13 +379,18 @@ export async function boot() {
     else if (await renewFromServer().catch(() => false)) return start();
   }
   if (currentToken()) return start();
+  // Offline with mail kept on this device: keep showing it, and sign in again once back online.
+  if (shownFrom && state.phase === 'ready' && (!navigator.onLine || hasServerSession())) {
+    window.addEventListener('online', () => renewFromServer().then((ok) => (ok ? start() : setState({ phase: 'signin' }))).catch(() => undefined), { once: true });
+    return;
+  }
   setState({ phase: 'signin' });
 }
 
 export async function signInClick(switchAccount = false) {
   setState({ authError: undefined });
   if (switchAccount) {
-    clearRowCache();
+    await clearRowCache();
     sessionStorage.removeItem(PHOTO_CACHE);
     setState({ contactPhotos: {} });
   }
@@ -342,10 +410,42 @@ export async function signInClick(switchAccount = false) {
 
 export async function signOutClick() {
   await signOut().catch(() => undefined);
-  clearRowCache();
+  await clearRowCache();
   sessionStorage.removeItem(PHOTO_CACHE);
   location.hash = '';
   location.reload();
+}
+
+/** The account whose kept mail is on screen (instant start), before Google has confirmed the sign-in. */
+let shownFrom = '';
+
+/** Instant start: the inbox (and open conversation) as they were last time, from this device's cache. */
+async function showCached(account: string) {
+  const warm = await loadRowCache(account);
+  const r = parseHash();
+  const key = r.view === 'mail' ? listHash(r) : '';
+  const list = key ? snapRows(key) : undefined;
+  if (r.view === 'mail' && !list) return;
+  const m = warm.meta as { labels?: GLabel[]; counts?: Record<string, number>; sendAs?: GSendAs[]; user?: { name?: string; photo?: string }; piles?: Record<PileId, { labelId?: string; ids: string[] }> };
+  const piles = { ...state.piles };
+  for (const p of PILES) {
+    const kept = m.piles?.[p];
+    if (kept) piles[p] = { labelId: kept.labelId, rows: kept.ids.map((id) => rowCache.get(id)).filter((x): x is ThreadRow => !!x) };
+  }
+  shownFrom = account.toLowerCase();
+  setState({
+    phase: 'ready',
+    me: account,
+    route: r,
+    labels: m.labels ?? [],
+    counts: m.counts ?? {},
+    sendAs: m.sendAs ?? [],
+    meName: m.user?.name,
+    mePhoto: m.user?.photo,
+    piles,
+    ...(list ? { list: { key, rows: byDate(list.rows), loading: false, page: 0, tokens: [undefined], next: list.snap.next, estimate: list.snap.estimate } } : {})
+  });
+  if (r.view === 'mail' && r.thread) openThread(r.thread, false, true);
 }
 
 async function start() {
@@ -358,7 +458,13 @@ async function start() {
     }
     if (!config.demo) rememberAccount(p.emailAddress);
     historyId = p.historyId;
-    loadRowCache(p.emailAddress);
+    const warm = state.phase === 'ready' && shownFrom === p.emailAddress.toLowerCase();
+    if (!warm) {
+      // Another account's kept mail must not stay on screen.
+      if (state.phase === 'ready') setState({ list: { key: '', rows: [], loading: true, page: 0, tokens: [undefined] }, labels: [], counts: {}, piles: { action: { rows: [] }, aside: { rows: [] } }, open: undefined });
+      await loadRowCache(p.emailAddress);
+    }
+    shownFrom = '';
     setState({ phase: 'ready', me: p.emailAddress, route: parseHash(), sessionExpired: false });
     loadLabels().then(() => loadPiles());
     loadSendAs();
@@ -366,7 +472,8 @@ async function start() {
     loadContactPhotos();
     loadNotes();
     startSync(api);
-    await loadList(true);
+    // With the kept list on screen, refresh it quietly instead of showing a spinner.
+    await loadList(true, warm && state.list.key === listHash(state.route as MailRoute));
     const r = state.route;
     if (r.view === 'mail' && r.thread) openThread(r.thread);
     startPolling();
@@ -413,6 +520,7 @@ async function loadUserInfo() {
     const u = await api.userInfo();
     if (u.picture && /^https:\/\//.test(u.picture)) setState({ mePhoto: u.picture });
     if (u.name?.trim()) setState({ meName: u.name.trim() });
+    if (persist) saveMeta('user', { name: state.meName, photo: state.mePhoto });
   } catch {
     /* keep the initial */
   }
@@ -497,6 +605,7 @@ export async function loadLabels() {
   try {
     const labels = await api.listLabels();
     setState({ labels });
+    if (persist) saveMeta('labels', labels);
     await loadCounts(labels);
   } catch (e) {
     fail(e);
@@ -535,6 +644,7 @@ async function loadCountsNow(labels: GLabel[]) {
     counts[d.id] = d.id === 'DRAFT' ? d.threadsTotal ?? 0 : d.threadsUnread ?? 0;
   });
   setState({ counts });
+  if (persist) saveMeta('counts', counts);
   const r = state.route;
   if (!getPrefs().tabs || r.view !== 'mail' || r.folder !== 'inbox' || r.q !== undefined) return;
   // The "N new" figures on the category tabs cost 10 units each, so refresh them at most once a minute unless mail changed.
@@ -552,6 +662,7 @@ async function loadSendAs() {
   try {
     const sendAs = await api.listSendAs();
     setState({ sendAs });
+    if (persist) saveMeta('sendAs', sendAs);
   } catch {
     /* empty */
   }
@@ -564,7 +675,9 @@ export async function loadList(reset = false, silent = false) {
   const mine = ++listSeq;
   const page = reset ? 0 : state.list.page;
   const tokens = reset ? [undefined] : state.list.tokens;
-  if (!silent) setState({ list: { ...state.list, key, loading: true, error: undefined, page, tokens, rows: state.list.key === key ? state.list.rows : [] } });
+  // Switching to a list seen before shows it as it was at once; the fresh one replaces it when it arrives.
+  const snap = !silent && state.list.key !== key && page === 0 ? snapRows(key) : undefined;
+  if (!silent) setState({ list: { ...state.list, key, loading: true, error: undefined, page, tokens, rows: state.list.key === key ? state.list.rows : snap ? byDate(snap.rows) : [] } });
   try {
     let res = await api.listThreads({ ...listParams(r, getPrefs().tabs), pageToken: tokens[page], maxResults: getPrefs().pageSize });
     // Mailboxes Gmail never sorted into categories have no Primary label: fall back to Gmail's search.
@@ -583,6 +696,7 @@ export async function loadList(reset = false, silent = false) {
     const selected = new Set([...state.selected].filter((id) => visible.has(id)));
     const recent = collectRecent(rows);
     setState({ list: { key, rows, loading: false, page, tokens, next: res.nextPageToken, estimate: res.resultSizeEstimate }, selected, recent });
+    if (page === 0 && !config.demo) saveListSnap(key, { ids: rows.map((x) => x.id), next: res.nextPageToken, estimate: res.resultSizeEstimate });
   } catch (e) {
     if (mine !== listSeq) return;
     if (e instanceof AuthRequired) return fail(e);
@@ -624,6 +738,7 @@ async function loadPile(p: PileId) {
     const res = await api.listThreads({ labelIds: [labelId], maxResults: 100 });
     const rows = await fetchRows(res.threads ?? []);
     setPile(p, { labelId, rows });
+    if (persist) saveMeta('piles', Object.fromEntries(PILES.map((x) => [x, { labelId: state.piles[x].labelId, ids: state.piles[x].rows.map((r) => r.id) }])));
   } catch (e) {
     if (e instanceof AuthRequired) fail(e);
   }
@@ -723,24 +838,78 @@ export function refresh(silent = false) {
   if (state.open && !silent) openThread(state.open.id, true);
 }
 
-export async function openThread(id: string, quiet = false) {
+function openFrom(id: string, th: GThread): OpenThread {
+  const messages = (th.messages ?? []).map(parseMessage);
+  return { id, loading: false, messages, labelIds: [...new Set(messages.flatMap((m) => m.labelIds))] };
+}
+
+/**
+ * Opens a conversation. A copy kept on this device shows at once; when it's as new as the list says
+ * (same history id), Google isn't asked again. Offline, the kept copy stays on screen.
+ */
+export async function openThread(id: string, quiet = false, cacheOnly = false) {
   const mine = ++openSeq;
+  const row = state.list.rows.find((x) => x.id === id) ?? rowCache.get(id);
   if (!quiet) setState({ open: { id, loading: true, messages: [], labelIds: [] }, focusId: id });
+  const cached = quiet ? undefined : await cachedThread(id);
+  if (mine !== openSeq) return;
+  if (cached) setState({ open: openFrom(id, cached) });
+  const fresh = !!cached && !!row?.historyId && cached.historyId === row.historyId;
+  if (cacheOnly || fresh) {
+    if (fresh) {
+      markOpenedRead(id, cached!);
+      prefetchAround(id);
+    }
+    return;
+  }
   try {
     const th = await api.getThread(id, 'full');
     if (mine !== openSeq) return;
-    const messages = (th.messages ?? []).map(parseMessage);
-    const labelIds = [...new Set(messages.flatMap((m) => m.labelIds))];
-    setState({ open: { id, loading: false, messages, labelIds } });
-    if (labelIds.includes('UNREAD')) {
-      patchRows([id], (r) => ({ ...r, unread: false }));
-      api.modifyThread(id, [], ['UNREAD']).then(() => loadCounts()).catch(fail);
-    }
+    putThread(th);
+    setState({ open: openFrom(id, th) });
+    markOpenedRead(id, th);
+    prefetchAround(id);
   } catch (e) {
     if (mine !== openSeq) return;
     if (e instanceof AuthRequired) return fail(e);
+    if (cached) return;
     setState({ open: { id, loading: false, messages: [], labelIds: [], error: e instanceof Error ? e.message : String(e) } });
   }
+}
+
+function markOpenedRead(id: string, th: GThread) {
+  const labelIds = [...new Set((th.messages ?? []).flatMap((m) => m.labelIds ?? []))];
+  if (labelIds.includes('UNREAD')) {
+    patchRows([id], (r) => ({ ...r, unread: false }));
+    api.modifyThread(id, [], ['UNREAD']).then(() => loadCounts()).catch(fail);
+    // The kept copy reads as read too (it's refreshed next time, its history id having moved on).
+    putThread({ ...th, messages: th.messages?.map((m) => ({ ...m, labelIds: m.labelIds?.filter((l) => l !== 'UNREAD') })) });
+  }
+}
+
+let prefetchTimer: number | undefined;
+
+/**
+ * Fetches the conversations either side of the open one, so the ribbon arrows (and j/k) open them at once.
+ * Only while online and visible, and only when the minute's Gmail quota has plenty of room (20 units at most).
+ */
+function prefetchAround(id: string) {
+  clearTimeout(prefetchTimer);
+  prefetchTimer = window.setTimeout(async () => {
+    const rows = state.list.rows;
+    const i = rows.findIndex((r) => r.id === id);
+    if (i < 0 || state.open?.id !== id) return;
+    for (const n of [rows[i + 1], rows[i - 1]]) {
+      if (!n || !navigator.onLine || document.visibilityState !== 'visible' || quotaHeadroom() < 0.5 || state.open?.id !== id) return;
+      const c = await cachedThread(n.id);
+      if (c && n.historyId && c.historyId === n.historyId) continue;
+      try {
+        putThread(await api.getThread(n.id, 'full'));
+      } catch {
+        return;
+      }
+    }
+  }, 500);
 }
 
 export function openRow(id: string) {

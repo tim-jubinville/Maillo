@@ -114,6 +114,11 @@ export function tokenExpiresSoon(): boolean {
   return !!session && session.expiresAt - Date.now() < 5 * 60_000;
 }
 
+/** The account last signed in on this device (cleared on sign-out). */
+export function rememberedAccount(): string {
+  return localStorage.getItem(HINT_KEY) || '';
+}
+
 export function rememberAccount(email: string) {
   localStorage.setItem(HINT_KEY, email);
 }
@@ -224,6 +229,7 @@ export function renewFromServer(): Promise<boolean> {
     const r = await sessionCall({ action: 'token' });
     serverSession = !!r.ok;
     // Offline or a server hiccup: keep the session and try again in a minute.
+    if (!r.ok && r.error !== 'network' && r.error !== 'google_unreachable') markDevice(false);
     if (!r.ok && (r.error === 'network' || r.error === 'google_unreachable')) {
       serverSession = true;
       clearTimeout(renewTimer);
@@ -239,6 +245,18 @@ export function renewFromServer(): Promise<boolean> {
 
 export function hasServerSession() {
   return serverSession;
+}
+
+const DEVICE_KEY = 'maillo.device';
+
+/** Whether this device had a lasting session last time, known before asking the server (for instant start). */
+export function hadServerSession(): boolean {
+  return staySignedIn() && localStorage.getItem(DEVICE_KEY) === '1';
+}
+
+function markDevice(on: boolean) {
+  if (on) localStorage.setItem(DEVICE_KEY, '1');
+  else localStorage.removeItem(DEVICE_KEY);
 }
 
 let codeClient: CodeClient | null = null;
@@ -260,6 +278,7 @@ function initCode(hint?: string) {
       const res = await sessionCall({ action: 'exchange', code: r.code });
       if (!res.ok || !res.access_token) return p?.reject(new Error(res.error || 'auth_failed'));
       serverSession = !!res.persistent;
+      markDevice(serverSession);
       useServerToken(res);
       p?.resolve(res.access_token);
     },
@@ -317,6 +336,7 @@ export async function signOut(): Promise<void> {
   clearTimeout(renewTimer);
   const ending = serverSession ? sessionCall({ action: 'signout' }) : undefined;
   serverSession = false;
+  markDevice(false);
   writeSession(null);
   localStorage.removeItem(HINT_KEY);
   if (token && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(token);
