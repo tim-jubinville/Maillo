@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maillo · Mail, but mellow.</title>
-<meta name="description" content="Maillo is a calmer, better-looking face for Gmail. Same mailbox, labels and filters; your mail stays with Google. Free to self-host.">
+<title>Maillo · A beautiful new face for Gmail</title>
+<meta name="description" content="Maillo is a streamlined, elegantly designed front end for Gmail. Same mailbox, labels and filters, with features Gmail never built. Free to self-host.">
 <meta name="theme-color" content="#BCD6F8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E1A3A" media="(prefers-color-scheme: dark)">
-<meta property="og:title" content="Maillo · Mail, but mellow.">
-<meta property="og:description" content="A calmer, better-looking face for Gmail. Free to self-host.">
+<meta property="og:title" content="Maillo · A beautiful new face for Gmail">
+<meta property="og:description" content="A cleaner, more capable front end for Gmail. Free to self-host.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="assets/shots/list-light.webp">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -120,12 +120,16 @@ h3 { font-size: 18px; font-weight: 800; margin: 0 0 6px; letter-spacing: -.01em;
 .needs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
 .needs li { background: var(--accent-soft); color: var(--ink); border-radius: 99px; padding: 6px 14px; font-size: 14.5px; font-weight: 600; }
 
-/* Limits */
-.limits { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 32px; margin: 28px 0 0; padding: 0; list-style: none; }
-@media (max-width: 720px) { .limits { grid-template-columns: 1fr; } }
-.limits li { padding-left: 26px; position: relative; color: var(--ink-2); }
-.limits li::before { content: ''; position: absolute; left: 4px; top: .62em; width: 8px; height: 8px; border-radius: 99px; background: var(--accent); opacity: .55; }
-.limits b { color: var(--ink); }
+/* Name */
+.name-art { display: grid; place-items: center; padding: 40px; border-radius: 28px; background: linear-gradient(160deg, var(--accent-soft), transparent); border: 1px solid var(--line); }
+.name-art img { width: 160px; height: 160px; filter: drop-shadow(0 18px 30px rgba(43,89,232,.3)); }
+@media (max-width: 860px) { .name-art { padding: 28px; } .name-art img { width: 112px; height: 112px; } }
+
+/* FAQ */
+.faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
+@media (max-width: 760px) { .faq { grid-template-columns: 1fr; } }
+.qa { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; }
+.qa p { margin: 0; color: var(--ink-2); font-size: 15.5px; }
 
 /* Closing */
 .closing { text-align: center; padding: 72px 28px; margin-top: 96px; border-radius: 28px; background: linear-gradient(180deg, var(--accent-soft), transparent); border: 1px solid var(--line); }
@@ -163,10 +167,10 @@ footer a { color: var(--ink-2); }
 
 <main id="main">
   <div class="wrap hero">
-    <h1><span lang="en">Mail, but mellow.</span><span lang="fr">Les courriels, à tête reposée.</span></h1>
+    <h1><span lang="en">A beautiful new face for Gmail.</span><span lang="fr">Un plus beau visage pour Gmail.</span></h1>
     <p class="lede">
-      <span lang="en">Maillo is a calmer, better-looking face for Gmail. Same mailbox, same labels and filters. Your mail stays with Google, and you host the app yourself, for free.</span>
-      <span lang="fr">Maillo, c’est un nouveau visage pour Gmail, plus calme et plus beau. Même boîte, mêmes libellés, mêmes filtres. Vos courriels restent chez Google, et vous hébergez l’app vous-même, gratuitement.</span>
+      <span lang="en">Maillo is a streamlined, elegantly designed front end for Gmail. Same mailbox, same labels, same filters: just a cleaner interface, modern typography, and a few thoughtful features Gmail never built.</span>
+      <span lang="fr">Maillo est une interface pour Gmail, épurée et soignée. Même boîte, mêmes libellés, mêmes filtres : simplement un design plus net, une typographie moderne et quelques fonctions bien pensées que Gmail n’a jamais offertes.</span>
     </p>
     <div class="ctas">
       <a class="btn primary" href="https://github.com/tim-jubinville/Maillo/releases/latest/download/maillo.zip">
@@ -177,14 +181,14 @@ footer a { color: var(--ink-2); }
       </a>
     </div>
     <p class="fine">
-      <span lang="en">Free · No account with us · About 20 minutes to set up</span>
-      <span lang="fr">Gratuit · Aucun compte chez nous · Environ 20 minutes d’installation</span>
+      <span lang="en">Free · Runs on your own web space · About 20 minutes to set up</span>
+      <span lang="fr">Gratuit · Sur votre propre espace web · Environ 20 minutes d’installation</span>
     </p>
 
     <div class="screens">
       <picture class="main" style="display:block">
         <source srcset="assets/shots/inbox-dark.webp" media="(prefers-color-scheme: dark)">
-        <img src="assets/shots/inbox-light.webp" width="1800" height="1125" alt="Maillo showing an open conversation, with the folder list, labels and the Set aside pile" fetchpriority="high">
+        <img src="assets/shots/inbox-light.webp" width="1800" height="1125" alt="Maillo showing an open conversation, with the folder list, labels and the Set aside stack" fetchpriority="high">
       </picture>
       <img class="phone" src="assets/shots/mobile.webp" width="600" height="1299" alt="Maillo's inbox on a phone" loading="lazy">
     </div>
@@ -194,65 +198,89 @@ footer a { color: var(--ink-2); }
     <div class="split">
       <div>
         <p class="eyebrow"><span lang="en">Why Maillo</span><span lang="fr">Pourquoi Maillo</span></p>
-        <h2><span lang="en">Gmail’s engine, without the clutter.</span><span lang="fr">Le moteur de Gmail, sans le fouillis.</span></h2>
+        <h2><span lang="en">Love Gmail. Just not the look of it.</span><span lang="fr">Gmail, oui. Son allure, un peu moins.</span></h2>
         <p class="intro">
-          <span lang="en">Gmail is great underneath: the search, the labels, the filters, the spam protection. Its web interface is another story. Maillo keeps everything that works and gives it a calmer home, with a few twists of its own. The name? Mail, but mellow.</span>
-          <span lang="fr">Sous le capot, Gmail est excellent : la recherche, les libellés, les filtres, la protection contre les pourriels. Son interface web, c’est une autre histoire. Maillo garde tout ce qui fonctionne et lui donne un environnement plus calme, avec quelques idées bien à lui. Le nom? Mail, mais mellow.</span>
+          <span lang="en">Under the hood, Gmail is hard to beat: best-in-class search, an invisible-hero spam filter, and labels that change how you organize everything. The web interface is another story: too many buttons, too little breathing room. Maillo keeps everything that works and replaces the part you look at every day.</span>
+          <span lang="fr">Sous le capot, Gmail est difficile à battre : une recherche hors pair, un filtre antipourriel qui travaille dans l’ombre et des libellés qui changent votre façon de tout classer. L’interface web, c’est une autre histoire : trop de boutons, pas assez d’espace pour respirer. Maillo garde tout ce qui fonctionne et remplace la partie que vous voyez tous les jours.</span>
+        </p>
+        <p class="intro">
+          <span lang="en">Your mail never leaves Google, your labels and filters work exactly as before, and you can switch back to Gmail anytime. Nothing breaks, because nothing moved.</span>
+          <span lang="fr">Vos courriels ne quittent jamais Google, vos libellés et filtres fonctionnent comme avant, et vous pouvez revenir à Gmail quand vous voulez. Rien ne brise, parce que rien n’a bougé.</span>
         </p>
       </div>
-      <div class="shot"><img src="assets/shots/list-light.webp" width="1800" height="1125" alt="Maillo's inbox with category tabs and coloured labels" loading="lazy"></div>
+      <div class="shot"><img src="assets/shots/list-light.webp" width="1800" height="1125" alt="Maillo's inbox with category tabs and colour-coded labels" loading="lazy"></div>
     </div>
   </section>
 
   <section id="features" class="wrap">
     <p class="eyebrow"><span lang="en">What’s different</span><span lang="fr">Ce qui change</span></p>
-    <h2><span lang="en">Small things that add up.</span><span lang="fr">Des petits riens qui font toute la différence.</span></h2>
+    <h2><span lang="en">Everything from Gmail, and then some.</span><span lang="fr">Tout Gmail, et plus encore.</span></h2>
+    <p class="intro">
+      <span lang="en">Categories, nested and colour-coded labels, Gmail’s full search syntax, threads, drafts, undo send, filters, signatures and the vacation responder are all there. Here’s what Maillo adds.</span>
+      <span lang="fr">Catégories, libellés imbriqués et colorés, syntaxe de recherche complète de Gmail, fils de discussion, brouillons, annulation d’envoi, filtres, signatures et réponse d’absence : tout y est. Voici ce que Maillo ajoute.</span>
+    </p>
     <div class="grid">
       <article class="card">
         <div class="medal" style="background:#E3ECFF" aria-hidden="true">🎨</div>
-        <h3><span lang="en">Calmer by design</span><span lang="fr">Calme par nature</span></h3>
-        <p><span lang="en">Ten colour themes, light and dark mode, frosted ribbons and a reading view that gives your mail room to breathe.</span><span lang="fr">Dix thèmes de couleur, modes clair et sombre, rubans givrés et une lecture qui laisse respirer vos messages.</span></p>
+        <h3><span lang="en">A better look</span><span lang="fr">Un plus beau look</span></h3>
+        <p><span lang="en">Frosted-glass panels, ten colour themes and a real dark mode. Emails open in a clean reading view, with remote images blocked until you say so.</span><span lang="fr">Panneaux en verre givré, dix thèmes de couleur et un vrai mode sombre. Les courriels s’ouvrent dans une vue de lecture épurée, images externes bloquées jusqu’à ce que vous les permettiez.</span></p>
       </article>
       <article class="card">
         <div class="medal" style="background:#FFF0D6" aria-hidden="true">🗂️</div>
-        <h3><span lang="en">Set aside &amp; Action required</span><span lang="fr">De côté et À faire</span></h3>
-        <p><span lang="en">Two little piles at the bottom of the screen for mail you’ll get back to. They’re Gmail labels, so they sync everywhere.</span><span lang="fr">Deux petites piles au bas de l’écran pour les messages à reprendre plus tard. Ce sont des libellés Gmail : tout se synchronise.</span></p>
+        <h3><span lang="en">Set aside</span><span lang="fr">De côté</span></h3>
+        <p><span lang="en">Not ready to deal with something, but don’t want it buried? Set it aside. It becomes a little card in a stack at the bottom of the screen. Fan the stack out when you’re ready.</span><span lang="fr">Pas prêt à vous en occuper, mais vous ne voulez pas l’enterrer? Mettez-le de côté. Il devient une petite carte dans une pile au bas de l’écran. Déployez la pile quand vous êtes prêt.</span></p>
+      </article>
+      <article class="card">
+        <div class="medal" style="background:#FFE4DD" aria-hidden="true">🚩</div>
+        <h3><span lang="en">Action required</span><span lang="fr">À faire</span></h3>
+        <p><span lang="en">A second stack, right next to it, for mail you actually need to act on. Both are plain Gmail labels, so they sync to your phone too.</span><span lang="fr">Une deuxième pile, juste à côté, pour les courriels qui demandent vraiment une action. Ce sont des libellés Gmail ordinaires : ils se synchronisent aussi sur votre téléphone.</span></p>
       </article>
       <article class="card">
         <div class="medal" style="background:#FFF6C2" aria-hidden="true">📝</div>
         <h3><span lang="en">Private notes</span><span lang="fr">Notes privées</span></h3>
-        <p><span lang="en">Stick a note on any conversation, like “Paid on Nov 14”. Only you see it, and it follows you from device to device.</span><span lang="fr">Collez une note sur n’importe quelle conversation, comme « Payé le 14 nov. ». Vous seul la voyez, sur tous vos appareils.</span></p>
+        <p><span lang="en">Stick a note on any conversation, like “Paid on Nov 14” or “Waiting on Marc”. Only you see it, and it’s never sent.</span><span lang="fr">Collez une note sur n’importe quelle conversation, comme « Payé le 14 nov. » ou « J’attends Marc ». Vous seul la voyez, et elle n’est jamais envoyée.</span></p>
       </article>
       <article class="card">
-        <div class="medal" style="background:#DDF5EA" aria-hidden="true">🛡️</div>
-        <h3><span lang="en">Private by default</span><span lang="fr">Discret par défaut</span></h3>
-        <p><span lang="en">Remote images stay blocked until you allow them, so senders can’t tell when you’ve opened their email. Messages open in a locked-down frame.</span><span lang="fr">Les images externes restent bloquées jusqu’à ce que vous les permettiez : l’expéditeur ne sait pas quand vous l’avez lu. Les messages s’ouvrent dans un cadre verrouillé.</span></p>
+        <div class="medal" style="background:#DDF5EA" aria-hidden="true">📅</div>
+        <h3><span lang="en">Optional extras</span><span lang="fr">Extras optionnels</span></h3>
+        <p><span lang="en">Today’s agenda from Google Calendar, Google Tasks and Contacts in a side panel, and AI help through Gemini, with the key kept on your own server.</span><span lang="fr">L’agenda du jour de Google Agenda, Google Tasks et vos contacts dans un panneau latéral, et l’aide de Gemini, avec la clé gardée sur votre propre serveur.</span></p>
       </article>
       <article class="card">
-        <div class="medal" style="background:#EDE7FF" aria-hidden="true">⚡</div>
-        <h3><span lang="en">Fast, and keyboard-friendly</span><span lang="fr">Rapide, et pensé pour le clavier</span></h3>
-        <p><span lang="en">Instant start, conversations ready before you open them, smart search suggestions and shortcuts for everything (press ?).</span><span lang="fr">Démarrage instantané, conversations prêtes avant même de les ouvrir, suggestions de recherche et raccourcis pour tout (appuyez sur ?).</span></p>
+        <div class="medal" style="background:#EDE7FF" aria-hidden="true">⌨️</div>
+        <h3><span lang="en">Keyboard-friendly</span><span lang="fr">Pensé pour le clavier</span></h3>
+        <p><span lang="en">Shortcuts for everything, plus search suggestions as you type. Press ? to see them all.</span><span lang="fr">Des raccourcis pour tout, et des suggestions de recherche pendant que vous tapez. Appuyez sur ? pour les voir.</span></p>
       </article>
       <article class="card">
-        <div class="medal" style="background:#FFE4DD" aria-hidden="true">📅</div>
-        <h3><span lang="en">Your day, beside your mail</span><span lang="fr">Votre journée, à côté de vos courriels</span></h3>
-        <p><span lang="en">Optional side panels for today’s Calendar (with a Join button), Tasks and Contacts. Plus Gemini help, with your own key.</span><span lang="fr">Panneaux latéraux optionnels pour l’Agenda du jour (avec bouton Rejoindre), Tasks et Contacts. Et l’aide de Gemini, avec votre propre clé.</span></p>
+        <div class="medal" style="background:#E3ECFF" aria-hidden="true">⚡</div>
+        <h3><span lang="en">Fast from the start</span><span lang="fr">Rapide dès le départ</span></h3>
+        <p><span lang="en">Your inbox appears instantly, nearby conversations load ahead of time, and the ones you’ve opened can be read offline.</span><span lang="fr">Votre boîte s’affiche sur-le-champ, les conversations voisines se chargent d’avance, et celles déjà ouvertes se lisent hors ligne.</span></p>
       </article>
       <article class="card">
-        <div class="medal" style="background:#E3ECFF" aria-hidden="true">🔔</div>
-        <h3><span lang="en">A real app, gentle chimes</span><span lang="fr">Une vraie app, des carillons doux</span></h3>
-        <p><span lang="en">Install it on your computer or phone. Notifications follow your rules, with four calm chimes and quiet hours.</span><span lang="fr">Installez-la sur votre ordinateur ou votre téléphone. Les notifications suivent vos règles, avec quatre carillons doux et des heures de silence.</span></p>
+        <div class="medal" style="background:#FFF0D6" aria-hidden="true">🔔</div>
+        <h3><span lang="en">A real app</span><span lang="fr">Une vraie app</span></h3>
+        <p><span lang="en">Install it on your computer or phone, with its own icon, an unread count and notifications that follow your rules.</span><span lang="fr">Installez-la sur votre ordinateur ou votre téléphone, avec sa propre icône, le nombre de non-lus et des notifications qui suivent vos règles.</span></p>
       </article>
       <article class="card">
-        <div class="medal" style="background:#DDF5EA" aria-hidden="true">↩️</div>
-        <h3><span lang="en">Undo, everywhere</span><span lang="fr">Annuler, partout</span></h3>
-        <p><span lang="en">Undo send, archive, delete, move and label changes. Drag and drop conversations onto labels, and labels onto conversations.</span><span lang="fr">Annulez un envoi, un archivage, une suppression, un déplacement ou un libellé. Glissez les conversations vers les libellés, et l’inverse.</span></p>
+        <div class="medal" style="background:#DDF5EA" aria-hidden="true">🍁</div>
+        <h3><span lang="en">English and French</span><span lang="fr">Français et anglais</span></h3>
+        <p><span lang="en">Made in Montréal and fully bilingual. Pick a language or let Maillo follow your browser.</span><span lang="fr">Fait à Montréal et entièrement bilingue. Choisissez votre langue ou laissez Maillo suivre votre navigateur.</span></p>
       </article>
-      <article class="card">
-        <div class="medal" style="background:#FFF0D6" aria-hidden="true">🍁</div>
-        <h3><span lang="en">English and French</span><span lang="fr">En français et en anglais</span></h3>
-        <p><span lang="en">Made in Montréal, fully bilingual from day one. Pick a language or let Maillo follow your browser.</span><span lang="fr">Fait à Montréal, bilingue dès le premier jour. Choisissez votre langue ou laissez Maillo suivre votre navigateur.</span></p>
-      </article>
+    </div>
+  </section>
+
+  <section id="name" class="wrap">
+    <div class="split">
+      <div class="name-art" aria-hidden="true">
+        <picture><source srcset="assets/icon-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/icon.svg" alt="" width="160" height="160"></picture>
+      </div>
+      <div>
+        <p class="eyebrow"><span lang="en">What’s in a name?</span><span lang="fr">Pourquoi ce nom?</span></p>
+        <h2><span lang="en">Mail, plus hello.</span><span lang="fr">Mail, plus hello.</span></h2>
+        <p class="intro">
+          <span lang="en">That’s the entire brief: email that feels fresh, modern and inviting rather than overwhelming. The icon is an open envelope with a letter rising out of it, because checking your mail should feel like a fresh start.</span>
+          <span lang="fr">Tout est là : des courriels qui ont l’air frais, modernes et invitants plutôt qu’écrasants. L’icône est une enveloppe ouverte d’où s’élève une lettre, parce que relever son courrier devrait donner l’impression d’un nouveau départ.</span>
+        </p>
+      </div>
     </div>
   </section>
 
@@ -262,14 +290,14 @@ footer a { color: var(--ink-2); }
         <p class="eyebrow"><span lang="en">Set it up yourself</span><span lang="fr">Installez-le vous-même</span></p>
         <h2><span lang="en">Your own Maillo in about 20 minutes.</span><span lang="fr">Votre propre Maillo en 20 minutes environ.</span></h2>
         <p class="intro">
-          <span lang="en">Maillo is free. There’s no account to create with us and no server of ours in between: you upload a few files to your own web space and connect them to your Google account.</span>
-          <span lang="fr">Maillo est gratuit. Pas de compte à créer chez nous, pas de serveur à nous entre les deux : vous déposez quelques fichiers sur votre propre espace web et les reliez à votre compte Google.</span>
+          <span lang="en">Maillo is free to run on your own web space. There’s no account to create and no server in the middle: you upload a few files, connect them to Google, and you’re done.</span>
+          <span lang="fr">Maillo est gratuit à faire tourner sur votre propre espace web. Aucun compte à créer, aucun serveur entre les deux : vous déposez quelques fichiers, vous les reliez à Google, et c’est tout.</span>
         </p>
         <p style="color:var(--ink-3);font-size:14px;margin:22px 0 0;font-weight:600"><span lang="en">You’ll need</span><span lang="fr">Ce qu’il vous faut</span></p>
         <ul class="needs">
-          <li><span lang="en">Web hosting with HTTPS</span><span lang="fr">Un hébergement web avec HTTPS</span></li>
-          <li><span lang="en">An address, like mail.example.com</span><span lang="fr">Une adresse, comme courriel.exemple.com</span></li>
-          <li><span lang="en">A Google account</span><span lang="fr">Un compte Google</span></li>
+          <li><span lang="en">A website host with HTTPS (shared hosting, Cloudflare Pages, Netlify…)</span><span lang="fr">Un hébergement web avec HTTPS (hébergement mutualisé, Cloudflare Pages, Netlify…)</span></li>
+          <li><span lang="en">An address, like mail.yourdomain.com</span><span lang="fr">Une adresse, comme courriel.votredomaine.com</span></li>
+          <li><span lang="en">A Gmail or Google Workspace account</span><span lang="fr">Un compte Gmail ou Google Workspace</span></li>
         </ul>
       </div>
       <div>
@@ -286,40 +314,44 @@ footer a { color: var(--ink-2); }
     </div>
   </section>
 
-  <section id="limits" class="wrap">
+  <section id="faq" class="wrap">
     <p class="eyebrow"><span lang="en">Good to know</span><span lang="fr">Bon à savoir</span></p>
-    <h2><span lang="en">What Google doesn’t let apps do.</span><span lang="fr">Ce que Google ne permet pas aux apps.</span></h2>
-    <p class="intro"><span lang="en">Maillo uses Google’s official Gmail API, which leaves out a few things. For these, you’ll still pop into Gmail now and then.</span><span lang="fr">Maillo passe par l’API Gmail officielle de Google, qui laisse de côté quelques fonctions. Pour celles-ci, vous ferez encore un saut dans Gmail à l’occasion.</span></p>
-    <ul class="limits">
-      <li><span lang="en"><b>Snooze and schedule send:</b> you can see them, but new ones are set in Gmail.</span><span lang="fr"><b>Mise en attente et envoi programmé :</b> visibles dans Maillo, mais on les crée dans Gmail.</span></li>
-      <li><span lang="en"><b>Delete forever:</b> Gmail empties the Trash on its own after 30 days.</span><span lang="fr"><b>Suppression définitive :</b> Gmail vide la corbeille de lui-même après 30 jours.</span></li>
-      <li><span lang="en"><b>Confidential mode and Smart Compose</b> aren’t available.</span><span lang="fr"><b>Le mode confidentiel et la saisie intelligente</b> ne sont pas offerts.</span></li>
-      <li><span lang="en"><b>Chat and Meet</b> open in their own Google apps.</span><span lang="fr"><b>Chat et Meet</b> s’ouvrent dans leurs propres apps Google.</span></li>
-      <li><span lang="en"><b>Personal @gmail.com accounts</b> may need to sign in again every 7 days, unless you publish your Google sign-in key.</span><span lang="fr"><b>Les comptes @gmail.com personnels</b> peuvent devoir se reconnecter tous les 7 jours, à moins de publier votre clé de connexion Google.</span></li>
-      <li><span lang="en"><b>Notifications while Maillo is closed</b> need an optional extra setup step.</span><span lang="fr"><b>Les notifications quand Maillo est fermé</b> demandent une étape d’installation optionnelle.</span></li>
-    </ul>
-  </section>
-
-  <section id="privacy" class="wrap">
-    <div class="split">
-      <div>
-        <p class="eyebrow"><span lang="en">Privacy</span><span lang="fr">Confidentialité</span></p>
-        <h2><span lang="en">Your mail never passes through us.</span><span lang="fr">Vos courriels ne passent jamais par nous.</span></h2>
+    <h2><span lang="en">Questions, answered.</span><span lang="fr">Vos questions, nos réponses.</span></h2>
+    <div class="faq">
+      <div class="qa">
+        <h3><span lang="en">Is my mail safe?</span><span lang="fr">Mes courriels sont-ils en sécurité?</span></h3>
+        <p><span lang="en">Your mail stays in your Google account. Maillo talks to Gmail straight from your browser through Google’s official API. Nothing is copied to a server, your sign-in stays in your browser tab, and nobody else ever sees any of it.</span><span lang="fr">Vos courriels restent dans votre compte Google. Maillo parle à Gmail directement depuis votre navigateur, par l’API officielle de Google. Rien n’est copié sur un serveur, votre connexion reste dans votre onglet, et personne d’autre n’y a accès.</span></p>
       </div>
-      <p class="intro" style="margin:0">
-        <span lang="en">Maillo runs in your browser and talks to Gmail directly, through Google’s official API. There’s no Maillo company, no database and no tracking. Sign-in tokens stay in your browser tab, and the app lives on your own web space, so you decide who can reach it.</span>
-        <span lang="fr">Maillo fonctionne dans votre navigateur et parle directement à Gmail, par l’API officielle de Google. Pas d’entreprise Maillo, pas de base de données, pas de pistage. Les jetons de connexion restent dans votre onglet, et l’app vit sur votre propre espace web : c’est vous qui décidez qui peut y accéder.</span>
-      </p>
+      <div class="qa">
+        <h3><span lang="en">Do I lose anything from Gmail?</span><span lang="fr">Est-ce que je perds quelque chose de Gmail?</span></h3>
+        <p><span lang="en">No. Labels, filters, stars and drafts are all regular Gmail, so they show up the same in the Gmail app on your phone. You can use both side by side.</span><span lang="fr">Non. Libellés, filtres, étoiles et brouillons sont du Gmail ordinaire : ils s’affichent de la même façon dans l’app Gmail sur votre téléphone. Vous pouvez utiliser les deux côte à côte.</span></p>
+      </div>
+      <div class="qa">
+        <h3><span lang="en">What can’t it do?</span><span lang="fr">Qu’est-ce qu’il ne peut pas faire?</span></h3>
+        <p><span lang="en">A few things Google keeps for its own apps. You can’t create new snoozes or scheduled emails (existing ones still show), and Delete forever needs Gmail itself. Trash empties on its own after 30 days anyway.</span><span lang="fr">Quelques fonctions que Google garde pour ses propres apps. Vous ne pouvez pas créer de nouvelles mises en attente ni d’envois programmés (ceux qui existent s’affichent quand même), et la suppression définitive demande Gmail. La corbeille se vide d’elle-même après 30 jours de toute façon.</span></p>
+      </div>
+      <div class="qa">
+        <h3><span lang="en">Does it cost anything?</span><span lang="fr">Est-ce que ça coûte quelque chose?</span></h3>
+        <p><span lang="en">Maillo is free. Hosting costs whatever you already pay, and Google’s side is free for personal use.</span><span lang="fr">Maillo est gratuit. L’hébergement coûte ce que vous payez déjà, et la partie Google est gratuite pour un usage personnel.</span></p>
+      </div>
+      <div class="qa">
+        <h3><span lang="en">Do I need to know how to code?</span><span lang="fr">Dois-je savoir programmer?</span></h3>
+        <p><span lang="en">No, but you’ll need to be comfortable uploading files to a website and editing one settings file. If you’ve ever set up a WordPress site, you’ll be fine.</span><span lang="fr">Non, mais vous devez être à l’aise de téléverser des fichiers sur un site web et de modifier un fichier de réglages. Si vous avez déjà installé un site WordPress, ça ira très bien.</span></p>
+      </div>
+      <div class="qa">
+        <h3><span lang="en">Who’s behind it?</span><span lang="fr">Qui est derrière?</span></h3>
+        <p><span lang="en">Maillo is a side project by <a href="https://timj.me/projects/maillo/">Tim Jubinville</a>, who uses it every day. It isn’t affiliated with Google.</span><span lang="fr">Maillo est un projet personnel de <a href="https://timj.me/fr/projets/maillo/">Tim Jubinville</a>, qui l’utilise tous les jours. Il n’est pas affilié à Google.</span></p>
+      </div>
     </div>
   </section>
 
   <div class="wrap">
     <div class="closing">
       <h2><span lang="en">Say hello to better email.</span><span lang="fr">Dites bonjour à de meilleurs courriels.</span></h2>
-      <p><span lang="en">Take the demo for a spin with sample mail, or set up your own in an afternoon.</span><span lang="fr">Faites un tour de la démo avec des courriels fictifs, ou installez le vôtre en un après-midi.</span></p>
+      <p><span lang="en">Try the demo with sample mail, or set up your own. Once you have, I’d love to hear what you think, what breaks, and what you’d add next.</span><span lang="fr">Essayez la démo avec des courriels fictifs, ou installez le vôtre. Ensuite, j’aimerais savoir ce que vous en pensez, ce qui brise et ce que vous ajouteriez.</span></p>
       <div class="ctas">
         <a class="btn primary" href="https://github.com/tim-jubinville/Maillo/releases/latest/download/maillo.zip"><svg aria-hidden="true"><use href="#i-down"/></svg><span lang="en">Download Maillo</span><span lang="fr">Télécharger Maillo</span></a>
-        <a class="btn secondary" href="demo/?demo"><svg aria-hidden="true"><use href="#i-play"/></svg><span lang="en">Try the demo</span><span lang="fr">Essayer la démo</span></a>
+        <a class="btn secondary" href="https://github.com/tim-jubinville/Maillo/issues/new"><span lang="en">Share feedback</span><span lang="fr">Donner votre avis</span></a>
       </div>
     </div>
   </div>
@@ -327,7 +359,7 @@ footer a { color: var(--ink-2); }
 
 <div class="wrap">
   <footer>
-    <span><span lang="en">A personal project by <a href="https://timj.me/projects/maillo/">Tim Jubinville</a>, made in Montréal.</span><span lang="fr">Un projet personnel de <a href="https://timj.me/projects/maillo/">Tim Jubinville</a>, fait à Montréal.</span></span>
+    <span><span lang="en">A personal project by <a href="https://timj.me/projects/maillo/">Tim Jubinville</a>, made in Montréal.</span><span lang="fr">Un projet personnel de <a href="https://timj.me/fr/projets/maillo/">Tim Jubinville</a>, fait à Montréal.</span></span>
     <span>
       <a href="https://github.com/tim-jubinville/Maillo">GitHub</a> ·
       <a href="https://github.com/tim-jubinville/Maillo/releases"><span lang="en">Releases</span><span lang="fr">Versions</span></a> ·
@@ -345,7 +377,7 @@ footer a { color: var(--ink-2); }
   var lang = params.get('lang') || saved || ((navigator.language || 'en').toLowerCase().indexOf('fr') === 0 ? 'fr' : 'en');
   function apply(l) {
     root.lang = l === 'fr' ? 'fr' : 'en';
-    document.title = root.lang === 'fr' ? 'Maillo · Les courriels, à tête reposée.' : 'Maillo · Mail, but mellow.';
+    document.title = root.lang === 'fr' ? 'Maillo · Un plus beau visage pour Gmail' : 'Maillo · A beautiful new face for Gmail';
   }
   apply(lang);
   document.getElementById('lang-toggle').addEventListener('click', function () {
