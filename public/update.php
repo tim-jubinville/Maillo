@@ -2,9 +2,9 @@
 /*
  * Updates this install from a release zip uploaded in Settings > Updates,
  * and stores the custom logo set in Settings > Appearance.
- * Only accounts listed in config.js (allowedAccounts or allowedDomains) can use it,
- * and the request must carry a valid Google access token issued to this install's
- * OAuth client. config.js and .htaccess are never replaced.
+ * Only allowed accounts (allowedAccounts or allowedDomains) can use it, and the request
+ * must carry a valid Google access token issued to this install's OAuth client.
+ * maillo-config.php, config.js and .htaccess are never replaced.
  */
 declare(strict_types=1);
 
@@ -15,12 +15,14 @@ header('X-Content-Type-Options: nosniff');
 const MAX_UPLOAD = 30 * 1024 * 1024;
 const MAX_UNPACKED = 120 * 1024 * 1024;
 const KEEP_BACKUPS = 3;
-const PROTECTED_PATHS = ['config.js', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
+const PROTECTED_PATHS = ['config.js', 'maillo-config.php', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
 const MAX_LOGO = 1024 * 1024;
 // Server files shipped in the release; any other .php file in a package is refused.
 // A newer release may add server files: they're accepted when that release's own update.php lists
 // them here (no new risk, since the package's update.php replaces this one anyway).
-const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php'];
+// maillo-config.php is listed so updaters before 0.6.9 accept the package; it's protected, so this one never
+// replaces it (and a blank copy doesn't take over from an existing config.js, see config_source()).
+const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php', 'config.php', 'maillo-config.php'];
 
 /** SERVER_FILES as declared by the update.php inside a package (top-level .php names only). */
 function package_server_files(ZipArchive $zip, string $prefix): array
