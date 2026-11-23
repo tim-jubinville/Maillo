@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { listDate, type ThreadRow } from '../model';
 import { go, threadHash, type MailRoute } from '../route';
 import { Avatar, useOutside } from './common';
+import { getPrefs } from '../prefs';
 import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
 import { actions, PILES, type AppState, type PileId } from '../store';
@@ -220,7 +221,7 @@ function Fan({ s, pile, rows, leaving, onClose }: { s: AppState; pile: PileId; r
           onFocus={() => setPx(xOf(n - 1))}
           onClick={() => {
             onClose(false);
-            const id = s.piles[pile].labelId;
+          const id = s.piles[pile].labelId;
             if (id) go(`#/label/${encodeURIComponent(id)}`);
           }}
         >
@@ -232,9 +233,9 @@ function Fan({ s, pile, rows, leaving, onClose }: { s: AppState; pile: PileId; r
         class="btn sm fan-all"
         onClick={() => {
           onClose(false);
-          // Opens the first one; the ribbon's arrows then step through the rest of the pile.
           const id = s.piles[pile].labelId;
-          if (id && rows[0]) go(`#/label/${encodeURIComponent(id)}/t/${encodeURIComponent(rows[0].id)}`);
+          // With the reading pane: open the first one beside the list. Without it: show the pile's list.
+          if (id && rows[0] && getPrefs().pane === 'right') go(`#/label/${encodeURIComponent(id)}/t/${encodeURIComponent(rows[0].id)}`);
           else if (id) go(`#/label/${encodeURIComponent(id)}`);
         }}
       >

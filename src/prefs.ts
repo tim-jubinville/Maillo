@@ -67,7 +67,8 @@ const KEY = 'maillo.prefs';
 
 const defaults: Prefs = {
   density: 'comfortable',
-  pane: 'right',
+  // Like Gmail: conversations open in place of the list.
+  pane: 'off',
   undoSeconds: 10,
   images: 'ask',
   imageSenders: [],

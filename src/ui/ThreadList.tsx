@@ -240,7 +240,7 @@ function Row({ s, r, route, compact, split }: { s: AppState; r: ThreadRow; route
       <span class="row-acts">
         {r.labelIds.includes('INBOX') && <RowAct label={t('act.archive')} icon="archive" run={() => actions.archive([r.id])} />}
         {!r.labelIds.includes('TRASH') && <RowAct label={t('act.delete')} icon="trash" run={() => actions.trash([r.id])} />}
-        <RowAct label={r.unread ? t('act.markRead') : t('act.markUnread')} icon={r.unread ? 'mail' : 'unread'} run={() => actions.read([r.id], r.unread)} />
+        <RowAct label={r.unread ? t('act.markRead') : t('act.markUnread')} icon={r.unread ? 'read' : 'unread'} run={() => actions.read([r.id], r.unread)} />
         {canAside && <span class="row-sep" aria-hidden="true" />}
         {canAside && PILES.map((p) => {
           const here = pile === p;
@@ -278,7 +278,7 @@ function bulkItems(s: AppState, route: MailRoute, sel: string[]): BarItem[] {
                 : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], pressed: false, run: () => actions.pin(p, sel) };
             })
           ]),
-    { id: 'read', group: 2, prio: 7, w: 38, label: anyUnread ? t('act.markRead') : t('act.markUnread'), icon: anyUnread ? 'mail' : 'unread', run: () => actions.read(sel, anyUnread) },
+    { id: 'read', group: 2, prio: 7, w: 38, label: anyUnread ? t('act.markRead') : t('act.markUnread'), icon: anyUnread ? 'read' : 'unread', run: () => actions.read(sel, anyUnread) },
     { id: 'star', group: 2, prio: 5.5, w: 38, label: t('list.star'), icon: 'starred', run: () => actions.star(sel, true) },
     { id: 'important', group: 2, prio: 3, w: 38, label: t('act.markImportant'), icon: 'important', run: () => actions.important(sel, true) },
     { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move', menu: <MoveMenu s={s} ids={sel} />, sub: (close) => <MoveList s={s} ids={sel} onDone={close} /> },
