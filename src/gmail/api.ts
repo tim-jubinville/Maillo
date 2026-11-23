@@ -86,6 +86,13 @@ async function budget(units: number) {
   spent.push({ at: Date.now(), units });
 }
 
+/** Share of the per-minute quota budget still free (0 to 1), so optional work like prefetching can hold back. */
+export function quotaHeadroom(): number {
+  const now = Date.now();
+  const used = spent.filter((x) => now - x.at <= 60_000).reduce((n, x) => n + x.units, 0);
+  return Math.max(0, 1 - used / UNIT_BUDGET);
+}
+
 async function slot<T>(run: () => Promise<T>): Promise<T> {
   if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>((r) => waiting.push(r));
   inFlight++;

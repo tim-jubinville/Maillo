@@ -45,6 +45,8 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Optional: stay signed in on each device (refresh token kept encrypted on your server by `session.php`) instead of a new Google sign-in every hour
 - Optional: the same settings on all your devices, synced through a hidden file in Google Drive
 - Light on Google's API quota: checks for changes with Gmail's history (2 units) before reloading anything, fetches conversation headers in batches, remembers them on the device between visits, and slows down instead of failing when Google rate-limits
+- Instant start: the inbox (with labels, counts and piles) appears at once from what this device kept, then refreshes quietly in the background
+- Recently opened conversations are kept on the device (IndexedDB), so they reopen at once and can be read offline; the conversations either side of the open one are fetched ahead, so the ribbon arrows and j/k feel instant
 - Compose in its own browser window: the pop-out button in the compose header, or Shift + click on Compose; the draft keeps saving and can come back into Maillo
 - Compose, reply, reply all, forward (with the original attachments)
 - Rich text formatting, links, signatures, attachments (drag and drop works)
