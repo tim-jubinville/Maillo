@@ -197,7 +197,7 @@ function Header({ s }: { s: AppState }) {
                 <button class="mi" onClick={() => { close(); signInClick(true); }}><Icon name="user" />{t('auth.switch')}</button>
               )}
               {!config.demo && (
-                <button class="mi" onClick={signOutClick}><Icon name="logout" />{t('auth.signOut')}</button>
+                <button class="mi" onClick={() => signOutClick()}><Icon name="logout" />{t('auth.signOut')}</button>
               )}
             </>
           )}

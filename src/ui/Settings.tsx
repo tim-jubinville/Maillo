@@ -16,7 +16,7 @@ import { SWIPE_COLOR } from './listTouch';
 import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs, type SwipeAction } from '../prefs';
 import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
-import { api, applyUpdateCheck, loadLabels, setState, toast, type AppState } from '../store';
+import { api, applyUpdateCheck, loadLabels, setState, signOutClick, toast, type AppState } from '../store';
 import { callUpdater, checkForUpdate, type UpdateCheck, type UpdaterStatus } from '../updates';
 import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon, iconUrl } from './Icon';
@@ -529,6 +529,13 @@ function Accounts() {
           </div>
         </div>
       ))}
+      {!config.demo && (
+        <Row title={t('auth.signOutEverywhere')} help={t('auth.signOutEverywhereHelp')}>
+          <button class="btn sm danger" onClick={() => confirm(t('auth.signOutEverywhereConfirm')) && signOutClick(true)}>
+            {t('auth.signOutEverywhere')}
+          </button>
+        </Row>
+      )}
     </Section>
   );
 }

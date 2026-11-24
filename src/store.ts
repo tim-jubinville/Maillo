@@ -414,8 +414,8 @@ export async function signInClick(switchAccount = false) {
   }
 }
 
-export async function signOutClick() {
-  await signOut().catch(() => undefined);
+export async function signOutClick(everywhere = false) {
+  await signOut({ everywhere }).catch(() => undefined);
   await clearRowCache();
   sessionStorage.removeItem(PHOTO_CACHE);
   location.hash = '';
@@ -458,7 +458,8 @@ async function start() {
   try {
     const p = await api.profile();
     if (!isAllowedAccount(p.emailAddress)) {
-      signOut();
+      // Not allowed here: drop Maillo's access to that account entirely.
+      signOut({ everywhere: true });
       setState({ phase: 'denied', deniedEmail: p.emailAddress });
       return;
     }
@@ -512,7 +513,7 @@ async function checkAccountOnServer(email: string) {
     else if (j?.error === 'not_allowed') {
       localStorage.removeItem(ALLOWED_KEY);
       await clearRowCache();
-      await signOut().catch(() => undefined);
+      await signOut({ everywhere: true }).catch(() => undefined);
       setState({ phase: 'denied', deniedEmail: email, open: undefined });
     }
   } catch {
