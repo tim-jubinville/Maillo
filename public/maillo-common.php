@@ -82,6 +82,7 @@ function read_config(string $root): array
         'aiDailyLimit' => max(0, (int) ($c['aiDailyLimit'] ?? 0)),
         'aiEnabled' => !empty($features['ai']),
         'updateCheck' => ($c['updateCheck'] ?? true) !== false,
+        'updateChannel' => strtolower(trim((string) ($c['updateChannel'] ?? ''))) === 'beta' ? 'beta' : 'stable',
         'staySignedIn' => !empty($features['staySignedIn']),
         'pushEnabled' => !empty($features['push']),
         'pushTopic' => push_topic((string) ($c['pushTopic'] ?? '')),

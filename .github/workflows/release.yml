@@ -2,6 +2,9 @@ name: Release
 
 # Builds the install zip and attaches it to the release, whether the release
 # comes from pushing a v* tag or is created by hand on GitHub.
+# A release made from a tag push starts as a pre-release: only installs on the beta
+# channel see it. To release it to everyone, edit it on GitHub, untick "Set as a
+# pre-release" and tick "Set as the latest release". Same tag, same zip.
 on:
   push:
     tags: ['v*']
@@ -28,6 +31,18 @@ jobs:
             echo "::error::Tag $tag does not match package.json version $version. Bump the version or fix the tag."
             exit 1
           fi
+      - name: Pre-release unless the release already says otherwise
+        id: kind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "prerelease=${{ github.event.release.prerelease }}" >> "$GITHUB_OUTPUT"
+          elif existing="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease 2>/dev/null)"; then
+            echo "prerelease=$existing" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
       - run: npm ci
       - run: npm run package
       # Same zip under a fixed name, so /releases/latest/download/maillo.zip always works.
@@ -37,3 +52,4 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: release/*.zip
           generate_release_notes: ${{ github.event_name == 'push' }}
+          prerelease: ${{ steps.kind.outputs.prerelease }}

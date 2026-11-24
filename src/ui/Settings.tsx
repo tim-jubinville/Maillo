@@ -617,8 +617,10 @@ function Forwarding() {
 function latestHelp(c: UpdateCheck): string {
   if (c.error === 'check_failed' && !c.latest) return t('upd.checkFailed');
   if (!c.latest) return '';
-  if (!c.available) return t('upd.upToDate', { v: c.latest });
-  return c.canInstall ? t('upd.available', { v: c.latest }) : t('upd.availableManual', { v: c.latest });
+  const beta = c.channel === 'beta' ? ' ' + t('upd.betaChannel') : '';
+  if (!c.available) return t('upd.upToDate', { v: c.latest }) + beta;
+  const v = c.prerelease ? t('upd.prerelease', { v: c.latest }) : c.latest;
+  return (c.canInstall ? t('upd.available', { v }) : t('upd.availableManual', { v })) + beta;
 }
 
 function updateError(r: UpdaterStatus): string {

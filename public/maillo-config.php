@@ -109,6 +109,10 @@ return [
     // hears from this install, and updates are by uploading a release zip.
     'updateCheck' => true,
 
+    // Which releases the check offers. 'stable' (the default) offers official releases only.
+    // 'beta' also offers pre-releases, to try a version before it goes out to everyone.
+    'updateChannel' => 'stable',
+
     // Set to true to try the interface with sample data and no Google sign-in.
     'demo' => false,
 

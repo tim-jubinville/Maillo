@@ -124,9 +124,10 @@ npm run package    # dist/ plus docs zipped into release/
 ### Releasing
 
 1. Bump `version` in `package.json` and merge to `main`.
-2. Push a matching tag (`git tag v0.5.0 && git push origin v0.5.0`), or create a release on GitHub with that tag.
+2. Push a matching tag (`git tag v0.5.0 && git push origin v0.5.0`). The release starts as a **pre-release**: only installs with `'updateChannel' => 'beta'` are offered it.
+3. When it's ready for everyone, edit the release on GitHub, untick **Set as a pre-release** and tick **Set as the latest release**. Same tag, same zip: every install's update check now offers it.
 
-Either way, the Release workflow builds the install zip and attaches it to the release as `maillo-<version>.zip` and `maillo.zip`. The latest one is always at `https://github.com/<owner>/<repo>/releases/latest/download/maillo.zip`. Use that zip to install, not GitHub's "Source code" zip, which is the unbuilt repo.
+You can also create the release by hand on GitHub with that tag; it goes to everyone unless you tick **Set as a pre-release**. Either way, the Release workflow builds the install zip and attaches it to the release as `maillo-<version>.zip` and `maillo.zip`. The latest one is always at `https://github.com/<owner>/<repo>/releases/latest/download/maillo.zip`. Use that zip to install, not GitHub's "Source code" zip, which is the unbuilt repo.
 
 The dev server can't run PHP. Open it with `?demo` for sample data, or, to sign in with Google, put your settings in a `config.local.js` at the repo root (gitignored), as `window.MAILLO_CONFIG = { googleClientId: "…" };`: the dev server serves it in place of `config.php`. Signing in locally also needs `http://localhost:5173` listed as an authorised JavaScript origin on your OAuth client.
 
