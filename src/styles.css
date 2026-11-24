@@ -229,6 +229,13 @@ a:hover { color: var(--violet); }
   align-self: flex-start; box-shadow: 0 1px 2px rgba(20, 33, 61, 0.1), 0 3px 10px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 .compose-btn:hover { filter: brightness(1.08); }
+/* Phones only: compose sits beside the avatar, since the sidebar is hidden. */
+.compose-fab {
+  display: none; width: 40px; height: 40px; border-radius: 50%; border: 0; align-items: center; justify-content: center; cursor: pointer;
+  background: var(--accent-fill); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); margin-right: 6px;
+}
+.compose-fab:hover { filter: brightness(1.08); }
+.compose-fab svg { width: 20px; height: 20px; }
 .nav {
   display: flex; align-items: center; gap: 14px; height: 38px; padding: 0 12px; border-radius: 10px; font-size: calc(14px * var(--ts, 1));
   color: var(--ink-2); width: 100%; text-align: left; text-decoration: none;
@@ -711,7 +718,10 @@ body.resizing iframe { pointer-events: none; }
 @media (max-width: 900px) {
   .rail, .side-icons, .panel, .splitter { display: none; }
   .card.no-sidebar .sidebar { display: flex; }
-  .main { padding: 0 0 0 8px; }
+  .main { padding: 0; }
+  /* Full-width, square card on phones. */
+  .main > .card { border-radius: 0; border-left: 0; }
+  .compose-fab { display: inline-flex; }
   .sidebar {
     position: fixed; z-index: 55; top: 0; bottom: 0; left: 0; width: 280px; padding: 16px 12px; background: var(--surface-2);
     box-shadow: 0 20px 60px rgba(15, 22, 38, 0.3); transform: translateX(-105%); transition: transform 0.2s;

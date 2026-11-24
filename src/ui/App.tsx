@@ -156,6 +156,9 @@ function Header({ s }: { s: AppState }) {
       </div>
       <SearchBox s={s} />
       <div class="header-right">
+        <button class="compose-fab" aria-label={t('nav.compose')} title={t('nav.compose')} onClick={() => openCompose()}>
+          <Icon name="pencil" />
+        </button>
         <Menu
           label={t('header.account', { email: s.me })}
           class={`avatar-btn ${online || config.demo ? '' : 'offline'} ${s.update ? 'has-update' : ''}`}
