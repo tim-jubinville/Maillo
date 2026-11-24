@@ -46,11 +46,11 @@ export function App() {
         {s.route.view === 'settings' ? (
           <div class="card glass settings-card">
             <Settings s={s} section={s.route.section} />
+            <SideIcons s={s} />
           </div>
         ) : (
           <MailCard s={s} route={s.route} />
         )}
-        <SideIcons s={s} />
       </div>
       <PileBar s={s} />
       {s.compose && !s.compose.popout && <Compose key={s.compose.key} s={s} c={s.compose} />}
@@ -323,6 +323,7 @@ function MailCard({ s, route }: { s: AppState; route: MailRoute }) {
       {showRead && <ReadingPane s={s} route={route} showBack={pane === 'off' || window.innerWidth <= 900} />}
       {s.panel && <Splitter col="panel" side="left" />}
       {s.panel && <SidePanel s={s} />}
+      <SideIcons s={s} />
     </div>
   );
 }
