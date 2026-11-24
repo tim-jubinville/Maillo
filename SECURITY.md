@@ -14,7 +14,7 @@ Please include:
 
 - what an attacker could do, and what they would need (a signed-in user, access to the server, a crafted email, etc.)
 - steps to reproduce, or a proof of concept
-- the Maillo version (Settings → About) and your host type (PHP host or static host)
+- the Maillo version (Settings → About) and your host type (Apache, Nginx, other)
 - which part is involved, if you know: the browser app, or one of the PHP files (`config.php`, `session.php`, `update.php`, `ai.php`, `push.php`)
 
 You should get a first reply within a week. Once a fix is released, the report can be published as a security advisory, with credit to you if you want it.

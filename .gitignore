@@ -3,4 +3,4 @@ dist/
 release/
 *.zip
 .DS_Store
-public/config.local.js
+/config.local.js

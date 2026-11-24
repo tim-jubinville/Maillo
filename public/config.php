@@ -6,7 +6,6 @@
  *
  * While required settings are missing or the server isn't ready, it also sets
  * window.MAILLO_SETUP (yes/no answers only) so Maillo shows a setup checklist.
- * Installs that still use config.js get nothing here and keep working as before.
  *
  * POST action=check_account (token): whether the signed-in account is allowed here.
  */
@@ -119,12 +118,7 @@ function setup_checks(string $root, ?array $c): array
     return $out;
 }
 
-$src = config_source($root);
-if ($src['source'] === 'js') {
-    echo "/* Settings come from config.js. */\n";
-    exit;
-}
-$c = $src['php'];
+$c = load_php_config($root);
 if ($c !== null && !isset($c['__error'])) {
     echo 'window.MAILLO_CONFIG = ' . js_value(public_config($c)) . ";\n";
 }

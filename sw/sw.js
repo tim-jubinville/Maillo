@@ -26,7 +26,7 @@ function cacheable(res) {
 async function networkFirst(request, key) {
   const cache = await caches.open(CACHE);
   try {
-    // no-cache: always revalidate with the server, so a fixed config.js is picked up right away.
+    // no-cache: always revalidate with the server, so changed settings from config.php are picked up right away.
     const res = await fetch(request, { cache: 'no-cache' });
     if (cacheable(res)) cache.put(key ?? request, res.clone());
     return res;

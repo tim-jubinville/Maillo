@@ -1,7 +1,7 @@
 <?php
 /*
  * Shared helpers for Maillo's server files (update.php, ai.php, session.php, config.php).
- * Settings come from maillo-config.php (or config.js on older installs).
+ * Settings come from maillo-config.php.
  * authorize() accepts a request only if it carries a Google access token issued to
  * this install's OAuth client, for an allowed account.
  */
@@ -54,22 +54,6 @@ function load_php_config(string $root): ?array
     return is_array($data) ? $data : ['__error' => 0];
 }
 
-/**
- * Where this install's settings come from: maillo-config.php, or config.js for installs made
- * before it existed. maillo-config.php wins once it has a client ID; a blank one (as an older
- * updater may have copied in) leaves an existing config.js in charge.
- * Returns ['source' => 'php'|'js'|'none', 'php' => array|null].
- */
-function config_source(string $root): array
-{
-    $php = load_php_config($root);
-    $hasJs = is_file($root . '/config.js');
-    if ($php !== null && (isset($php['__error']) || trim((string) ($php['googleClientId'] ?? '')) !== '' || !$hasJs)) {
-        return ['source' => 'php', 'php' => $php];
-    }
-    return ['source' => $hasJs ? 'js' : 'none', 'php' => null];
-}
-
 function clean_list($v): array
 {
     if (!is_array($v)) {
@@ -82,71 +66,30 @@ function clean_list($v): array
 
 function read_config(string $root): array
 {
-    $src = config_source($root);
-    if ($src['source'] === 'php') {
-        $c = $src['php'];
-        if (isset($c['__error'])) {
-            fail(500, 'config_error');
-        }
-        $features = is_array($c['features'] ?? null) ? $c['features'] : [];
-        return [
-            'source' => 'php',
-            'clientId' => trim((string) ($c['googleClientId'] ?? '')),
-            'clientSecret' => trim((string) ($c['googleClientSecret'] ?? '')),
-            'geminiKey' => trim((string) ($c['geminiApiKey'] ?? '')),
-            'aiModel' => trim((string) ($c['aiModel'] ?? '')),
-            'aiDailyLimit' => max(0, (int) ($c['aiDailyLimit'] ?? 0)),
-            'aiEnabled' => !empty($features['ai']),
-            'updateCheck' => ($c['updateCheck'] ?? true) !== false,
-            'staySignedIn' => !empty($features['staySignedIn']),
-            'pushEnabled' => !empty($features['push']),
-            'pushTopic' => push_topic((string) ($c['pushTopic'] ?? '')),
-            'accounts' => clean_list($c['allowedAccounts'] ?? []),
-            'domains' => array_map(function ($d) {
-                return ltrim($d, '@');
-            }, clean_list($c['allowedDomains'] ?? [])),
-            'raw' => $c,
-        ];
-    }
-    if ($src['source'] === 'none') {
+    $c = load_php_config($root);
+    if ($c === null) {
         fail(500, 'config_missing');
     }
-    return read_config_js($root);
-}
-
-/** Settings from config.js (installs made before maillo-config.php), read without running it. */
-function read_config_js(string $root): array
-{
-    $js = (string) @file_get_contents($root . '/config.js');
-    $js = preg_replace('#/\*.*?\*/#s', '', $js);
-    $js = preg_replace('#^\s*//.*$#m', '', $js);
-    $str = function (string $key) use ($js): string {
-        return preg_match('/\b' . $key . '\s*:\s*["\']([^"\']*)["\']/', $js, $m) ? trim($m[1]) : '';
-    };
-    $list = function (string $key) use ($js): array {
-        if (!preg_match('/\b' . $key . '\s*:\s*\[([^\]]*)\]/', $js, $m)) {
-            return [];
-        }
-        preg_match_all('/["\']([^"\']+)["\']/', $m[1], $all);
-        return clean_list($all[1]);
-    };
+    if (isset($c['__error'])) {
+        fail(500, 'config_error');
+    }
+    $features = is_array($c['features'] ?? null) ? $c['features'] : [];
     return [
-        'source' => 'js',
-        'clientId' => $str('googleClientId'),
-        'clientSecret' => '',
-        'geminiKey' => '',
-        'aiModel' => $str('aiModel'),
-        'aiDailyLimit' => preg_match('/\baiDailyLimit\s*:\s*(\d+)/', $js, $m) ? (int) $m[1] : 0,
-        'aiEnabled' => (bool) preg_match('/\bai\s*:\s*true\b/', $js),
-        'updateCheck' => !preg_match('/\bupdateCheck\s*:\s*false\b/', $js),
-        'staySignedIn' => (bool) preg_match('/\bstaySignedIn\s*:\s*true\b/', $js),
-        'pushEnabled' => (bool) preg_match('/\bpush\s*:\s*true\b/', $js),
-        'pushTopic' => push_topic($str('pushTopic')),
-        'accounts' => $list('allowedAccounts'),
+        'clientId' => trim((string) ($c['googleClientId'] ?? '')),
+        'clientSecret' => trim((string) ($c['googleClientSecret'] ?? '')),
+        'geminiKey' => trim((string) ($c['geminiApiKey'] ?? '')),
+        'aiModel' => trim((string) ($c['aiModel'] ?? '')),
+        'aiDailyLimit' => max(0, (int) ($c['aiDailyLimit'] ?? 0)),
+        'aiEnabled' => !empty($features['ai']),
+        'updateCheck' => ($c['updateCheck'] ?? true) !== false,
+        'staySignedIn' => !empty($features['staySignedIn']),
+        'pushEnabled' => !empty($features['push']),
+        'pushTopic' => push_topic((string) ($c['pushTopic'] ?? '')),
+        'accounts' => clean_list($c['allowedAccounts'] ?? []),
         'domains' => array_map(function ($d) {
             return ltrim($d, '@');
-        }, $list('allowedDomains')),
-        'raw' => null,
+        }, clean_list($c['allowedDomains'] ?? [])),
+        'raw' => $c,
     ];
 }
 

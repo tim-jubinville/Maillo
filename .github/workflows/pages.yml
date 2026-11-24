@@ -27,13 +27,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          MAILLO_DEMO: '1'
       - name: Assemble site
         run: |
           mkdir -p _site
           cp -R site/. _site/
           cp -R dist _site/demo
-          rm -f _site/demo/*.php _site/demo/maillo-config.php
-          printf 'window.MAILLO_CONFIG = { demo: true };\n' > _site/demo/config.js
+          # GitHub Pages can't run PHP: the demo build needs no settings.
+          rm -f _site/demo/*.php _site/demo/.htaccess
+          sed -i '/config\.php/d' _site/demo/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

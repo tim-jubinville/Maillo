@@ -2,7 +2,7 @@
 /*
  * Relay between Maillo and the Gemini API, so the API key never reaches the browser.
  * Same sign-in check as update.php: a Google access token for this install's OAuth
- * client, from an account allowed in config.js.
+ * client, from an account allowed in maillo-config.php.
  *
  * Actions (POST, with token):
  *   status       whether a key is stored, the model, and today's usage
