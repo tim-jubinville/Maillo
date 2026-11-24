@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { b64urlToBase64, textToHtml, type ParsedMessage } from '../gmail/mime';
+import { b64urlToBase64, htmlToText, textToHtml, type ParsedMessage } from '../gmail/mime';
 import { t } from '../i18n';
 import { getPrefs, setPrefs } from '../prefs';
 import { api } from '../store';
@@ -60,6 +60,18 @@ function splitTextQuote(text: string): { main: string; quoted: string } {
     }
   }
   return { main: text, quoted: '' };
+}
+
+/** A message's own words as plain text, without the quoted earlier messages (for AI summaries and drafts). */
+export function messageMainText(m: ParsedMessage): string {
+  if (m.html) {
+    const { html, found } = markQuotes(m.html);
+    if (!found) return htmlToText(html);
+    const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
+    doc.body.querySelectorAll('[data-mq]').forEach((el) => el.remove());
+    return htmlToText(doc.body.innerHTML);
+  }
+  return splitTextQuote(m.text).main;
 }
 
 const BASE_CSS = `

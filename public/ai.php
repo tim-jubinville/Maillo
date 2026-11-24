@@ -8,7 +8,7 @@
  *   status       whether a key is stored, the model, and today's usage
  *   set_key      store a Gemini API key (key)
  *   remove_key   delete the stored key
- *   generate     run instructions on input text (instructions, input, json=1 for JSON output)
+ *   generate     run instructions on input text (instructions, input, json=1 for JSON output, temperature 0–1)
  *
  * The key comes from maillo-config.php (geminiApiKey) if it's set there, else a GEMINI_API_KEY
  * environment variable, else the one saved from Settings in .maillo-ai.php (.mailmax-ai.php before
@@ -158,9 +158,11 @@ if ($action === 'generate') {
     if (usage_today($usageFile, $email) >= $limit) {
         fail(429, 'daily_limit', ['limit' => $limit]);
     }
+    // Each task picks its own: 0 for proofreading, higher for drafts.
+    $temperature = is_numeric($_POST['temperature'] ?? null) ? max(0.0, min(1.0, (float) $_POST['temperature'])) : 0.3;
     $payload = [
         'contents' => [['role' => 'user', 'parts' => [['text' => $input]]]],
-        'generationConfig' => ['temperature' => 0.3],
+        'generationConfig' => ['temperature' => $temperature],
     ];
     if ($instructions !== '') {
         $payload['systemInstruction'] = ['parts' => [['text' => $instructions]]];

@@ -74,7 +74,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Optional Gmail push (`push.php`): new mail within seconds, and notifications even when Maillo is closed, following each device's rules. Needs a Google Cloud Pub/Sub topic; see INSTALL.md
 
 **Extras**
-- Optional Gemini relay (`ai.php`): the API key stays on your server, with a daily limit per account. Set it up in Settings → AI
+- Optional AI with Gemini, only when you ask for it: **Summarize** a conversation, **Proofread** a message (accept or skip each fix) and **Draft** a reply or new message from a short request. Nothing runs in the background and nothing is sent without you. The API key stays on your server (`ai.php`), with a daily limit per account. Set it up in Settings → AI
 - Keyboard shortcuts (press `?`, or open them from the account menu), including `p` to set aside, `t` for Action required, `n` to add a note, and `v` / `l` to open Move to / Label as
 - Optional side panels: today's Calendar agenda as a list or a day view (in your Google Calendar colours, with a Join button for Meet, Zoom, Teams and Webex calls) and Google Tasks
 - Responsive layout for phones and tablets: a compose button at the bottom right, conversation actions at the bottom within thumb reach, swipe between conversations, swipe actions on the list (set in Settings → General), press and hold to select, pull to refresh, a header that slides away while scrolling, and wide emails scaled to fit the screen
@@ -85,7 +85,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 Some Gmail features are not available to third-party apps through the Gmail API:
 
 - **Snooze and schedule send** cannot be created. Maillo shows the Snoozed and Scheduled folders that Gmail keeps, but new snoozes and scheduled sends have to be set in Gmail itself.
-- **Confidential mode**, **Smart Compose**, **Gemini summaries** and **mute** are not available.
+- **Confidential mode**, **Smart Compose**, Gmail's own **Gemini side panel** and **mute** are not available (Maillo has its own AI summaries and drafts, see above).
 - **Delete forever** and **empty trash** need a broader permission than Maillo asks for. Gmail empties Trash automatically after 30 days.
 - **Forwarding, IMAP and POP** settings are shown but must be changed in Gmail.
 - **Google Chat and Meet** open in their own apps.

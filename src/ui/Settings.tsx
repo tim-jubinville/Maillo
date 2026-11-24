@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { aiGenerate, aiRemoveKey, aiSetKey, aiStatus, AiError, type AiStatus } from '../ai';
+import { aiErrorText, aiGenerate, aiRemoveKey, aiSetKey, aiStatus, AiError, type AiStatus } from '../ai';
 import { hasServerSession, sessionCall, setServerReady, staySignedIn, type SessionReply } from '../auth';
 import { changeLanguage, onSyncStatus, pull, syncEnabled, syncStatus } from '../sync';
 import { config, isNative } from '../config';
@@ -657,11 +657,7 @@ function updateError(r: UpdaterStatus): string {
   return known === key ? t('upd.err.generic', { code: r.error ?? 'unknown' }) : t(key, { path: r.path ?? '' });
 }
 
-function aiError(code?: string): string {
-  const key = `ai.err.${code}` as StringKey;
-  const known = t(key);
-  return known === key ? t('ai.err.generic', { code: code ?? 'unknown' }) : known;
-}
+const aiError = aiErrorText;
 
 function AiSettings() {
   const [status, setStatus] = useState<AiStatus | null>(null);
@@ -712,8 +708,8 @@ function AiSettings() {
   const configured = !!status?.ok && status.configured;
   return (
     <Section title={t('settings.ai')} note={t('ai.help')}>
-      {!config.features.ai && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.off')}</div>}
-      {config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.demo')}</div>}
+      {!config.features.ai && !config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.off')}</div>}
+      {config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.demoSample')}</div>}
       {!config.demo && config.features.ai && status === null && <div class="frow" style={{ color: 'var(--muted)' }}>{t('upd.checking')}</div>}
       {status && !status.ok && <div class="frow err">{aiError(status.error)}</div>}
       {status?.ok && (
