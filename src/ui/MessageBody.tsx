@@ -91,6 +91,10 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
   const [showQuoted, setShowQuoted] = useState(showQuotedDefault);
   const [allowOnce, setAllowOnce] = useState(false);
   const [height, setHeight] = useState(60);
+  // The frame stays hidden until the email has loaded, then fades in: an empty white card popping up
+  // on a dark page reads as a flash.
+  const [shown, setShown] = useState(false);
+  const [fitted, setFitted] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const quoteFound = useRef(false);
   const prefs = getPrefs();
@@ -172,7 +176,7 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
       const natural = d.documentElement.scrollWidth;
       const wide = avail > 0 && natural > avail + 1;
       if (wide) root.style.zoom = String(Math.max(0.4, Math.floor((avail / natural) * 1000) / 1000));
-      f.parentElement?.classList.toggle('fit', wide);
+      setFitted(wide);
     };
     const measure = () => {
       const d = f.contentDocument;
@@ -188,6 +192,7 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     };
     const onLoad = () => {
       measure();
+      setShown(true);
       const d = f.contentDocument;
       const root = d?.getElementById('mm-root');
       if (!d || !root) return;
@@ -204,6 +209,8 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
       d.fonts?.ready.then(measure).catch(() => undefined);
       for (const ms of [150, 600, 1500]) timers.push(window.setTimeout(measure, ms));
     };
+    // Slow remote images hold back the load event: don't keep the email hidden for them.
+    timers.push(window.setTimeout(() => setShown(true), 450));
     f.addEventListener('load', onLoad);
     if (f.contentDocument?.readyState === 'complete' && f.contentDocument.getElementById('mm-root')) onLoad();
     return () => {
@@ -226,7 +233,7 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
           </button>
         </div>
       )}
-      <div class={m.html ? 'paper' : ''}>
+      <div class={`frame-wrap${m.html ? ' paper' : ''}${fitted ? ' fit' : ''}${shown ? ' shown' : ''}`}>
       <iframe
         ref={frame}
         title={m.subject || t('compose.body')}
