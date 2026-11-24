@@ -3,20 +3,24 @@ import { config } from '../config';
 import type { CalendarEvent, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
 import { getPrefs, setPrefs } from '../prefs';
-import { api, toast, type AppState } from '../store';
+import { api, setState, toast, type AppState } from '../store';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { ContactsPanel } from './ContactsPanel';
 import { Stickies } from './Stickies';
 import { Icon } from './Icon';
 
-export function SidePanel({ s }: { s: AppState }) {
+export function SidePanel({ s, p = s.panel!, sheet }: { s: AppState; p?: NonNullable<AppState['panel']>; sheet?: boolean }) {
   const titles = { calendar: t('panel.calendar'), tasks: t('panel.tasks'), stickies: t('panel.stickies'), contacts: t('panel.contacts') };
-  const p = s.panel!;
   const apps: Record<string, string | undefined> = { calendar: config.links.calendar, tasks: 'https://tasks.google.com/', contacts: config.links.contacts };
   const open = t('panel.open', { name: titles[p] });
   return (
-    <aside class="panel" aria-label={titles[p]}>
+    <aside class={`panel ${sheet ? 'sheet' : ''}`} aria-label={titles[p]}>
       <div class="panel-head">
+        {sheet && (
+          <button class="ib" aria-label={t('panel.close', { name: titles[p] })} onClick={() => setState({ sheet: undefined })}>
+            <Icon name="arrowLeft" />
+          </button>
+        )}
         <span style={{ flex: 1 }}>{titles[p]}</span>
         {apps[p] && (
           <a class="ib sm panel-open" href={apps[p]} target="_blank" rel="noopener noreferrer" aria-label={open} title={open}>
