@@ -16,7 +16,7 @@ import {
   type ParsedMessage
 } from './gmail/mime';
 import type { GLabel, GSendAs, GThread, MailBackend, NotesMap } from './gmail/types';
-import { t } from './i18n';
+import { t, type StringKey } from './i18n';
 import { CATEGORY_LABEL, listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
@@ -1198,6 +1198,13 @@ export const actions = {
   label(ids: string[], add: string[], remove: string[]) {
     const r = state.route as MailRoute;
     run(ids, { add, remove }, { drop: !!r.label && remove.includes(r.label), message: t('toast.labelled') });
+  },
+  // Inbox categories are exclusive: moving to one takes the others off.
+  moveCategory(ids: string[], c: Category) {
+    const add = CATEGORY_LABEL[c];
+    const remove = Object.values(CATEGORY_LABEL).filter((x) => x !== add);
+    const r = state.route as MailRoute;
+    run(ids, { add: [add], remove }, { drop: r.category !== c, message: t('toast.moved', { name: t(`cat.${c}` as StringKey) }) });
   },
   moveTo(ids: string[], labelId: string) {
     const l = state.labels.find((x) => x.id === labelId);

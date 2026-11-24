@@ -97,8 +97,9 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
                 aria-selected={on}
                 aria-label={label}
                 title={on ? undefined : label}
-                class={`tab tab-${c} ${on ? "on" : ""}`}
+                class={`tab tab-${c} ${on ? "on" : ""} ${s.dragging === 'threads' && !on ? 'drop-ok' : ''}`}
                 onClick={() => go(listHash({ ...route, category: c, thread: undefined }))}
+                {...(!on ? dropZone('threads', (ids) => actions.moveCategory(ids, c)) : {})}
               >
                 <span class="tab-ic">
                   <CIcon name={CAT_ICON[c]} size={20} />

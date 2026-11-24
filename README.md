@@ -15,18 +15,18 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Labels, including nested labels and label colours
 - Full Gmail search syntax (`from:`, `has:attachment`, `newer_than:7d`, and so on) with quick filter chips
 - Threaded conversations with collapsed earlier messages and hidden quoted text
-- The list's top bar is a frosted ribbon (select all, refresh, paging); selecting conversations swaps in the bulk actions in place: archive, delete, spam, piles, read/unread, star, important, move, label (extra actions fold into "…"). Beside an open conversation, it joins the reading pane's ribbon into one
+- The list's top bar is a frosted ribbon (select all, refresh, paging); selecting conversations swaps in the bulk actions in place: archive, delete, spam, piles, read/unread, star, important, move, label (extra actions fold into "…"). Ribbons move like liquid glass: they flow out when they appear, stretch and settle when they resize, and new buttons swell in with a glint. Beside an open conversation, it joins the reading pane's ribbon into one
 - Move to and Label as open with a search field ready to type in; Enter picks the first match
 - Quoted earlier messages (Gmail, Outlook, Apple Mail, plain-text "> " replies…) are folded behind a ··· button in every message; forwards stay visible
 - Search suggestions as you type: folders and labels, people (recent correspondents, plus your Google Contacts and Workspace directory with `features.contactPhotos`), matching conversations, and your recent searches
 - The message list only renders the rows on screen, so long pages scroll smoothly; keyboard navigation, selection, drag and drop and screen readers (position and count of each row) work as before
 - Resizable columns (folder list, message list, side panel); widths, the open side panel and a hidden folder list are remembered in this browser. Double-click a divider to reset it
 - Hover actions on each row: archive, delete, mark read/unread, set aside, Action required
-- Drag and drop: drag conversations (or the whole selection) onto a label, Inbox, Starred, Important, All mail, Spam, Trash or a pile; drag a label from the sidebar onto a conversation to apply it
+- Drag and drop: drag conversations (or the whole selection) onto a label, Inbox, Starred, Important, All mail, Spam, Trash, a pile or another Inbox category tab (Primary, Promotions, Social, Updates, Forums); drag a label from the sidebar onto a conversation to apply it
 - Undo for archive, delete, spam, move and label changes
 - Reminders for important messages you have not answered ("Received 3 days ago. Reply?")
 - **Set aside**: pin conversations out of the inbox into a small stack of cards at the bottom of the screen. Click the stack to fan the cards out and pick one, or "Go through all" to open the first and step through the rest with the ribbon's arrows. Escape folds the cards back into the stack. Stored as a regular Gmail label, so it syncs everywhere.
-- **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. A conversation lives in one pile at a time. Take one out with the ✕ on its card, or by un-pressing its pile button (shown pressed in on the row, the ribbon and the selection actions); it goes back to the Inbox.
+- **Action required**: a second pile that works exactly like Set aside, for mail you need to act on. It sits next to the Set aside stack. Both stacks show over the Inbox only. A conversation lives in one pile at a time. Take one out with the ✕ on its card, or by un-pressing its pile button (shown pressed in on the row, the ribbon and the selection actions); it goes back to the Inbox.
 - **Private notes**: stick a note on any conversation (for example "Paid on Nov 14"). Only you see it, it is never sent, and it syncs between devices through a hidden app folder in your Google Drive (optional, see `features.notes`).
 - **Contact photos**: people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory (optional, see `features.contactPhotos`).
 - **Contacts panel**: browse and search your Google Contacts beside your mail, see the people in the open conversation, and open a card with their emails, phones, address, birthday and links. You can email someone, find all mail with them, copy details, or open them in Google Contacts to edit (uses the same optional `features.contactPhotos` permissions; read-only).
@@ -77,7 +77,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Optional Gemini relay (`ai.php`): the API key stays on your server, with a daily limit per account. Set it up in Settings → AI
 - Keyboard shortcuts (press `?`, or open them from the account menu), including `p` to set aside, `t` for Action required, `n` to add a note, and `v` / `l` to open Move to / Label as
 - Optional side panels: today's Calendar agenda as a list or a day view (in your Google Calendar colours, with a Join button for Meet, Zoom, Teams and Webex calls) and Google Tasks
-- Responsive layout for phones and tablets: conversation actions at the bottom within thumb reach, swipe between conversations, swipe actions on the list (set in Settings → General), press and hold to select, pull to refresh, a header that slides away while scrolling, and wide emails scaled to fit the screen
+- Responsive layout for phones and tablets: a compose button at the bottom right, conversation actions at the bottom within thumb reach, swipe between conversations, swipe actions on the list (set in Settings → General), press and hold to select, pull to refresh, a header that slides away while scrolling, and wide emails scaled to fit the screen
 - Demo mode with sample data
 
 ## Limits

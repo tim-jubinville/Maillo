@@ -5,6 +5,7 @@ import { WORDMARK_PATH, WORDMARK_RATIO, WORDMARK_VIEWBOX } from './wordmark';
 import type { Address } from '../gmail/mime';
 import { avatarColor, initials } from '../model';
 import { getState, personName } from '../store';
+import { ribbonMotion } from './ribbonMotion';
 
 /** The built-in app icon. `dark` forces one variant; otherwise it follows the colour mode. */
 export function AppIcon({ size = 30, dark }: { size?: number; dark?: boolean }) {
@@ -252,6 +253,7 @@ export function Ribbon({ children, label, bottom, inline, class: cls = '' }: { c
       parent.style.removeProperty(prop);
     };
   }, []);
+  useLayoutEffect(() => (ref.current ? ribbonMotion(ref.current, bottom ? 'bottom' : 'ribbon') : undefined), []);
   return (
     <div class={`ribbon ${bottom ? 'bottom' : ''} ${inline ? 'inline' : ''} ${cls}`} ref={ref} role="group" aria-label={label}>
       {children}
