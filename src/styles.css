@@ -1107,7 +1107,9 @@ body.resizing iframe { pointer-events: none; }
 
 /* iPhone notch and home bar (the iOS app, and the web app added to the home screen): keep content clear of them. */
 @supports (padding: env(safe-area-inset-top)) {
-  .app { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  /* The theme background runs up behind the status bar; the white card runs down behind the home bar. */
+  .app { padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+  .main > .card { padding-bottom: env(safe-area-inset-bottom); }
   .center { padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
   .compose.popped { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
   .toasts { bottom: calc(24px + env(safe-area-inset-bottom)); }
