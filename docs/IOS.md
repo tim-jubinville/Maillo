@@ -10,7 +10,7 @@ How it differs from the web version:
 
 ## What you need
 
-- A Mac with Xcode (the version current App Store submissions require).
+- A Mac with Xcode 26 or later (the app icon is an Icon Composer file, `ios/App/App/AppIcon.icon`).
 - An [Apple Developer Program](https://developer.apple.com/programs/) membership, needed for TestFlight.
 - Node, and this repo.
 
