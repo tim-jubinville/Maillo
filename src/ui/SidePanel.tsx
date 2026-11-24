@@ -11,10 +11,15 @@ import { Icon } from './Icon';
 export function SidePanel({ s }: { s: AppState }) {
   const titles = { calendar: t('panel.calendar'), tasks: t('panel.tasks'), keep: t('panel.keep'), contacts: t('panel.contacts') };
   const p = s.panel!;
+  const apps = { calendar: config.links.calendar, tasks: 'https://tasks.google.com/', keep: config.links.keep, contacts: config.links.contacts };
+  const open = t('panel.open', { name: titles[p] });
   return (
     <aside class="panel" aria-label={titles[p]}>
       <div class="panel-head">
         <span style={{ flex: 1 }}>{titles[p]}</span>
+        <a class="ib sm panel-open" href={apps[p]} target="_blank" rel="noopener noreferrer" aria-label={open} title={open}>
+          <Icon name="arrowUpRight" size={18} />
+        </a>
       </div>
       <div class="panel-body">
         {p === 'calendar' && <Calendar />}
@@ -39,18 +44,6 @@ export function PanelEmpty({ icon, title, sub, children }: { icon: ColorIconName
       {sub && <span>{sub}</span>}
       {children && <div class="pempty-actions">{children}</div>}
     </div>
-  );
-}
-
-function OpenLink({ name, href, hint }: { name: string; href: string; hint?: boolean }) {
-  return (
-    <>
-      {hint && <p style={{ margin: 0, fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)' }}>{t('panel.enable')}</p>}
-      <a class="btn sm" href={href} target="_blank" rel="noopener noreferrer" style={{ alignSelf: 'flex-start' }}>
-        <Icon name="external" size={16} />
-        {t('panel.open', { name })}
-      </a>
-    </>
   );
 }
 
@@ -83,9 +76,7 @@ function Calendar() {
   }, []);
   if (!config.features.calendar && !config.demo)
     return (
-      <PanelEmpty icon="calendar" title={t('empty.calOffTitle')} sub={t('empty.calOff')}>
-        <OpenLink name={t('panel.calendar')} href={config.links.calendar} />
-      </PanelEmpty>
+      <PanelEmpty icon="calendar" title={t('empty.calOffTitle')} sub={t('empty.calOff')} />
     );
   const today = new Date().toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' });
   const pick = (v: 'list' | 'day') => {
@@ -110,7 +101,6 @@ function Calendar() {
       {events === null && <div class="skeleton" style={{ margin: 0 }} />}
       {events?.length === 0 && <PanelEmpty icon="calendar" title={t('panel.noEvents')} sub={t('empty.calSub')} />}
       {!!events?.length && (view === 'day' ? <DayView events={events} /> : events.map((e) => <EventCard e={e} />))}
-      <OpenLink name={t('panel.calendar')} href={config.links.calendar} />
     </>
   );
 }
@@ -179,7 +169,8 @@ function place(events: CalendarEvent[], day: Date): Placed[] {
   return items;
 }
 
-const HOUR_PX = 44;
+/** Smallest hour height; the grid grows to fill the panel. */
+const HOUR_PX = 40;
 
 function DayView({ events }: { events: CalendarEvent[] }) {
   const day = new Date();
@@ -197,7 +188,7 @@ function DayView({ events }: { events: CalendarEvent[] }) {
   const from = Math.max(0, first);
   const to = Math.min(24, last);
   const hours = Array.from({ length: to - from }, (_, i) => from + i);
-  const y = (min: number) => `calc(${((min - from * 60) / 60) * HOUR_PX}px * var(--ts, 1))`;
+  const y = (min: number) => `${((min - from * 60) / ((to - from) * 60)) * 100}%`;
   const loc = locale();
   const hourLabel = (h: number) => {
     const d = new Date(day);
@@ -218,7 +209,7 @@ function DayView({ events }: { events: CalendarEvent[] }) {
           </div>
         </div>
       )}
-      <div class="dayv-grid" style={{ height: y(to * 60) }}>
+      <div class="dayv-grid" style={{ minHeight: `calc(${(to - from) * HOUR_PX}px * var(--ts, 1))` }}>
         {hours.map((h) => (
           <div class="dayv-hour" style={{ top: y(h * 60) }}>
             <span>{hourLabel(h)}</span>
@@ -262,9 +253,7 @@ function Tasks() {
   }, []);
   if (!config.features.tasks && !config.demo)
     return (
-      <PanelEmpty icon="tasks" title={t('empty.tasksOffTitle')} sub={t('empty.tasksOff')}>
-        <OpenLink name={t('panel.tasks')} href="https://tasks.google.com/" />
-      </PanelEmpty>
+      <PanelEmpty icon="tasks" title={t('empty.tasksOffTitle')} sub={t('empty.tasksOff')} />
     );
   return (
     <>
@@ -323,9 +312,7 @@ function Keep() {
   }, []);
   if (!on)
     return (
-      <PanelEmpty icon="keep" title={t('empty.keepOffTitle')} sub={t('empty.keepOff')}>
-        <OpenLink name={t('panel.keep')} href={config.links.keep} />
-      </PanelEmpty>
+      <PanelEmpty icon="keep" title={t('empty.keepOffTitle')} sub={t('empty.keepOff')} />
     );
   const add = async (e: Event) => {
     e.preventDefault();
@@ -390,7 +377,6 @@ function Keep() {
           <button class="ib sm keep-del" aria-label={t('keep.delete')} title={t('keep.delete')} onClick={() => remove(n)}><Icon name="trash" size={15} /></button>
         </div>
       ))}
-      <OpenLink name={t('panel.keep')} href={config.links.keep} />
     </>
   );
 }

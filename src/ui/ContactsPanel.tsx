@@ -160,10 +160,6 @@ export function ContactsPanel({ s }: { s: AppState }) {
         </>
       )}
 
-      <a class="btn sm" href={config.links.contacts} target="_blank" rel="noopener noreferrer" style={{ alignSelf: 'flex-start' }}>
-        <Icon name="external" size={16} />
-        {t('panel.open', { name: t('panel.contacts') })}
-      </a>
     </>
   );
 }

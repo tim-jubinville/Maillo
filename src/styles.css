@@ -556,7 +556,7 @@ body.resizing iframe { pointer-events: none; }
 .cal-views button:hover { color: var(--ink); }
 .cal-views button[aria-checked='true'] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgba(20, 33, 61, 0.12); }
 .cal-views button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.dayv { display: flex; flex-direction: column; gap: 8px; }
+.dayv { flex: 1 0 auto; display: flex; flex-direction: column; gap: 8px; }
 .dayv-allday { display: flex; gap: 8px; align-items: flex-start; }
 .dayv-allday > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .dayv-lbl { width: 44px; flex: none; font-size: calc(11px * var(--ts, 1)); color: var(--muted); padding-top: 3px; line-height: 1.2; }
@@ -564,7 +564,7 @@ body.resizing iframe { pointer-events: none; }
   display: block; padding: 3px 8px; font-size: calc(12px * var(--ts, 1)); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   background: color-mix(in srgb, var(--ec) 18%, var(--surface)); color: var(--ink); box-shadow: inset 3px 0 0 var(--ec);
 }
-.dayv-grid { position: relative; margin-top: 10px; }
+.dayv-grid { flex: 1 0 auto; position: relative; margin: 10px 0 4px; }
 .dayv-hour { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line-soft); }
 .dayv-hour span { position: absolute; left: 0; top: -0.6em; width: 44px; font-size: calc(11px * var(--ts, 1)); color: var(--muted); background: var(--surface-2); line-height: 1.2; white-space: nowrap; }
 .dayv-events { position: absolute; top: 0; bottom: 0; left: 52px; right: 0; }
@@ -1028,3 +1028,5 @@ body.resizing iframe { pointer-events: none; }
 .ct-field .ib.sm { width: 28px; height: 28px; flex: none; opacity: 0; }
 .ct-field:hover .ib.sm, .ct-field .ib.sm:focus-visible { opacity: 1; }
 @media (hover: none) { .ct-field .ib.sm { opacity: 1; } }
+
+.panel-open { color: var(--muted); text-decoration: none; }

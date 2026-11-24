@@ -1,6 +1,6 @@
 {
   "name": "maillo",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "type": "module",
   "description": "A self-hosted web interface for Gmail.",
