@@ -41,8 +41,8 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 
 **Writing**
 - Quick reply box at the bottom of every conversation, with a button to open the full reply
-- Optional: Google Keep side panel (Workspace accounts, with an admin's approval): see your notes, add one, delete; hidden otherwise
-- Friendly empty states in the Calendar, Tasks, Keep and Contacts panels
+- Optional: Stickies side panel: colourful Markdown notes with tickable to-dos, synced through a hidden file in Google Drive
+- Friendly empty states in the Calendar, Tasks, Stickies and Contacts panels
 - Optional: stay signed in on each device (refresh token kept encrypted on your server by `session.php`) instead of a new Google sign-in every hour
 - Optional: the same settings on all your devices, synced through a hidden file in Google Drive
 - Light on Google's API quota: checks for changes with Gmail's history (2 units) before reloading anything, fetches conversation headers in batches, remembers them on the device between visits, and slows down instead of failing when Google rate-limits

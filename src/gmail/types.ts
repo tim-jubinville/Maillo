@@ -171,13 +171,22 @@ export interface TaskItem {
   status?: 'needsAction' | 'completed';
 }
 
-/** A Google Keep note (enterprise Keep API: list, create and delete; no editing). */
-export interface KeepNote {
-  name: string;
-  title?: string;
-  text?: string;
-  items?: { text: string; checked: boolean }[];
-  updated?: string;
+export type StickyColor = 'yellow' | 'orange' | 'pink' | 'purple' | 'blue' | 'green' | 'grey';
+
+/** A sticky note: Markdown text on a coloured card. */
+export interface Sticky {
+  id: string;
+  text: string;
+  color: StickyColor;
+  created: number;
+  updated: number;
+}
+
+/** The stickies file in Drive's app folder. `deleted` remembers removals (id → time) so other devices drop them too. */
+export interface StickiesFile {
+  version: 1;
+  stickies: Sticky[];
+  deleted: Record<string, number>;
 }
 
 export interface ThreadNote {
@@ -253,9 +262,8 @@ export interface MailBackend {
   listTasks(): Promise<TaskItem[]>;
   addTask(title: string, notes?: string): Promise<TaskItem>;
   completeTask(id: string, done: boolean): Promise<void>;
-  listKeepNotes(): Promise<KeepNote[]>;
-  createKeepNote(title: string, text: string): Promise<KeepNote>;
-  deleteKeepNote(name: string): Promise<void>;
+  loadStickies(): Promise<StickiesFile | null>;
+  saveStickies(file: StickiesFile): Promise<void>;
   loadSettings(): Promise<SyncedSettings | null>;
   saveSettings(data: SyncedSettings): Promise<void>;
   loadNotes(): Promise<NotesMap>;

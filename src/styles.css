@@ -518,26 +518,69 @@ body.resizing iframe { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .pempty-ring.r2 { animation: none; } }
 .pempty-calendar { --pe: var(--c-inbox); }
 .pempty-tasks { --pe: var(--c-sent); }
-.pempty-keep { --pe: #E0A400; }
+.pempty-stickies { --pe: #E0A400; }
 .pempty-contacts { --pe: var(--c-scheduled); }
 .pempty b { font-size: calc(15px * var(--ts, 1)); font-weight: 700; color: var(--ink); }
 .pempty > span { font-size: calc(13px * var(--ts, 1)); color: var(--muted); max-width: 260px; line-height: 1.45; }
 .pempty-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.keep-new { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-soft); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.06); }
-.keep-new input, .keep-new textarea { border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; resize: none; padding: 2px 0; }
-.keep-new input { font-weight: 600; }
-.keep-new textarea { font-size: calc(13px * var(--ts, 1)); }
-.keep-new .btn { align-self: flex-end; }
-.keep-note { align-items: flex-start; }
-.keep-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: calc(13px * var(--ts, 1)); }
-.keep-body p { margin: 0; white-space: pre-wrap; color: var(--ink-2); overflow-wrap: anywhere; }
-.keep-body ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.keep-body li { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
-.keep-body li.done { text-decoration: line-through; color: var(--muted); }
-.keep-body li.more { color: var(--muted); }
-.keep-del { opacity: 0; color: var(--muted); }
-.keep-note:hover .keep-del, .keep-del:focus-visible { opacity: 1; }
-@media (hover: none) { .keep-del { opacity: 1; } }
+/* Stickies: coloured Markdown notes. --sb is the card, --sk its ink, --sd the swatch. */
+.stickies { display: flex; flex-direction: column; gap: 10px; }
+.stk-yellow { --sb: #FFF1B8; --sk: #3A2F0B; --sd: #F2C230; }
+.stk-orange { --sb: #FFE0C2; --sk: #3D2410; --sd: #F59A4A; }
+.stk-pink { --sb: #FFDCE7; --sk: #431B2A; --sd: #EE7CA0; }
+.stk-purple { --sb: #E9E0FF; --sk: #2C1F52; --sd: #9B7BF0; }
+.stk-blue { --sb: #D8E8FF; --sk: #13294A; --sd: #4D94F0; }
+.stk-green { --sb: #D7F3DF; --sk: #133B22; --sd: #3FB866; }
+.stk-grey { --sb: #E8EBF0; --sk: #252B35; --sd: #9AA3AE; }
+[data-mode='dark'] .stk-yellow { --sb: #4A3E14; --sk: #FBF1D0; }
+[data-mode='dark'] .stk-orange { --sb: #4E3019; --sk: #FCE6D3; }
+[data-mode='dark'] .stk-pink { --sb: #4E2535; --sk: #FBDFE8; }
+[data-mode='dark'] .stk-purple { --sb: #372B57; --sk: #EAE2FF; }
+[data-mode='dark'] .stk-blue { --sb: #1E3452; --sk: #DCEAFF; }
+[data-mode='dark'] .stk-green { --sb: #1E4130; --sk: #DCF5E3; }
+[data-mode='dark'] .stk-grey { --sb: #343840; --sk: #E9ECF1; }
+.stk-new { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border-radius: 12px; border: 1.5px dashed var(--line); background: transparent; color: var(--ink-2); font: inherit; font-weight: 600; font-size: calc(13px * var(--ts, 1)); cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.stk-new:hover, .stk-new:focus-visible { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.stk { position: relative; padding: 12px 14px 12px; border-radius: 4px 14px 14px 14px; background: var(--sb); color: var(--sk); box-shadow: 0 1px 2px rgba(20, 33, 61, 0.08), 0 6px 16px -8px rgba(20, 33, 61, 0.22); font-size: calc(13px * var(--ts, 1)); line-height: 1.45; transition: box-shadow 0.18s, transform 0.18s; }
+.stk:hover { box-shadow: 0 1px 2px rgba(20, 33, 61, 0.08), 0 10px 22px -10px rgba(20, 33, 61, 0.3); }
+.stk.editing { box-shadow: 0 0 0 2px color-mix(in srgb, var(--sd) 70%, transparent), 0 10px 22px -10px rgba(20, 33, 61, 0.3); }
+[data-mode='dark'] .stk { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 18px -10px rgba(0, 0, 0, 0.6); }
+.stk-md { cursor: text; min-height: 20px; overflow-wrap: anywhere; }
+.stk-md > :first-child { margin-top: 0; }
+.stk-md > :last-child { margin-bottom: 0; }
+.stk-md p, .stk-md ul, .stk-md ol, .stk-md pre, .stk-md blockquote { margin: 0 0 6px; }
+.stk-md h3, .stk-md h4, .stk-md h5 { margin: 2px 0 6px; font-weight: 800; line-height: 1.25; }
+.stk-md h3 { font-size: 1.25em; }
+.stk-md h4 { font-size: 1.1em; }
+.stk-md h5 { font-size: 1em; }
+.stk-md ul, .stk-md ol { padding-left: 18px; }
+.stk-md li { margin: 2px 0; }
+.stk-md li.todo { list-style: none; margin-left: -18px; display: flex; gap: 7px; align-items: flex-start; }
+.stk-md .todo-box { margin-top: 2px; width: 15px; height: 15px; flex: none; border-radius: 4px; border: 1.5px solid color-mix(in srgb, var(--sk) 55%, transparent); background: color-mix(in srgb, #ffffff 45%, transparent); cursor: pointer; display: grid; place-items: center; }
+[data-mode='dark'] .stk-md .todo-box { background: color-mix(in srgb, #000000 15%, transparent); }
+.stk-md .todo-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stk-md .todo-box[aria-checked='true'] { background: var(--sd); border-color: var(--sd); }
+.stk-md .todo-box[aria-checked='true']::after { content: ''; width: 4px; height: 8px; margin-top: -2px; border: solid #ffffff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.stk-md li.todo.done span { text-decoration: line-through; opacity: 0.7; }
+.stk-md a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.stk-md code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; padding: 1px 4px; border-radius: 4px; background: color-mix(in srgb, var(--sk) 9%, transparent); }
+.stk-md pre { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--sk) 8%, transparent); overflow-x: auto; }
+.stk-md pre code { padding: 0; background: none; }
+.stk-md blockquote { padding-left: 10px; border-left: 3px solid color-mix(in srgb, var(--sd) 80%, transparent); }
+.stk-md hr { border: 0; border-top: 1px solid color-mix(in srgb, var(--sk) 18%, transparent); margin: 8px 0; }
+.stk-md .stk-empty { opacity: 0.6; font-style: italic; }
+.stk textarea.stk-text, .stk textarea.stk-text:focus { box-shadow: none; display: block; width: 100%; min-height: 60px; border: 0; outline: 0; padding: 0; resize: none; overflow: hidden; background: transparent; color: var(--sk); font: inherit; line-height: 1.45; }
+.stk textarea.stk-text::placeholder { color: color-mix(in srgb, var(--sk) 55%, transparent); }
+.stk-hint { display: block; margin-top: 6px; font-size: calc(11px * var(--ts, 1)); color: color-mix(in srgb, var(--sk) 72%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.stk-tools { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--sb) 88%, transparent); opacity: 0; transition: opacity 0.15s; }
+.stk:hover .stk-tools, .stk-tools:focus-within { opacity: 1; }
+@media (hover: none) { .stk-tools { opacity: 1; } }
+.stk-tools .ib { color: var(--sk); }
+.stk-dot { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--sd); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sk) 22%, transparent); }
+.stk-swatches { display: flex; gap: 4px; padding: 3px 4px; }
+.stk-swatch { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 0; cursor: pointer; background: var(--sd); box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.12); transition: transform 0.12s; }
+.stk-swatch:hover, .stk-swatch:focus-visible { transform: scale(1.15); }
+.stk-swatch[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--sb), 0 0 0 3.5px var(--sk); }
 .pcard { display: flex; gap: 12px; padding: 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-soft); }
 .pcard .bar { width: 3px; border-radius: 2px; flex: none; background: var(--c-inbox); }
 /* Calendar events: bar in the event's Google Calendar colour, optional Join button. */

@@ -72,8 +72,8 @@ return [
                                     // Google every hour (needs googleClientSecret)
         'syncSettings' => false,    // the same Maillo settings on all your devices, through a
                                     // hidden app folder in Google Drive (needs the Drive API)
-        'keep' => false,            // Google Keep side panel (Workspace only, needs an admin's
-                                    // approval, see INSTALL.md)
+        'stickies' => false,        // Stickies side panel: colourful Markdown notes, kept in a
+                                    // hidden app folder in Google Drive (needs the Drive API)
         'push' => false,            // new mail within seconds, and notifications while Maillo is
                                     // closed (needs staySignedIn and pushTopic, see INSTALL.md)
     ],
@@ -99,7 +99,6 @@ return [
         'chat' => 'https://mail.google.com/chat/',
         'meet' => 'https://meet.google.com/',
         'calendar' => 'https://calendar.google.com/',
-        'keep' => 'https://keep.google.com/',
         'contacts' => 'https://contacts.google.com/',
         'gmailSettings' => 'https://mail.google.com/mail/u/0/#settings/general',
     ],

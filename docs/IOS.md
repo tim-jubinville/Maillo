@@ -6,7 +6,7 @@ How it differs from the web version:
 
 - **No server.** The app files ship inside the app and talk to Google directly. Settings come from `config.native.js` instead of `maillo-config.php`.
 - **Stays signed in by itself.** Sign-in opens in the iOS sign-in sheet with an iOS OAuth client (PKCE, no client secret). The refresh token stays in the iOS Keychain, on this device only, and never reaches the web view.
-- **Not in the app yet:** AI, notifications while closed, Keep, and the updater (TestFlight handles updates). Install app and Updates are hidden in Settings.
+- **Not in the app yet:** AI, notifications while closed, and the updater (TestFlight handles updates). Install app and Updates are hidden in Settings.
 
 ## What you need
 

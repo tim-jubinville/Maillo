@@ -1,6 +1,6 @@
 import { locale } from '../i18n';
 import { config } from '../config';
-import { currentToken, dropKeepToken, dropSession, keepToken } from '../auth';
+import { currentToken, dropSession } from '../auth';
 import type {
   CalendarEvent,
   ContactCard,
@@ -15,7 +15,7 @@ import type {
   GThread,
   GThreadList,
   GVacation,
-  KeepNote,
+  StickiesFile,
   ListThreadsParams,
   MailBackend,
   NotesMap,
@@ -34,8 +34,6 @@ export class ApiError extends Error {
 
 export class AuthRequired extends Error {}
 
-/** The Keep panel has no Keep token yet (or it ran out); it asks for one with requestKeepToken. */
-export class KeepAuthRequired extends Error {}
 
 type Query = Record<string, string | number | boolean | string[] | undefined>;
 
@@ -113,9 +111,9 @@ function retryDelay(res: Response, attempt: number): number {
   return 800 * 2 ** attempt + Math.random() * 400;
 }
 
-async function request<T>(url: string, init: RequestInit & { query?: Query; units?: number; keep?: boolean } = {}, attempt = 0): Promise<T> {
-  const token = init.keep ? keepToken() : currentToken();
-  if (!token) throw init.keep ? new KeepAuthRequired() : new AuthRequired();
+async function request<T>(url: string, init: RequestInit & { query?: Query; units?: number } = {}, attempt = 0): Promise<T> {
+  const token = currentToken();
+  if (!token) throw new AuthRequired();
   if (attempt === 0) await budget(init.units ?? unitsFor(url, init.method ?? 'GET'));
   const res = await slot(() =>
     fetch(url + qs(init.query), {
@@ -128,10 +126,6 @@ async function request<T>(url: string, init: RequestInit & { query?: Query; unit
     })
   );
   if (res.status === 401) {
-    if (init.keep) {
-      dropKeepToken();
-      throw new KeepAuthRequired();
-    }
     dropSession();
     throw new AuthRequired();
   }
@@ -263,26 +257,6 @@ const EVENT_COLORS: Record<string, string> = {
 };
 const CALENDAR_DEFAULT = '#039be5';
 
-const KEEP = 'https://keep.googleapis.com/v1';
-
-interface GKeepListItem {
-  text?: { text?: string };
-  checked?: boolean;
-  childListItems?: GKeepListItem[];
-}
-interface GKeepNote {
-  name: string;
-  title?: string;
-  updateTime?: string;
-  body?: { text?: { text?: string }; list?: { listItems?: GKeepListItem[] } };
-}
-
-function toKeepNote(n: GKeepNote): KeepNote {
-  const flat = (items: GKeepListItem[] = []): { text: string; checked: boolean }[] =>
-    items.flatMap((i) => [{ text: i.text?.text ?? '', checked: !!i.checked }, ...flat(i.childListItems)]);
-  return { name: n.name, title: n.title, text: n.body?.text?.text, items: n.body?.list ? flat(n.body.list.listItems) : undefined, updated: n.updateTime };
-}
-
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 const NOTES_FILE = 'maillo-notes.json';
@@ -291,6 +265,8 @@ const LEGACY_NOTES_FILE = 'mailmax-notes.json';
 let notesFileId: string | undefined;
 const SETTINGS_FILE = 'maillo-settings.json';
 let settingsFileId: string | undefined;
+const STICKIES_FILE = 'maillo-stickies.json';
+let stickiesFileId: string | undefined;
 
 // Notes live in Drive's hidden per-app folder: invisible in Drive and Gmail, synced across devices.
 async function findNotesFile(): Promise<string | undefined> {
@@ -603,24 +579,6 @@ export const gmailBackend: MailBackend = {
       body: JSON.stringify({ status: done ? 'completed' : 'needsAction' })
     });
   },
-  listKeepNotes: async () => {
-    const out: KeepNote[] = [];
-    let pageToken: string | undefined;
-    // No filter: Google leaves trashed notes out by default, and it refuses some filter spellings (400).
-    for (let page = 0; page < 3; page++) {
-      const r = await request<{ notes?: GKeepNote[]; nextPageToken?: string }>(`${KEEP}/notes`, { keep: true, query: { pageSize: 50, pageToken } });
-      out.push(...(r.notes ?? []).map(toKeepNote));
-      pageToken = r.nextPageToken;
-      if (!pageToken) break;
-    }
-    return out.sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
-  },
-  createKeepNote: async (title, text) =>
-    toKeepNote(await request<GKeepNote>(`${KEEP}/notes`, { keep: true, method: 'POST', body: JSON.stringify({ title, body: { text: { text } } }) })),
-  deleteKeepNote: async (name) => {
-    if (!/^notes\/[\w-]+$/.test(name)) throw new ApiError(400, 'bad note');
-    await request(`${KEEP}/${name}`, { keep: true, method: 'DELETE' });
-  },
   loadSettings: async () => {
     if (!settingsFileId) {
       const r = await request<{ files?: { id: string }[] }>(DRIVE, {
@@ -663,6 +621,29 @@ export const gmailBackend: MailBackend = {
       query: { uploadType: 'media' },
       body: JSON.stringify({ version: 1, notes })
     });
+  },
+  loadStickies: async () => {
+    if (!stickiesFileId) {
+      const r = await request<{ files?: { id: string }[] }>(DRIVE, {
+        query: { spaces: 'appDataFolder', q: `name = '${STICKIES_FILE}' and trashed = false`, fields: 'files(id)', pageSize: 1 }
+      });
+      stickiesFileId = r.files?.[0]?.id;
+    }
+    if (!stickiesFileId) return null;
+    return request<StickiesFile>(`${DRIVE}/${stickiesFileId}`, { query: { alt: 'media' } });
+  },
+  saveStickies: async (file) => {
+    if (!stickiesFileId) {
+      await gmailBackend.loadStickies();
+      if (!stickiesFileId) {
+        const f = await request<{ id: string }>(DRIVE, {
+          method: 'POST',
+          body: JSON.stringify({ name: STICKIES_FILE, parents: ['appDataFolder'], mimeType: 'application/json' })
+        });
+        stickiesFileId = f.id;
+      }
+    }
+    await request(`${DRIVE_UPLOAD}/${stickiesFileId}`, { method: 'PATCH', query: { uploadType: 'media' }, body: JSON.stringify(file) });
   }
 };
 
