@@ -503,6 +503,8 @@ a:hover { color: var(--violet); }
 body.resizing { cursor: col-resize; user-select: none; }
 body.resizing iframe { pointer-events: none; }
 .card.no-sidebar .sidebar { display: none; }
+/* Phones only: the side panel apps at the foot of the drawer, and the full-screen sheet they open. */
+.drawer-apps, .panel.sheet { display: none; }
 
 /* Side panel */
 .panel { width: var(--w-panel, 300px); flex: 0 0 var(--w-panel, 300px); border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; background: var(--surface-2); }
@@ -769,6 +771,14 @@ body.resizing iframe { pointer-events: none; }
     box-shadow: 0 20px 60px rgba(15, 22, 38, 0.3); transform: translateX(-105%); transition: transform 0.2s;
   }
   .sidebar.open { transform: none; }
+  .drawer-apps { display: flex; gap: 4px; margin-top: auto; padding: 14px 4px 0; border-top: 1px solid var(--line-soft); }
+  .drawer-apps .sp { width: 40px; height: 40px; }
+  .panel.sheet {
+    display: flex; position: fixed; z-index: 56; inset: 0; width: auto; border-left: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    animation: sheet-in 0.2s ease-out;
+  }
+  .panel.sheet .panel-head { padding-left: 8px; border-bottom: 1px solid var(--line-soft); }
   .overlay-sidebar.open { display: block; position: fixed; inset: 0; z-index: 54; background: rgba(15, 22, 38, 0.3); }
   .listcol.split { flex: 1 1 auto; min-width: 0; border-right: 0; }
   .card.reading .listcol { display: none; }
@@ -787,12 +797,16 @@ body.resizing iframe { pointer-events: none; }
   .header .brand-name { font-size: calc(18px * var(--ts, 1)); }
   .search { order: 3; flex-basis: 100%; width: auto; }
   .search:focus-within { width: auto; }
+  /* Compose is already full screen on phones, and pop-out windows don't exist there. */
+  .compose .desk-only { display: none; }
   .compose, .compose.max { right: 0; left: 0; bottom: 0; transform: none; width: 100%; max-width: none; height: 100dvh; border-radius: 0; }
   .settings { padding: 8px 10px 40px; }
   .snav { position: static; width: 100%; flex: 1 1 100%; flex-direction: row; overflow-x: auto; }
   .snav .nav { width: auto; flex: none; }
   .banner { margin-left: 12px; }
 }
+
+@keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
