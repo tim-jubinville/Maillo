@@ -424,7 +424,7 @@ function SideIcons({ s }: { s: AppState }) {
               <Icon name="pin" size={16} />
             </button>
           </div>
-          <div class="peek-body">
+          <div class="panel-body peek-body">
             <PanelBody s={s} p={peek.id} />
           </div>
         </div>
