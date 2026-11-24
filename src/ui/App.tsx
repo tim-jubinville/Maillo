@@ -10,10 +10,10 @@ import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
 import { composeInWindow, PopoutWindow } from './Popout';
 import { SearchBox } from './SearchBox';
-import { DiagnosticsButton } from './Diagnostics';
 import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
+import { DiagnosticsButton } from './Diagnostics';
 import { KeyHelp, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
 import { inInbox, PileBar } from './Piles';
@@ -100,12 +100,12 @@ function SetupChecklist() {
             );
           })}
         </ul>
+        <DiagnosticsButton />
         <p class="setup-note">{t('setup.private')}</p>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button class="btn primary" onClick={() => location.reload()}>{t('setup.again')}</button>
           <a class="btn" href="?demo">{t('auth.demo')}</a>
         </div>
-        <DiagnosticsButton />
       </div>
     </div>
   );
