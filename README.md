@@ -64,7 +64,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Read-only status for forwarding, IMAP and POP
 - Display options: density, reading pane (none by default, like Gmail: a one-line list that opens conversations in its place; or beside the list), inbox categories, default reply (sender or everyone), images, page size, language, keyboard shortcuts
 - Appearance: light, dark or system mode, ten colour themes, interface text size, colour or outline icons, hover tooltips on icon buttons, and a custom logo upload
-- Updates: upload a newer release zip from Settings, with an automatic backup and one-click restore (PHP hosts)
+- Updates: notices when a new release is out and one-click install from GitHub, or upload a release zip; automatic backup and one-click restore (PHP hosts)
 
 **App and notifications**
 - Install Maillo as an app (Chrome, Edge, Safari on Mac, and Add to Home Screen on iPhone and Android) for its own window, a dock or taskbar icon, a "Compose" shortcut and an unread count on the icon

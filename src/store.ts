@@ -22,6 +22,7 @@ import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
 import { startSync } from './sync';
 import { clearCache, getThread as cachedThread, openCache, putThread, saveMeta, saveRows, type ListSnap, type Warm } from './cache';
+import { checkForUpdate } from './updates';
 import { CATEGORIES, go, listHash, parseHash, threadHash, type Category, type MailRoute, type Route } from './route';
 
 export const api: MailBackend = config.demo ? demoBackend : gmailBackend;
@@ -119,6 +120,8 @@ export interface AppState {
   panel?: PanelId;
   sendAs: GSendAs[];
   showKeys: boolean;
+  /** A newer release the server can install, from update.php's daily check. */
+  update?: { version: string; url: string; canInstall: boolean };
   sidebarOpen: boolean;
   recent: Address[];
   piles: Record<PileId, Pile>;
@@ -473,6 +476,7 @@ async function start() {
     loadContactPhotos();
     loadNotes();
     startSync(api);
+    watchForUpdates();
     // With the kept list on screen, refresh it quietly instead of showing a spinner.
     await loadList(true, warm && state.list.key === listHash(state.route as MailRoute));
     const r = state.route;
@@ -1607,4 +1611,19 @@ export async function expandQuickReply(msg: ParsedMessage, text: string): Promis
   const c = state.compose;
   if (!c) return;
   setState({ compose: { ...c, html: `${quickHtml(text)}<div><br></div>${signatureFor(c.from)}` } });
+}
+
+let updateTimer: ReturnType<typeof setInterval> | undefined;
+
+/** Checks for a newer release shortly after start, then every 6 hours while Maillo stays open. */
+function watchForUpdates() {
+  if (config.demo || updateTimer) return;
+  const run = () => checkForUpdate().then(applyUpdateCheck);
+  setTimeout(run, 8000);
+  updateTimer = setInterval(run, 6 * 3600_000);
+}
+
+export function applyUpdateCheck(r: Awaited<ReturnType<typeof checkForUpdate>>) {
+  if (!r.ok) return;
+  setState({ update: r.available && r.latest ? { version: r.latest, url: r.url ?? '', canInstall: !!r.canInstall } : undefined });
 }
