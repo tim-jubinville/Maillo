@@ -1,6 +1,7 @@
 /**
  * Liquid-glass motion for ribbons: a ribbon that appears flows out from its leading edge, one that changes
- * size stretches and settles, and new buttons swell into place with a glint across the glass.
+ * size stretches and settles, and new buttons fade in. Kept quiet on purpose: ribbons change on every
+ * conversation opened, so anything showier gets distracting fast.
  */
 
 const SPRING = 'cubic-bezier(0.3, 1.3, 0.5, 1)';
@@ -38,24 +39,8 @@ function joined(el: HTMLElement): boolean {
   return c.borderTopLeftRadius === '0px' || c.borderTopRightRadius === '0px';
 }
 
-function glint(el: HTMLElement) {
-  el.classList.remove('glint');
-  void el.offsetWidth;
-  el.classList.add('glint');
-  window.setTimeout(() => el.classList.remove('glint'), 700);
-}
-
 function popIn(list: HTMLElement[]) {
-  list.slice(0, 24).forEach((x, i) =>
-    x.animate(
-      [
-        { opacity: 0, transform: 'scale(0.55)', filter: 'blur(5px)' },
-        { opacity: 1, transform: 'scale(1.08)', filter: 'blur(0px)', offset: 0.65 },
-        { opacity: 1, transform: 'scale(1)', filter: 'blur(0px)' }
-      ],
-      { duration: 380, delay: i * 18, easing: 'ease-out', fill: 'backwards' }
-    )
-  );
+  list.slice(0, 24).forEach((x) => x.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out', fill: 'backwards' }));
 }
 
 function squish(el: HTMLElement, wide: boolean) {
@@ -112,7 +97,6 @@ function retract(el: HTMLElement, snap: Snap) {
   g.removeAttribute('role');
   g.setAttribute('aria-hidden', 'true');
   g.inert = true;
-  g.classList.remove('glint');
   g.style.setProperty('--flow-rad', snap.rightRadius === '0px' ? '0px' : '16px');
   g.classList.add('flowing');
   document.body.appendChild(g);
@@ -165,18 +149,14 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
     lastMount = { rect, at: now };
     if (here) {
       popIn(items(el).filter((x) => !here.sig.has(keyOf(x))));
-      glint(el);
     } else if (prev && prev.rect.width > 0 && now - prev.at < 450) {
       // Replacing a ribbon of the same kind: morph from its outline, and only new buttons swell in.
       flow(el, prev.rect, 460);
       popIn(items(el).filter((x) => !prev.sig.has(keyOf(x))));
-      glint(el);
     } else {
       // A ribbon appearing flows out from its leading edge.
       flow(el, { left: rect.left, right: rect.left + Math.min(rect.width, 48) }, 620);
       popIn(items(el));
-      squish(el, true);
-      glint(el);
     }
   }
 
@@ -192,8 +172,6 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
       // Buttons folding in and out of "…" while the ribbon is resized aren't news.
       if (reduced() || (!added.length && !removed) || performance.now() - resizedAt < 300) return;
       popIn(added);
-      squish(el, false);
-      glint(el);
     });
   };
   const mo = new MutationObserver(changed);
