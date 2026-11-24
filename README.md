@@ -154,3 +154,7 @@ src/i18n.ts           English and French strings
 ```
 
 To add a language, copy the `fr` dictionary in `src/i18n.ts`, translate it and add it to `dictionaries`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
