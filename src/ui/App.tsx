@@ -14,6 +14,7 @@ import { SetupWizard } from './SetupWizard';
 import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
+import { CallBadge } from './CallBadge';
 import { DiagnosticsButton } from './Diagnostics';
 import { KeyHelp, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
@@ -185,6 +186,7 @@ function Header({ s }: { s: AppState }) {
       </div>
       <SearchBox s={s} />
       <div class="header-right">
+        <CallBadge />
         <Menu
           label={t('header.account', { email: s.me })}
           class={`avatar-btn ${online || config.demo ? '' : 'offline'} ${s.update ? 'has-update' : ''}`}

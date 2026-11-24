@@ -75,7 +75,7 @@ function time(e: CalendarEvent) {
 const CALL_LINK = /https:\/\/(?:[\w-]+\.)*(?:zoom\.us\/(?:j|my|w)\/|teams\.microsoft\.com\/l\/meetup-join\/|teams\.live\.com\/meet\/|meet\.google\.com\/|[\w-]+\.webex\.com\/)[^\s"'<>)]*/i;
 
 /** The event's video-call link: Google Meet, or a Meet/Zoom/Teams/Webex link in its conference data, location or description. */
-function joinLink(e: CalendarEvent): string | undefined {
+export function joinLink(e: CalendarEvent): string | undefined {
   const fromConf = e.conferenceData?.entryPoints?.find((x) => x.entryPointType === 'video')?.uri;
   const link = e.hangoutLink || fromConf || e.location?.match(CALL_LINK)?.[0] || e.description?.match(CALL_LINK)?.[0];
   // Links pulled from text can end with sentence punctuation.
