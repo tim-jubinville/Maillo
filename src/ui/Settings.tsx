@@ -19,7 +19,7 @@ import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, applyUpdateCheck, loadLabels, setState, toast, type AppState } from '../store';
 import { callUpdater, checkForUpdate, type UpdateCheck, type UpdaterStatus } from '../updates';
 import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
-import { Icon } from './Icon';
+import { Icon, iconUrl } from './Icon';
 import { SignatureEditor } from './SignatureEditor';
 import { KeyList } from './Keys';
 
@@ -1254,12 +1254,21 @@ function InstallApp() {
   );
 }
 
+const SWIPE_ICON: Record<Exclude<SwipeAction, 'none'>, string> = { archive: 'archive', trash: 'trash', read: 'mailOpen', aside: 'layers', action: 'important' };
+
 /** A little looping picture of a row being swiped, so it's obvious which direction each setting is for. */
 function SwipeDemo({ dir, action, name }: { dir: 'left' | 'right'; action: SwipeAction; name: string }) {
   const color = action === 'none' ? undefined : SWIPE_COLOR[action];
   return (
     <span class={`swipe-demo to-${dir} ${action === 'none' ? 'none' : ''}`} style={color ? { '--c': color } : undefined} aria-hidden="true">
-      <span class="sd-back">{action !== 'none' && <b>{name}</b>}</span>
+      <span class="sd-back">
+        {action !== 'none' && (
+          <>
+            <span class="sd-ic" style={{ backgroundImage: iconUrl(SWIPE_ICON[action]) }} />
+            <b>{name}</b>
+          </>
+        )}
+      </span>
       <span class="sd-row">
         <span class="sd-av" />
         <span class="sd-lines"><i /><i /></span>

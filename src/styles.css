@@ -281,11 +281,12 @@ a:hover { color: var(--violet); }
 .list-ribbon .toolbar { min-width: 0; }
 .list-ribbon .cb { margin: 0 6px 0 8px; }
 .list-ribbon .sel-n { animation: fadein 140ms ease-out; }
-/* It reaches 11 px further to meet the reading ribbon; the padding keeps its buttons where they were. */
-.list-ribbon.joined { margin-right: -1px; padding-right: 11px; border-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+/* It reaches 11 px further to meet the reading ribbon; the padding keeps its buttons where they were.
+   data-hold keeps it that way while a closing reading ribbon flows back into it. */
+.list-ribbon.joined, .list-ribbon[data-hold] { margin-right: -1px; padding-right: 11px; border-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon { left: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 /* The list ribbon reaches over the column divider, so the two read as one bar with no line between. */
-.list-ribbon.joined { z-index: 9; }
+.list-ribbon.joined, .list-ribbon[data-hold] { z-index: 9; }
 /* Same backing on both halves so the joined bar has one even tone, and shadows that only fall downward (no seam).
    The list ribbon always wears it, so nothing about it changes when a conversation opens beside it. */
 .list-ribbon, .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
@@ -296,7 +297,7 @@ a:hover { color: var(--violet); }
 [data-mode='dark'] .list-ribbon, [data-mode='dark'] .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 22px -14px rgba(0, 0, 0, 0.6);
 }
-.list-ribbon.joined::after { content: ''; position: absolute; top: -1px; bottom: -1px; right: -2px; width: 3px; background: inherit; }
+.list-ribbon.joined::after, .list-ribbon[data-hold]::after { content: ''; position: absolute; top: -1px; bottom: -1px; right: -2px; width: 3px; background: inherit; }
 .ib.pressed, .row-act.pressed { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); box-shadow: inset 0 1px 3px rgba(20, 33, 61, 0.18); }
 .ribbon .ib.pressed:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, var(--surface)); box-shadow: inset 0 1px 3px rgba(20, 33, 61, 0.22); }
 [data-mode='dark'] .ib.pressed, [data-mode='dark'] .row-act.pressed { background: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4); }
@@ -1157,9 +1158,10 @@ body.resizing iframe { pointer-events: none; }
 .swipe-set label { display: flex; flex-direction: column; gap: 6px; font-size: calc(13px * var(--ts, 1)); color: var(--muted); width: 196px; }
 .swipe-set .select { width: 100%; }
 .swipe-demo { position: relative; display: block; height: 58px; border-radius: 12px; overflow: hidden; background: var(--c, var(--cloud)); border: 1px solid var(--line-soft); }
-.sd-back { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 12px; color: #fff; font-size: 12px; font-weight: 700; }
+.sd-back { position: absolute; inset: 0; display: flex; align-items: center; gap: 6px; padding: 0 12px; color: #fff; font-size: 12px; font-weight: 700; }
 .swipe-demo.to-left .sd-back { justify-content: flex-end; }
-.sd-back b { max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-ic { width: 16px; height: 16px; flex: none; background: no-repeat center / contain; }
+.sd-back b { max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sd-row {
   position: absolute; inset: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--surface);
   animation: sd-right 2.6s ease-in-out infinite;
@@ -1228,16 +1230,24 @@ body.resizing iframe { pointer-events: none; }
 .readcol.drop-ok iframe { pointer-events: none; }
 
 /* Swiping a row (touch on phones, two-finger trackpad on desktop): the row slides off a coloured backing naming the action. */
-.row.swiping { background: var(--swipe-c, var(--cloud)); overflow: hidden; }
-.row.swiping::before { content: ''; position: absolute; inset: 0; width: auto; border-radius: 0; background: var(--row-bg, var(--surface)); transform: translateX(var(--sx, 0px)); z-index: 0; }
-.row.swiping > :not(.row-acts) { position: relative; z-index: 1; transform: translateX(var(--sx, 0px)); }
-.row.swiping::after {
-  content: attr(data-swipe-label); position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 20px;
-  color: #fff; font-weight: 700; font-size: calc(14px * var(--ts, 1)); opacity: 0.7; transition: opacity 0.12s; z-index: 0;
+.row.swiping { background: var(--swipe-c, var(--cloud)); overflow: hidden; isolation: isolate; }
+/* The row's own face: opaque, so nothing on the backing shows through it. */
+.row.swiping::before {
+  content: ''; position: absolute; inset: 0; width: auto; height: auto; border-radius: 0; z-index: 1;
+  background: linear-gradient(var(--row-bg, transparent), var(--row-bg, transparent)), var(--surface); transform: translateX(var(--sx, 0px));
 }
-.row.swiping[data-side='right']::after { left: 0; }
-.row.swiping[data-side='left']::after { right: 0; }
-.row.swiping.armed::after { opacity: 1; }
+.row.swiping > :not(.row-acts) { position: relative; z-index: 2; transform: translateX(var(--sx, 0px)); }
+/* The action on the backing: its icon above its name, centred in the space the row uncovers. */
+.row.swiping::after {
+  content: attr(data-swipe-label); position: absolute; inset: 0 auto; width: 104px; height: auto; padding: 30px 8px 0; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: #fff; font-weight: 700; font-size: calc(12px * var(--ts, 1)); line-height: 1.2; z-index: 0;
+  background: var(--swipe-icon, none) no-repeat center calc(50% - 10px) / 22px 22px;
+  opacity: 0.75; transform: scale(0.9); transition: opacity 0.12s, transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.row.swiping[data-side='right']::after { left: 0; right: auto; }
+.row.swiping[data-side='left']::after { right: 0; left: auto; }
+.row.swiping.armed::after { opacity: 1; transform: scale(1); }
 .row.settling::before, .row.settling > *, .row.leaving::before, .row.leaving > * { transition: transform 0.17s ease; }
 .row.swiping .row-acts { display: none; }
 .rows { overscroll-behavior-x: none; }

@@ -3,6 +3,7 @@ import type { RefObject } from 'preact';
 import { t } from '../i18n';
 import type { ThreadRow } from '../model';
 import { isNarrow } from '../mobile';
+import { iconUrl } from './Icon';
 import { getPrefs, type SwipeAction } from '../prefs';
 import { actions, getState, pileOf, refresh, toggleSelect } from '../store';
 
@@ -18,23 +19,23 @@ export const SWIPE_COLOR: Record<Exclude<SwipeAction, 'none'>, string> = {
 };
 
 /** What a swipe does on this row, or nothing when the action doesn't apply here. */
-function swipeFor(kind: SwipeAction, r: ThreadRow): { label: string; color: string; run: () => void } | null {
+function swipeFor(kind: SwipeAction, r: ThreadRow): { label: string; color: string; icon: string; run: () => void } | null {
   const id = [r.id];
   const inTrash = r.labelIds.includes('TRASH');
   const inSpam = r.labelIds.includes('SPAM');
   switch (kind) {
     case 'archive':
-      return r.labelIds.includes('INBOX') ? { label: t('act.archive'), color: SWIPE_COLOR.archive, run: () => actions.archive(id) } : null;
+      return r.labelIds.includes('INBOX') ? { label: t('act.archive'), color: SWIPE_COLOR.archive, icon: 'archive', run: () => actions.archive(id) } : null;
     case 'trash':
-      return inTrash ? null : { label: t('act.delete'), color: SWIPE_COLOR.trash, run: () => actions.trash(id) };
+      return inTrash ? null : { label: t('act.delete'), color: SWIPE_COLOR.trash, icon: 'trash', run: () => actions.trash(id) };
     case 'read':
-      return { label: r.unread ? t('act.markRead') : t('act.markUnread'), color: SWIPE_COLOR.read, run: () => actions.read(id, r.unread) };
+      return { label: r.unread ? t('act.markRead') : t('act.markUnread'), color: SWIPE_COLOR.read, icon: r.unread ? 'mailOpen' : 'mail', run: () => actions.read(id, r.unread) };
     case 'aside':
     case 'action': {
       if (inTrash || inSpam) return null;
       const here = pileOf(r.labelIds) === kind;
       const label = here ? t(kind === 'aside' ? 'act.unpin.aside' : 'act.unpin.action') : t(kind === 'aside' ? 'act.pin.aside' : 'act.pin.action');
-      return { label, color: SWIPE_COLOR[kind], run: () => (here ? actions.unpin(id, true) : actions.pin(kind, id)) };
+      return { label, color: SWIPE_COLOR[kind], icon: kind === 'aside' ? 'layers' : 'important', run: () => (here ? actions.unpin(id, true) : actions.pin(kind, id)) };
     }
     default:
       return null;
@@ -64,6 +65,7 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       row.classList.remove('swiping', 'armed');
       row.style.removeProperty('--sx');
       row.style.removeProperty('--swipe-c');
+      row.style.removeProperty('--swipe-icon');
       delete row.dataset.swipeLabel;
       delete row.dataset.side;
     };
@@ -91,6 +93,7 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       row.dataset.side = mx > 0 ? 'right' : 'left';
       if (next) {
         row.style.setProperty('--swipe-c', next.color);
+        row.style.setProperty('--swipe-icon', iconUrl(next.icon));
         row.dataset.swipeLabel = next.label;
       } else {
         row.style.removeProperty('--swipe-c');
