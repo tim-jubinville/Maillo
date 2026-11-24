@@ -606,8 +606,9 @@ export const gmailBackend: MailBackend = {
   listKeepNotes: async () => {
     const out: KeepNote[] = [];
     let pageToken: string | undefined;
+    // No filter: Google leaves trashed notes out by default, and it refuses some filter spellings (400).
     for (let page = 0; page < 3; page++) {
-      const r = await request<{ notes?: GKeepNote[]; nextPageToken?: string }>(`${KEEP}/notes`, { keep: true, query: { pageSize: 50, filter: 'trashed = false', pageToken } });
+      const r = await request<{ notes?: GKeepNote[]; nextPageToken?: string }>(`${KEEP}/notes`, { keep: true, query: { pageSize: 50, pageToken } });
       out.push(...(r.notes ?? []).map(toKeepNote));
       pageToken = r.nextPageToken;
       if (!pageToken) break;
