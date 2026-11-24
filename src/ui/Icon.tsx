@@ -94,3 +94,9 @@ export function Icon({ name, size = 18, class: cls, style, fill }: { name: strin
     />
   );
 }
+
+/** An outline icon as an image URL, for CSS backgrounds. */
+export function iconUrl(name: string, color = '#fff'): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${P[name] ?? ''}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}

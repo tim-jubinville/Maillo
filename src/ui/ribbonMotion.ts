@@ -109,13 +109,16 @@ function retract(el: HTMLElement, snap: Snap) {
   g.style.setProperty('--flow-rad', snap.rightRadius === '0px' ? '0px' : '16px');
   g.classList.add('flowing');
   document.body.appendChild(g);
+  // Joined to the list ribbon: keep that one joined until the stand-in has flowed all the way back into it,
+  // so the bar shrinks as one piece instead of splitting in two.
+  const joinedLeft = (snap.look.borderRadius ?? '').startsWith('0px');
+  const list = joinedLeft ? document.querySelector<HTMLElement>('.list-ribbon') : null;
+  list?.setAttribute('data-hold', '');
   const duration = 420;
   const a = g.animate(
-    [
-      { '--flow-r': '0px', opacity: 1 },
-      { opacity: 1, offset: 0.7 },
-      { '--flow-r': `${Math.max(0, r.width - 48)}px`, opacity: 0 }
-    ] as Keyframe[],
+    joinedLeft
+      ? ([{ '--flow-r': '0px', opacity: 1 }, { opacity: 1, offset: 0.85 }, { '--flow-r': `${r.width + 16}px`, opacity: 0 }] as Keyframe[])
+      : ([{ '--flow-r': '0px', opacity: 1 }, { opacity: 1, offset: 0.7 }, { '--flow-r': `${Math.max(0, r.width - 48)}px`, opacity: 0 }] as Keyframe[]),
     { duration, easing: 'cubic-bezier(0.55, 0, 0.75, 0.2)', fill: 'forwards' }
   );
   items(g)
@@ -130,7 +133,10 @@ function retract(el: HTMLElement, snap: Snap) {
         { duration: 220, delay: i * 14, easing: 'ease-in', fill: 'forwards' }
       )
     );
-  const done = () => g.remove();
+  const done = () => {
+    g.remove();
+    list?.removeAttribute('data-hold');
+  };
   a.onfinish = done;
   a.oncancel = done;
   window.setTimeout(done, duration + 2000);
@@ -195,8 +201,9 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
     cancelAnimationFrame(frame);
     mo.disconnect();
     ro.disconnect();
-    gone.set(kind, { rect: el.getBoundingClientRect(), sig, at: performance.now() });
     // Only the reading ribbon: the list ribbon leaves with the whole list (settings, a full-width conversation).
+    // First, before anything reads the page's layout, so the list ribbon never shows unjoined in between.
     if (kind === 'read-ribbon') retract(el, snap);
+    gone.set(kind, { rect: snap.rect, sig, at: performance.now() });
   };
 }
