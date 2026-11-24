@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in Maillo doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. For a security problem, don't open an issue: see the [security policy](https://github.com/tim-jubinville/Maillo/security/policy).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Maillo version
+      description: Shown in Settings → About.
+      placeholder: "0.6.18"
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host type
+      options:
+        - PHP host (maillo-config.php)
+        - Static host without PHP (config.js)
+        - Demo mode (?demo)
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: "Safari 18 on iPhone, installed to Home Screen"
+    validations:
+      required: true
+  - type: dropdown
+    id: demo
+    attributes:
+      label: Does it also happen in demo mode?
+      description: Add `?demo` to the address to try with sample data.
+      options:
+        - "Yes"
+        - "No"
+        - Didn't try
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console errors or screenshots
+      description: Remove email addresses, message content and tokens before posting.
