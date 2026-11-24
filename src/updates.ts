@@ -1,5 +1,5 @@
 import { currentToken } from './auth';
-import { config } from './config';
+import { config, isNative } from './config';
 
 export interface UpdaterStatus {
   ok: boolean;
@@ -53,7 +53,8 @@ export function callUpdater<T extends { ok: boolean; error?: string | null } = U
 
 /** Asks the server whether a newer release is out (the server caches GitHub's answer for 12 hours). */
 export async function checkForUpdate(force = false): Promise<UpdateCheck> {
-  if (config.demo) return { ok: true, enabled: false };
+  // The iOS app updates through TestFlight, not update.php.
+  if (config.demo || isNative) return { ok: true, enabled: false };
   const f = new FormData();
   f.append('action', 'check');
   if (force) f.append('force', '1');

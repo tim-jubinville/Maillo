@@ -1,0 +1,8 @@
+{
+  "appId": "app.maillo.ios",
+  "appName": "Maillo",
+  "webDir": "dist-native",
+  "ios": {
+    "contentInset": "never"
+  }
+}

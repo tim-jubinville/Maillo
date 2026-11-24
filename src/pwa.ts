@@ -1,3 +1,5 @@
+import { isNative } from './config';
+
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -18,7 +20,7 @@ export function onInstallChange(fn: () => void) {
 }
 
 export function isStandalone(): boolean {
-  return installedNow || matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  return isNative || installedNow || matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 }
 
 const ua = navigator.userAgent;
@@ -63,7 +65,7 @@ export function initPwa(onOpenThread: (threadId: string) => void, onNewMail: () 
     emit();
   });
   // The worker is only built for production; dev and preview without it fall back to page notifications.
-  if (!('serviceWorker' in navigator) || !import.meta.env.PROD) return;
+  if (!('serviceWorker' in navigator) || !import.meta.env.PROD || isNative) return;
   registration = navigator.serviceWorker
     .register('./sw.js', { scope: './' })
     .then(() => navigator.serviceWorker.ready)
