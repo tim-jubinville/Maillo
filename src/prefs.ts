@@ -59,6 +59,8 @@ export interface Prefs {
   tooltips: boolean;
   /** What Reply does when a conversation has several people in it. */
   replyDefault: 'reply' | 'replyAll';
+  /** Calendar panel: a list of events, or the day on an hour grid. */
+  calView: 'list' | 'day';
 }
 
 export const TEXT_SCALES = [0.88, 0.94, 1, 1.08, 1.16, 1.25];
@@ -85,6 +87,7 @@ const defaults: Prefs = {
   textScale: 1,
   tooltips: true,
   replyDefault: 'reply',
+  calView: 'list',
   notify: {
     enabled: false,
     scope: 'primary',

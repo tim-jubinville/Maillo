@@ -84,7 +84,7 @@ Every setting is explained in the file itself, in plain language. Text goes betw
 | `language` | `'auto'`, `'en'` or `'fr'`. People can also change it in Settings. |
 | `theme` | Default colour theme: `sky`, `teal`, `pine`, `iris`, `plum`, `coral`, `tangerine`, `sunflower`, `cocoa` or `steel`. Each person can pick their own in Settings → Appearance, along with light, dark or system mode. |
 | `accentColor` | Optional hex colour that replaces the default theme's accent. |
-| `features.calendar` | Shows today's events in the side panel, in their Google Calendar colours, with a Join button for video calls (Meet, Zoom, Teams, Webex). Adds three read-only Calendar permissions at sign-in. |
+| `features.calendar` | Shows today's events in the side panel, in their Google Calendar colours, with a Join button for video calls (Meet, Zoom, Teams, Webex). A toggle switches between a list of events and a day view on an hour grid. Adds three read-only Calendar permissions at sign-in. |
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
 | `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
 | `features.keep` | Google Keep side panel: your notes, a quick note field and delete. Workspace only; needs the Keep API and an admin's approval (see "Optional: Google Keep"). Off: the Keep icon is hidden. |
