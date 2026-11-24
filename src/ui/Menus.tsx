@@ -138,7 +138,7 @@ export function MoveList({ s, ids, onDone }: { s: AppState; ids: string[]; onDon
 
 export function LabelMenu({ s, ids, current }: { s: AppState; ids: string[]; current?: string[] }) {
   return (
-    <Menu label={t('act.labelAs')} button={<CIcon name="label" />}>
+    <Menu label={t('act.labelAs')} button={<CIcon name="label" />} shortcut="l">
       {(close) => (
         <>
           <div class="pop-h">{t('act.labelAs')}</div>
@@ -151,7 +151,7 @@ export function LabelMenu({ s, ids, current }: { s: AppState; ids: string[]; cur
 
 export function MoveMenu({ s, ids }: { s: AppState; ids: string[] }) {
   return (
-    <Menu label={t('act.moveTo')} button={<CIcon name="move" />}>
+    <Menu label={t('act.moveTo')} button={<CIcon name="move" />} shortcut="v">
       {(close) => (
         <>
           <div class="pop-h">{t('act.moveTo')}</div>

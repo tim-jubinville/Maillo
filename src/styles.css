@@ -1089,6 +1089,11 @@ textarea.diag-text { width: min(560px, 62vw); height: auto; padding: 10px 12px; 
   box-shadow: 0 4px 14px rgba(20, 33, 61, 0.22); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 [data-mode='dark'] .tip { background: #e7ecf6; color: #14213d; }
+.tip-key {
+  margin-left: 8px; padding: 0 5px; border-radius: 4px; font: inherit; font-size: calc(10.5px * var(--ts, 1)); font-weight: 600;
+  background: rgba(255, 255, 255, 0.16); color: rgba(255, 255, 255, 0.78);
+}
+[data-mode='dark'] .tip-key { background: rgba(20, 33, 61, 0.1); color: rgba(20, 33, 61, 0.72); }
 
 /* Contacts panel */
 .ct-search { position: relative; display: flex; align-items: center; }

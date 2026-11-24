@@ -12,6 +12,13 @@ function labelOf(el: HTMLElement): string {
   return (el.getAttribute('aria-label') || el.dataset.tipTitle || '').trim();
 }
 
+/** Attributes for a button's keyboard shortcut, written as in the shortcuts sheet ("e", "Shift + u"). */
+export function keyProps(key?: string): Record<string, string> {
+  if (!key) return {};
+  const aria = key.split(' + ').map((p, i, a) => (i === a.length - 1 && p.length === 1 ? p.toUpperCase() : p)).join('+');
+  return { 'data-key': key, 'aria-keyshortcuts': aria };
+}
+
 function iconOnly(el: HTMLElement): boolean {
   return !(el.textContent ?? '').trim() && !!el.querySelector('svg, img');
 }
@@ -48,6 +55,13 @@ function show(el: HTMLElement) {
     document.body.appendChild(tip);
   }
   tip.textContent = text;
+  const key = el.dataset.key;
+  if (key && getPrefs().shortcuts) {
+    const k = document.createElement('kbd');
+    k.className = 'tip-key';
+    k.textContent = key;
+    tip.append(k);
+  }
   tip.hidden = false;
   const r = el.getBoundingClientRect();
   const w = tip.offsetWidth;

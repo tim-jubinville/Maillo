@@ -345,18 +345,18 @@ function bulkItems(s: AppState, route: MailRoute, sel: string[]): BarItem[] {
       : folder === 'trash'
         ? [{ id: 'restore', group: 1, prio: 10, w: 96, label: t('act.restore'), icon: 'inbox' as const, text: true, run: () => actions.restore(sel) }]
         : [
-            { id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, run: () => actions.archive(sel) },
-            { id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, run: () => actions.spam(sel) },
-            { id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, run: () => actions.trash(sel) },
+            { id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, key: 'e', run: () => actions.archive(sel) },
+            { id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, key: '!', run: () => actions.spam(sel) },
+            { id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, key: '#', run: () => actions.trash(sel) },
             ...PILES.map((p, i) => {
               const inPile = selRows.length > 0 && selRows.every((r) => pileOf(r.labelIds) === p);
               return inPile
-                ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: PILE_ICON[p], pressed: true, run: () => actions.unpin(sel, true) }
-                : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], pressed: false, run: () => actions.pin(p, sel) };
+                ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: PILE_ICON[p], key: (p === 'aside' ? 'p' : 't'), pressed: true, run: () => actions.unpin(sel, true) }
+                : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], key: (p === 'aside' ? 'p' : 't'), pressed: false, run: () => actions.pin(p, sel) };
             })
           ]),
-    { id: 'read', group: 2, prio: 7, w: 38, label: anyUnread ? t('act.markRead') : t('act.markUnread'), icon: anyUnread ? 'read' : 'unread', run: () => actions.read(sel, anyUnread) },
-    { id: 'star', group: 2, prio: 5.5, w: 38, label: t('list.star'), icon: 'starred', run: () => actions.star(sel, true) },
+    { id: 'read', group: 2, prio: 7, w: 38, label: anyUnread ? t('act.markRead') : t('act.markUnread'), icon: anyUnread ? 'read' : 'unread', key: anyUnread ? 'Shift + i' : 'Shift + u', run: () => actions.read(sel, anyUnread) },
+    { id: 'star', group: 2, prio: 5.5, w: 38, label: t('list.star'), icon: 'starred', key: 's', run: () => actions.star(sel, true) },
     { id: 'important', group: 2, prio: 3, w: 38, label: t('act.markImportant'), icon: 'important', run: () => actions.important(sel, true) },
     { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move', menu: <MoveMenu s={s} ids={sel} />, sub: (close) => <MoveList s={s} ids={sel} onDone={close} /> },
     { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label', menu: <LabelMenu s={s} ids={sel} />, sub: (close) => <LabelList s={s} ids={sel} onDone={close} /> }

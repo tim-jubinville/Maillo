@@ -6,6 +6,7 @@ import type { Address } from '../gmail/mime';
 import { avatarColor, initials } from '../model';
 import { getState, personName } from '../store';
 import { ribbonMotion } from './ribbonMotion';
+import { keyProps } from '../tooltip';
 
 /** The built-in app icon. `dark` forces one variant; otherwise it follows the colour mode. */
 export function AppIcon({ size = 30, dark }: { size?: number; dark?: boolean }) {
@@ -154,7 +155,8 @@ export function Menu({
   align = 'left',
   class: cls = 'ib',
   style,
-  hover
+  hover,
+  shortcut
 }: {
   button: ComponentChildren;
   label: string;
@@ -164,6 +166,8 @@ export function Menu({
   style?: Record<string, string>;
   /** Also open while the pointer rests on it (devices with hover only). */
   hover?: boolean;
+  /** Keyboard shortcut, shown small in the tooltip. */
+  shortcut?: string;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -184,7 +188,7 @@ export function Menu({
     : {};
   return (
     <div class="menu-wrap" ref={ref} {...hoverProps}>
-      <button class={cls} style={style} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button class={cls} style={style} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} {...keyProps(shortcut)} onClick={() => setOpen(!open)}>
         {button}
       </button>
       {open && (

@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { Menu } from './common';
 import { Icon } from './Icon';
+import { keyProps } from '../tooltip';
 
 /** One ribbon action. Items that don't fit move into the "…" menu, lowest `prio` first. */
 export interface BarItem {
@@ -15,6 +16,8 @@ export interface BarItem {
   label: string;
   icon: ColorIconName;
   text?: boolean;
+  /** Keyboard shortcut, shown small in the tooltip. */
+  key?: string;
   /** Shown pressed in; clicking it again undoes it (e.g. take a conversation out of a pile). */
   pressed?: boolean;
   run?: () => void;
@@ -66,7 +69,7 @@ export function BarButtons({ items, shown }: { items: BarItem[]; shown: Set<stri
             {i.menu ?? (i.text ? (
               <button class="btn sm" onClick={i.run}>{i.label}</button>
             ) : (
-              <button class={`ib ${i.pressed ? 'pressed' : ''}`} aria-label={i.label} title={i.label} aria-pressed={i.pressed === undefined ? undefined : i.pressed} onClick={i.run}><CIcon name={i.icon} /></button>
+              <button class={`ib ${i.pressed ? 'pressed' : ''}`} aria-label={i.label} title={i.label} aria-pressed={i.pressed === undefined ? undefined : i.pressed} {...keyProps(i.key)} onClick={i.run}><CIcon name={i.icon} /></button>
             ))}
           </>
         );

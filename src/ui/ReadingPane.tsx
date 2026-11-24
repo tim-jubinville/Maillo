@@ -18,6 +18,7 @@ import { requestSummary, SummarizeButton, SummaryCard } from './AiSummary';
 import { LabelList, LabelMenu, MoveList, MoveMenu } from './Menus';
 import { MessageBody } from './MessageBody';
 import { PILE_ICON, pileKey } from './Piles';
+import { keyProps } from '../tooltip';
 
 const TINTS: [RegExp, string][] = [
   [/pdf/, '#EE8F78'],
@@ -163,21 +164,21 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
             : inTrash
               ? [{ id: 'restore', group: 1, prio: 10, w: 96, label: t('act.restore'), icon: 'inbox' as const, text: true, run: () => actions.restore(id) }]
               : pile
-                ? [{ id: 'done', group: 1, prio: 10, w: 38, label: t('act.asideDone'), icon: 'archive' as const, run: () => actions.unpin(id, false) }]
+                ? [{ id: 'done', group: 1, prio: 10, w: 38, label: t('act.asideDone'), icon: 'archive' as const, key: 'e', run: () => actions.unpin(id, false) }]
                 : inInbox
-                  ? [{ id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, run: () => actions.archive(id) }]
+                  ? [{ id: 'archive', group: 1, prio: 10, w: 38, label: t('act.archive'), icon: 'archive' as const, key: 'e', run: () => actions.archive(id) }]
                   : [{ id: 'inbox', group: 1, prio: 10, w: 38, label: t('act.moveInbox'), icon: 'inbox' as const, run: () => actions.moveToInbox(id) }]),
-          ...(!inSpam ? [{ id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, run: () => actions.spam(id) }] : []),
-          ...(!inTrash ? [{ id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, run: () => actions.trash(id) }] : []),
+          ...(!inSpam ? [{ id: 'spam', group: 1, prio: 6, w: 38, label: t('act.spam'), icon: 'spam' as const, key: '!', run: () => actions.spam(id) }] : []),
+          ...(!inTrash ? [{ id: 'trash', group: 1, prio: 9, w: 38, label: t('act.delete'), icon: 'trash' as const, key: '#', run: () => actions.trash(id) }] : []),
           ...(!inSpam && !inTrash
             ? PILES.map((p, i) =>
                 pile === p
-                  ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: PILE_ICON[p], pressed: true, run: () => actions.unpin(id, true) }
-                  : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], pressed: false, run: () => actions.pin(p, id) }
+                  ? { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.unpin.aside' : 'act.unpin.action'), icon: PILE_ICON[p], key: (p === 'aside' ? 'p' : 't'), pressed: true, run: () => actions.unpin(id, true) }
+                  : { id: `pile-${p}`, group: 2, prio: 8.5 - i * 0.2, w: 38, label: t(p === 'aside' ? 'act.pin.aside' : 'act.pin.action'), icon: PILE_ICON[p], key: (p === 'aside' ? 'p' : 't'), pressed: false, run: () => actions.pin(p, id) }
               )
             : []),
-          ...(notesEnabled && !note ? [{ id: 'note', group: 2, prio: 7.5, w: 38, label: t('act.addNote'), icon: 'note' as const, run: () => setState({ noteEditing: o.id }) }] : []),
-          { id: 'unread', group: 2, prio: 7, w: 38, label: t('act.markUnread'), icon: 'unread' as const, run: () => actions.read(id, false) },
+          ...(notesEnabled && !note ? [{ id: 'note', group: 2, prio: 7.5, w: 38, label: t('act.addNote'), icon: 'note' as const, key: 'n', run: () => setState({ noteEditing: o.id }) }] : []),
+          { id: 'unread', group: 2, prio: 7, w: 38, label: t('act.markUnread'), icon: 'unread' as const, key: 'Shift + u', run: () => actions.read(id, false) },
           ...(config.features.tasks ? [{ id: 'tasks', group: 2, prio: 3, w: 38, label: t('act.addTask'), icon: 'tasks' as const, run: () => actions.addTask(o.id) }] : []),
           { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move' as const, menu: <MoveMenu s={s} ids={id} />, sub: (close) => <MoveList s={s} ids={id} onDone={close} /> },
           { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label' as const, menu: <LabelMenu s={s} ids={id} current={o.labelIds} />, sub: (close) => <LabelList s={s} ids={id} current={o.labelIds} onDone={close} /> },
@@ -542,15 +543,15 @@ function RibbonBar({
     <div class="toolbar nowrap" data-bar="thread" ref={bar}>
       {showBack && (
         <>
-          <button class="ib rb-back" aria-label={t('act.back')} title={t('act.back')} onClick={closeThread}><Icon name="arrowLeft" /></button>
+          <button class="ib rb-back" aria-label={t('act.back')} title={t('act.back')} {...keyProps('u')} onClick={closeThread}><Icon name="arrowLeft" /></button>
           <span class="sep rb-back" />
         </>
       )}
       <BarButtons items={items} shown={shown} />
       <MoreMenu hidden={hidden} more={more} />
       <span class="range">{showPos ? position : ''}</span>
-      <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={!canPrev} onClick={onPrev}><Icon name="chevLeft" /></button>
-      <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!canNext} onClick={onNext}><Icon name="chevRight" /></button>
+      <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} {...keyProps('k')} disabled={!canPrev} onClick={onPrev}><Icon name="chevLeft" /></button>
+      <button class="ib" aria-label={t('list.older')} title={t('list.older')} {...keyProps('j')} disabled={!canNext} onClick={onNext}><Icon name="chevRight" /></button>
     </div>
   );
 }
