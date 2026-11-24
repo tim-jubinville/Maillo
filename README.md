@@ -96,9 +96,11 @@ Some Gmail features are not available to third-party apps through the Gmail API:
 
 See [docs/INSTALL.md](docs/INSTALL.md). In short:
 
-1. Create an OAuth Client ID in Google Cloud.
-2. Fill in `maillo-config.php` from the release zip: your Client ID and who may sign in. It's the only file to edit.
-3. Upload the files to your web server and open the address. If anything is missing, Maillo shows a checklist.
+1. Upload the files from the release zip to your web server and open the address.
+2. Click **Set up here**. Maillo walks you through creating an OAuth Client ID in Google Cloud, with a link to each page, then fills in `maillo-config.php` for you and removes the setup files.
+3. Sign in with Google.
+
+Prefer doing it by hand? Fill in `maillo-config.php` yourself (your Client ID and who may sign in) before uploading. If anything is missing, Maillo shows a checklist.
 
 Installs made before 0.6.9 use `config.js`, which Maillo no longer reads: move your settings to `maillo-config.php` before updating (see INSTALL.md).
 

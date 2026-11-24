@@ -6,7 +6,30 @@ Maillo is a web app with a few small PHP files on the server side. You need:
 - An address for it, such as `https://mail.example.com`
 - A Google account with Gmail, and access to [Google Cloud Console](https://console.cloud.google.com/)
 
-The setup takes about 20 minutes.
+The setup takes about 20 minutes. There are two ways to do it:
+
+- **Guided (easiest).** Upload the files (step 5), open your address, and click **Set up here**. Maillo walks you through Google Cloud with a button for each page you need, then fills in `maillo-config.php` for you. See [Guided setup](#guided-setup) below.
+- **By hand.** Follow steps 1 to 6. Use this if your host doesn't let Maillo write to its folder, or to change settings later.
+
+## Guided setup
+
+1. Upload the contents of the `maillo-x.y.z` folder to your site (see [step 5](#5-upload-the-files)). You don't need to edit anything first.
+2. Open your address. While Maillo isn't configured, it shows a checklist with a **Set up here** button.
+
+   <img src="img/setup-checklist.webp" alt="Maillo's setup checklist, with the Set up here button" width="420">
+
+3. Follow the five steps. Each one has a button that opens the right Google Cloud page in a new tab. The Client ID step shows the exact address to give Google, with a Copy button.
+
+   <img src="img/setup-client-id.webp" alt="The Client ID step: create a client, copy the address, paste the Client ID" width="465">
+
+4. Choose who can sign in and any extras (Calendar, Tasks, contact photos, Stickies, settings sync), each with a link to turn on its Google API.
+5. **Confirm it's your server.** Open `maillo-setup-code.php` in your hosting file manager, next to `index.html`, and type the code written in it. This stops anyone else from setting up your install before you do. Five wrong codes lock setup for 15 minutes.
+
+   <img src="img/setup-code.webp" alt="The last step: type the setup code from maillo-setup-code.php" width="465">
+
+6. Click **Finish setup**. Maillo writes `maillo-config.php` (keeping its comments), deletes `setup.php` and the code file, and takes you to sign-in.
+
+Setup from the browser only works while `maillo-config.php` has no Client ID or allowed accounts, and only if Maillo can write to its folder. Once it's done, `setup.php` is gone for good: updates bring it back, but the updater removes it again on an install that's already set up. AI and instant notifications need a little more setup, described below. Every setting can be changed later in `maillo-config.php`.
 
 ---
 
@@ -113,7 +136,7 @@ index.html
 maillo-config.php
 config.php
 .htaccess
-update.php  session.php  ai.php  maillo-common.php
+update.php  session.php  ai.php  push.php  setup.php  maillo-common.php
 manifest.webmanifest
 sw.js
 assets/
