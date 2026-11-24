@@ -3,7 +3,7 @@ import { config } from '../config';
 import type { CalendarEvent } from '../gmail/types';
 import { t } from '../i18n';
 import { api } from '../store';
-import { Icon } from './Icon';
+import { CIcon } from './ColorIcons';
 import { joinLink } from './SidePanel';
 
 const BEFORE = 15 * 60_000; // show from 15 minutes before the start…
@@ -80,14 +80,14 @@ export function CallBadge() {
       rel="noopener noreferrer"
       aria-label={label}
       title={label}
-      style={{ '--ec': call.e.color ?? 'var(--c-inbox)' }}
     >
-      <Icon name="video" size={16} />
+      <span class="call-ic" aria-hidden="true"><CIcon name="meet" size={18} /></span>
       <span class="call-txt">
         <b>{t('panel.join')}</b>
+        {call.e.color && <span class="call-dot" style={{ background: call.e.color }} aria-hidden="true" />}
         <span class="call-name">{name}</span>
-        <span class="call-when">{when}</span>
       </span>
+      <span class="call-when">{when}</span>
     </a>
   );
 }
