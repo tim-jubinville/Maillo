@@ -194,6 +194,9 @@ if ($action === 'generate') {
     if ($code === 429) {
         fail(429, 'gemini_quota');
     }
+    if ($code === 402) {
+        fail(402, 'gemini_billing');
+    }
     if ($code === 400 || $code === 401 || $code === 403 || $code === 404) {
         $why = is_array($res) ? (string) ($res['error']['message'] ?? $res['error']['status'] ?? '') : '';
         fail(424, 'gemini_rejected', ['detail' => function_exists('mb_substr') ? mb_substr($why, 0, 240) : substr($why, 0, 240)]);
