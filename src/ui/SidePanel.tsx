@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { config } from '../config';
 import type { CalendarEvent, KeepNote, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
+import { getPrefs, setPrefs } from '../prefs';
 import { api, toast, type AppState } from '../store';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { ContactsPanel } from './ContactsPanel';
@@ -75,6 +76,7 @@ function joinLink(e: CalendarEvent): string | undefined {
 
 function Calendar() {
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
+  const [view, setView] = useState(getPrefs().calView);
   useEffect(() => {
     if (!config.features.calendar && !config.demo) return;
     api.todayEvents().then(setEvents).catch((e) => toast(t('toast.error', { msg: e.message })));
@@ -86,32 +88,168 @@ function Calendar() {
       </PanelEmpty>
     );
   const today = new Date().toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' });
+  const pick = (v: 'list' | 'day') => {
+    setView(v);
+    setPrefs({ calView: v });
+  };
   return (
     <>
-      <span class="caps">{t('panel.today')} · {today}</span>
+      <div class="cal-top">
+        <span class="caps">{t('panel.today')} · {today}</span>
+        <div class="cal-views" role="radiogroup" aria-label={t('panel.calView')}>
+          {(['list', 'day'] as const).map((v) => {
+            const label = v === 'list' ? t('panel.calList') : t('panel.calDay');
+            return (
+              <button type="button" role="radio" aria-checked={view === v} aria-label={label} title={label} onClick={() => pick(v)}>
+                <Icon name={v === 'list' ? 'list' : 'calendar'} size={15} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
       {events === null && <div class="skeleton" style={{ margin: 0 }} />}
       {events?.length === 0 && <PanelEmpty icon="calendar" title={t('panel.noEvents')} sub={t('empty.calSub')} />}
-      {events?.map((e) => {
-        const join = joinLink(e);
-        const ended = !!e.end?.dateTime && new Date(e.end.dateTime).getTime() < Date.now();
-        return (
-          <div class={`pcard ev ${ended ? 'past' : ''}`} style={{ '--ec': e.color ?? 'var(--c-inbox)' }}>
-            <span class="bar" />
-            <a class="ev-main" href={e.htmlLink ?? config.links.calendar} target="_blank" rel="noopener noreferrer">
-              <b>{e.summary || t('panel.noTitle')}</b>
-              <span>{time(e)}</span>
-            </a>
-            {join && !ended && (
-              <a class="ev-join" href={join} target="_blank" rel="noopener noreferrer" aria-label={t('panel.joinCall', { name: e.summary || t('panel.noTitle') })}>
-                <Icon name="video" size={14} />
-                {t('panel.join')}
-              </a>
-            )}
-          </div>
-        );
-      })}
+      {!!events?.length && (view === 'day' ? <DayView events={events} /> : events.map((e) => <EventCard e={e} />))}
       <OpenLink name={t('panel.calendar')} href={config.links.calendar} />
     </>
+  );
+}
+
+function EventCard({ e }: { e: CalendarEvent }) {
+  const join = joinLink(e);
+  const ended = !!e.end?.dateTime && new Date(e.end.dateTime).getTime() < Date.now();
+  return (
+    <div class={`pcard ev ${ended ? 'past' : ''}`} style={{ '--ec': e.color ?? 'var(--c-inbox)' }}>
+      <span class="bar" />
+      <a class="ev-main" href={e.htmlLink ?? config.links.calendar} target="_blank" rel="noopener noreferrer">
+        <b>{e.summary || t('panel.noTitle')}</b>
+        <span>{time(e)}</span>
+      </a>
+      {join && !ended && (
+        <a class="ev-join" href={join} target="_blank" rel="noopener noreferrer" aria-label={t('panel.joinCall', { name: e.summary || t('panel.noTitle') })}>
+          <Icon name="video" size={14} />
+          {t('panel.join')}
+        </a>
+      )}
+    </div>
+  );
+}
+
+/** Minutes since local midnight, clamped to today. */
+function minutesOf(iso: string | undefined, day: Date, fallback: number) {
+  if (!iso) return fallback;
+  const m = (new Date(iso).getTime() - day.getTime()) / 60_000;
+  return Math.max(0, Math.min(1440, m));
+}
+
+interface Placed {
+  e: CalendarEvent;
+  top: number;
+  end: number;
+  col: number;
+  cols: number;
+}
+
+/** Side by side columns for events that overlap, like Google Calendar's day view. */
+function place(events: CalendarEvent[], day: Date): Placed[] {
+  const items = events
+    .map((e) => {
+      const top = minutesOf(e.start?.dateTime, day, 0);
+      // Very short events still get room for their title.
+      return { e, top, end: Math.max(minutesOf(e.end?.dateTime, day, top + 30), top + 20), col: 0, cols: 1 };
+    })
+    .sort((a, b) => a.top - b.top || b.end - a.end);
+  let group: Placed[] = [];
+  let groupEnd = -1;
+  const close = () => {
+    const n = Math.max(...group.map((g) => g.col)) + 1;
+    group.forEach((g) => (g.cols = n));
+    group = [];
+  };
+  for (const it of items) {
+    if (group.length && it.top >= groupEnd) close();
+    const taken = new Set(group.filter((g) => g.end > it.top).map((g) => g.col));
+    let col = 0;
+    while (taken.has(col)) col++;
+    it.col = col;
+    group.push(it);
+    groupEnd = Math.max(groupEnd, it.end);
+  }
+  if (group.length) close();
+  return items;
+}
+
+const HOUR_PX = 44;
+
+function DayView({ events }: { events: CalendarEvent[] }) {
+  const day = new Date();
+  day.setHours(0, 0, 0, 0);
+  const [now, setNow] = useState(() => (Date.now() - day.getTime()) / 60_000);
+  useEffect(() => {
+    const id = window.setInterval(() => setNow((Date.now() - day.getTime()) / 60_000), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const allDay = events.filter((e) => e.start?.date);
+  const timed = place(events.filter((e) => !e.start?.date), day);
+  // Show working hours, widened to fit the day's events and the current time.
+  const first = Math.min(8, ...timed.map((p) => Math.floor(p.top / 60)), Math.floor(now / 60));
+  const last = Math.max(18, ...timed.map((p) => Math.ceil(p.end / 60)), Math.ceil(now / 60 + 0.01));
+  const from = Math.max(0, first);
+  const to = Math.min(24, last);
+  const hours = Array.from({ length: to - from }, (_, i) => from + i);
+  const y = (min: number) => `calc(${((min - from * 60) / 60) * HOUR_PX}px * var(--ts, 1))`;
+  const loc = locale();
+  const hourLabel = (h: number) => {
+    const d = new Date(day);
+    d.setHours(h);
+    return d.toLocaleTimeString(loc, { hour: 'numeric' });
+  };
+  return (
+    <div class="dayv">
+      {allDay.length > 0 && (
+        <div class="dayv-allday">
+          <span class="dayv-lbl">{t('panel.allDay')}</span>
+          <div>
+            {allDay.map((e) => (
+              <a class="dayv-chip" style={{ '--ec': e.color ?? 'var(--c-inbox)' }} href={e.htmlLink ?? config.links.calendar} target="_blank" rel="noopener noreferrer">
+                {e.summary || t('panel.noTitle')}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      <div class="dayv-grid" style={{ height: y(to * 60) }}>
+        {hours.map((h) => (
+          <div class="dayv-hour" style={{ top: y(h * 60) }}>
+            <span>{hourLabel(h)}</span>
+          </div>
+        ))}
+        <div class="dayv-events">
+          {timed.map(({ e, top, end, col, cols }) => {
+            const join = joinLink(e);
+            const ended = end <= now;
+            const short = end - top < 45;
+            return (
+              <div
+                class={`dayv-ev ${ended ? 'past' : ''} ${short ? 'short' : ''}`}
+                style={{ '--ec': e.color ?? 'var(--c-inbox)', top: y(top), height: `calc(${y(end)} - ${y(top)} - 2px)`, left: `${(col / cols) * 100}%`, width: `calc(${100 / cols}% - 2px)` }}
+              >
+                <a class="dayv-main" href={e.htmlLink ?? config.links.calendar} target="_blank" rel="noopener noreferrer">
+                  <b>{e.summary || t('panel.noTitle')}</b>
+                  <span>{time(e)}</span>
+                </a>
+                {join && !ended && (
+                  <a class="dayv-join" href={join} target="_blank" rel="noopener noreferrer" aria-label={t('panel.joinCall', { name: e.summary || t('panel.noTitle') })} title={t('panel.join')}>
+                    <Icon name="video" size={13} />
+                  </a>
+                )}
+              </div>
+            );
+          })}
+          {now >= from * 60 && now <= to * 60 && <div class="dayv-now" style={{ top: y(now) }} aria-hidden="true" />}
+        </div>
+      </div>
+    </div>
   );
 }
 

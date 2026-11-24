@@ -10,7 +10,7 @@ const STAMP_KEY = 'maillo.prefs.updated';
 const LANG_KEY = 'maillo.lang';
 
 /** Settings that belong to one device (screen size, its own notifications) and never sync. */
-const LOCAL: (keyof Prefs)[] = ['layout', 'panel', 'sidebarCollapsed', 'textScale'];
+const LOCAL: (keyof Prefs)[] = ['layout', 'panel', 'sidebarCollapsed', 'textScale', 'calView'];
 const LOCAL_NOTIFY: (keyof NotifyPrefs)[] = ['enabled'];
 
 export const syncEnabled = () => config.features.syncSettings || config.demo;
