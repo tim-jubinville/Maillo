@@ -699,7 +699,7 @@ function AiSettings() {
       setTest(t('ai.testOk', { reply: reply.trim().slice(0, 40) }));
       load();
     } catch (e) {
-      setError(aiError(e instanceof Error ? e.message : 'network'));
+      setError(e instanceof AiError ? aiErrorText(e.message, e.detail) : aiError('network'));
     } finally {
       setBusy(false);
     }

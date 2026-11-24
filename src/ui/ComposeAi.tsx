@@ -81,7 +81,7 @@ function select(root: HTMLElement, r: Range) {
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const errorOf = (e: unknown) => aiErrorText(e instanceof AiError ? e.message : 'unavailable');
+const errorOf = (e: unknown) => (e instanceof AiError ? aiErrorText(e.message, e.detail) : aiErrorText('unavailable'));
 
 // ---------- Proofread ----------
 

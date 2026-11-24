@@ -12,6 +12,11 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     exit;
 }
 
+// Answers are JSON: a PHP warning or deprecation notice printed before them (hosts often have
+// display_errors on) would make them unreadable. Errors still go to the server's error log.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 function out(int $code, array $data): void
 {
     http_response_code($code);
