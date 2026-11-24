@@ -566,6 +566,26 @@ async function loadUserInfo() {
 function onHash() {
   const prev = state.route;
   const next = parseHash();
+  // Phones: opening or closing a conversation slides like a native mail app (push and pop).
+  const d = document as Document & { startViewTransition?: (cb: () => Promise<void>) => { finished: Promise<void> } };
+  const sliding =
+    !!d.startViewTransition &&
+    state.phase === 'ready' &&
+    prev.view === 'mail' &&
+    next.view === 'mail' &&
+    !prev.thread !== !next.thread &&
+    window.matchMedia('(max-width: 900px) and (prefers-reduced-motion: no-preference)').matches;
+  if (!sliding) return applyHash(prev, next);
+  const root = document.documentElement;
+  root.dataset.slide = next.thread ? 'push' : 'pop';
+  d.startViewTransition!(async () => {
+    applyHash(prev, next);
+    // Let Preact render the new view before the transition takes its picture.
+    await new Promise((r) => setTimeout(r, 0));
+  }).finished.finally(() => delete root.dataset.slide);
+}
+
+function applyHash(prev: Route, next: Route) {
   setState({ route: next, sidebarOpen: false, showKeys: false, sheet: undefined });
   if (state.phase !== 'ready' || next.view !== 'mail') return;
   if (prev.view !== 'mail' || listHash(prev) !== listHash(next)) {

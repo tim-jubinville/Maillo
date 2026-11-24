@@ -1326,3 +1326,20 @@ body.resizing iframe { pointer-events: none; }
 .sp.peeking { background: var(--surface); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.12); }
 @keyframes peek-in { from { opacity: 0; transform: translateX(10px) scale(0.94); filter: blur(4px); } }
 @media (prefers-reduced-motion: reduce) { .peek { animation: none; } }
+
+/* Phones: opening a conversation pushes it in from the right; closing pops it back out (see onHash). */
+@media (max-width: 900px) {
+  .header { view-transition-name: header; }
+  .compose-fab { view-transition-name: fab; }
+  .pile-wrap { view-transition-name: piles; }
+  ::view-transition-group(root) { animation-duration: 0.36s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.36s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); mix-blend-mode: normal; }
+  [data-slide='push']::view-transition-old(root) { animation-name: slide-under-out; }
+  [data-slide='push']::view-transition-new(root) { animation-name: slide-in-right; box-shadow: -12px 0 32px rgba(15, 22, 38, 0.18); }
+  [data-slide='pop']::view-transition-old(root) { animation-name: slide-out-right; z-index: 1; box-shadow: -12px 0 32px rgba(15, 22, 38, 0.18); }
+  [data-slide='pop']::view-transition-new(root) { animation-name: slide-under-in; }
+}
+@keyframes slide-in-right { from { transform: translateX(100%); } }
+@keyframes slide-out-right { to { transform: translateX(100%); } }
+@keyframes slide-under-out { to { transform: translateX(-28%); filter: brightness(0.92); } }
+@keyframes slide-under-in { from { transform: translateX(-28%); filter: brightness(0.92); } }
