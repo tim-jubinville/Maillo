@@ -203,11 +203,11 @@ Browser-only sign-in lasts one hour, after which Google asks again. With `sessio
 3. Put it in `googleClientSecret` in `maillo-config.php`. Or sign in, open **Settings → Accounts & signatures → Stay signed in**, paste the secret and click **Save**: Maillo checks it with Google, then stores it in `.maillo-oauth.php` on the server (never served, backed up or replaced by updates). A `GOOGLE_CLIENT_SECRET` environment variable also works. If more than one is set, `maillo-config.php` wins, then the environment variable.
 4. Sign out and sign in again on each device. Google shows its consent screen once per device.
 
-**Keeping the key apart (optional).** Refresh tokens are encrypted with a key that `session.php` keeps in `.maillo-oauth.php`, next to them. To keep it elsewhere, set a `MAILLO_SESSION_KEY` environment variable in your hosting panel (best, since it lives outside the web folder) or `sessionKey` in `maillo-config.php`, to 32 random bytes in base64 (`php -r "echo base64_encode(random_bytes(32));"`). Changing the key signs every device out once.
-
 How it works: signing in hands `session.php` a one-time code. It trades it for a Google refresh token, which stays on the server, encrypted (AES-256-GCM, key in `.maillo-oauth.php`) in `.maillo-sessions/`. The browser gets only an HttpOnly, SameSite=Strict cookie and asks `session.php` for a fresh one-hour access token when it needs one, so notifications also keep working in the background. Sessions end when you sign out, after 180 days without use, when the account is removed from `allowedAccounts`/`allowedDomains`, or when access is revoked at [myaccount.google.com/permissions](https://myaccount.google.com/permissions). Removing the secret in Settings ends every session.
 
 If your consent screen is in **Testing** (External user type), Google expires refresh tokens after 7 days; publish the app or use the Internal user type to avoid that. Needs PHP's OpenSSL extension (standard).
+
+**Keeping the key apart (optional).** Refresh tokens are encrypted with a key that `session.php` keeps in `.maillo-oauth.php`, next to them. To keep it elsewhere, set a `MAILLO_SESSION_KEY` environment variable in your hosting panel (best, since it lives outside the web folder) or `sessionKey` in `maillo-config.php`, to 32 random bytes in base64 (`php -r "echo base64_encode(random_bytes(32));"`). Changing the key signs every device out once.
 
 ## Optional: new mail within seconds, and notifications while Maillo is closed
 
