@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { config } from '../config';
 import type { CalendarEvent, KeepNote, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
-import { api, setState, toast, type AppState } from '../store';
+import { api, toast, type AppState } from '../store';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { ContactsPanel } from './ContactsPanel';
 import { Icon } from './Icon';
@@ -14,9 +14,6 @@ export function SidePanel({ s }: { s: AppState }) {
     <aside class="panel" aria-label={titles[p]}>
       <div class="panel-head">
         <span style={{ flex: 1 }}>{titles[p]}</span>
-        <button class="ib" aria-label={t('panel.close')} onClick={() => setState({ panel: undefined })}>
-          <Icon name="x" />
-        </button>
       </div>
       <div class="panel-body">
         {p === 'calendar' && <Calendar />}
