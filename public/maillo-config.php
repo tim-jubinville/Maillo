@@ -104,6 +104,11 @@ return [
         'gmailSettings' => 'https://mail.google.com/mail/u/0/#settings/general',
     ],
 
+    // Twice a day at most, the server asks GitHub whether a newer Maillo release is out, so
+    // Settings can offer it as a one-click update. false turns the check off: GitHub then never
+    // hears from this install, and updates are by uploading a release zip.
+    'updateCheck' => true,
+
     // Set to true to try the interface with sample data and no Google sign-in.
     'demo' => false,
 
