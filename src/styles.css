@@ -1137,8 +1137,11 @@ body.resizing iframe { pointer-events: none; }
   .search { width: 40px; height: 40px; padding: 0; margin-left: auto; justify-content: center; cursor: pointer; transition: width 0.22s ease, background-color 0.18s; }
   .search .kbd { display: none; }
   .search input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  /* iOS zooms into fields with text under 16 px when they get focus. */
+  /* iOS zooms into any field with text under 16 px when it gets focus. */
   .search input { font-size: max(16px, calc(15px * var(--ts, 1))); }
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color']), textarea, select, [contenteditable='true'], [contenteditable=''] {
+    font-size: max(16px, calc(14px * var(--ts, 1))) !important;
+  }
   .search > .ib { display: none; }
   .search:focus-within { position: absolute; z-index: 70; top: 50%; right: 10px; transform: translateY(-50%); width: calc(100% - 20px); margin: 0; padding: 0 6px 0 14px; justify-content: flex-start; }
   .search:focus-within input { position: static; opacity: 1; cursor: text; }
