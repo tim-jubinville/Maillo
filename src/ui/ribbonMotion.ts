@@ -4,7 +4,7 @@
  */
 
 const SPRING = 'cubic-bezier(0.3, 1.3, 0.5, 1)';
-const ITEMS = ':scope > button, :scope > .sep, :scope > .sel-n, :scope > .cb, :scope > * > button, :scope > * > .sep, :scope > * > .sel-n, :scope > * > .cb';
+const ITEMS = 'button, .sep, .sel-n, .cb, .count';
 
 // The last ribbon of each kind that went away, so its replacement can morph from it instead of flowing in anew.
 const gone = new Map<string, { rect: DOMRect; sig: Set<string>; at: number }>();
@@ -12,7 +12,10 @@ const gone = new Map<string, { rect: DOMRect; sig: Set<string>; at: number }>();
 const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 function items(el: HTMLElement): HTMLElement[] {
-  return [...el.querySelectorAll<HTMLElement>(ITEMS)].filter((x) => !x.closest('.pop') && x.offsetParent !== null);
+  // Every visible control, however deeply BarItems nests it, but not the parts inside a button or an open menu.
+  return [...el.querySelectorAll<HTMLElement>(ITEMS)].filter(
+    (x) => !x.closest('.pop') && !x.parentElement?.closest('button') && x.offsetParent !== null
+  );
 }
 
 function keyOf(x: HTMLElement): string {

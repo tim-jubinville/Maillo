@@ -253,7 +253,7 @@ export function Ribbon({ children, label, bottom, inline, class: cls = '' }: { c
       parent.style.removeProperty(prop);
     };
   }, []);
-  useLayoutEffect(() => (ref.current ? ribbonMotion(ref.current, bottom ? 'bottom' : 'ribbon') : undefined), []);
+  useLayoutEffect(() => (ref.current ? ribbonMotion(ref.current, bottom ? 'bottom' : cls.split(' ')[0] || 'ribbon') : undefined), []);
   return (
     <div class={`ribbon ${bottom ? 'bottom' : ''} ${inline ? 'inline' : ''} ${cls}`} ref={ref} role="group" aria-label={label}>
       {children}
