@@ -605,6 +605,17 @@ if (isset($_GET['key'])) {
     http_response_code(204);
     if (function_exists('fastcgi_finish_request')) {
         fastcgi_finish_request();
+    } elseif (function_exists('litespeed_finish_request')) {
+        // LiteSpeed (common on shared hosting) has its own version.
+        litespeed_finish_request();
+    } else {
+        // Anything else: send the empty answer and close the connection before working.
+        header('Content-Length: 0');
+        header('Connection: close');
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        flush();
     }
     if ($email === '' || !is_file(account_file($dir, $email))) {
         exit;

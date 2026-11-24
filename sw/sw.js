@@ -101,7 +101,15 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     all.forEach((c) => c.postMessage({ type: 'maillo:mail' }));
-    if (data.tag !== 'maillo-test' && all.some((c) => c.visibilityState === 'visible')) return;
+    if (data.tag !== 'maillo-test' && all.some((c) => c.visibilityState === 'visible')) {
+      // Every push must show a notification: Safari cancels the subscription after a few that don't, and
+      // Chrome shows its own "updated in the background" one. The open page handles this mail, so show a
+      // silent one and close it straight away.
+      await self.registration.showNotification('Maillo', { tag: 'maillo-live', silent: true });
+      const shown = await self.registration.getNotifications({ tag: 'maillo-live' });
+      shown.forEach((n) => n.close());
+      return;
+    }
     await self.registration.showNotification(data.title || 'Maillo', {
       body: data.body || '',
       tag: data.tag || 'maillo-mail',
