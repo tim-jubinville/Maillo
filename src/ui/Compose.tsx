@@ -135,10 +135,10 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
             <button class="ib sm" aria-label={t('compose.minimize')} title={t('compose.minimize')} onClick={() => updateCompose({ minimized: !c.minimized, maximized: false })}>
               <Icon name={c.minimized ? 'chevUp' : 'minimize'} />
             </button>
-            <button class="ib sm" aria-label={t('compose.popOut')} title={t('compose.popOut')} onClick={() => { syncHtml(true); if (!popOutCompose()) toast(t('compose.popupBlocked')); }}>
+            <button class="ib sm desk-only" aria-label={t('compose.popOut')} title={t('compose.popOut')} onClick={() => { syncHtml(true); if (!popOutCompose()) toast(t('compose.popupBlocked')); }}>
               <Icon name="external" />
             </button>
-            <button class="ib sm" aria-label={t('compose.expand')} title={t('compose.expand')} onClick={() => updateCompose({ maximized: !c.maximized, minimized: false })}>
+            <button class="ib sm desk-only" aria-label={t('compose.expand')} title={t('compose.expand')} onClick={() => updateCompose({ maximized: !c.maximized, minimized: false })}>
               <Icon name="maximize" />
             </button>
           </>

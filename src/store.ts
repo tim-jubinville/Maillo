@@ -119,6 +119,8 @@ export interface AppState {
   compose?: ComposeState;
   toasts: Toast[];
   panel?: PanelId;
+  /** Phones: a side panel app shown full screen, opened from the bottom of the mailbox drawer. Not remembered. */
+  sheet?: PanelId;
   sendAs: GSendAs[];
   showKeys: boolean;
   /** A newer release the server can install, from update.php's daily check. */
@@ -564,7 +566,7 @@ async function loadUserInfo() {
 function onHash() {
   const prev = state.route;
   const next = parseHash();
-  setState({ route: next, sidebarOpen: false, showKeys: false });
+  setState({ route: next, sidebarOpen: false, showKeys: false, sheet: undefined });
   if (state.phase !== 'ready' || next.view !== 'mail') return;
   if (prev.view !== 'mail' || listHash(prev) !== listHash(next)) {
     setState({ selected: new Set(), list: { ...state.list, page: 0, tokens: [undefined] } });
