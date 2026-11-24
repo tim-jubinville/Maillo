@@ -1198,3 +1198,7 @@ body.resizing iframe { pointer-events: none; }
     calc(var(--fr) - var(--c)) 100%, calc(var(--fr) - var(--c)) calc(100% + var(--e)), calc(-1 * var(--e)) calc(100% + var(--e))
   );
 }
+/* A label dragged from the sidebar can be dropped on the open conversation. */
+.readcol.drop-ok::after { content: ''; position: absolute; inset: 8px; border-radius: 16px; pointer-events: none; z-index: 20; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
+.readcol.drop-on::after { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.readcol.drop-ok iframe { pointer-events: none; }
