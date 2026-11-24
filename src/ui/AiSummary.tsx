@@ -13,6 +13,7 @@ interface Entry {
   lastId: string;
   data?: Summary;
   error?: string;
+  detail?: string;
   hidden?: boolean;
 }
 
@@ -39,7 +40,7 @@ async function run(threadId: string, msgs: ParsedMessage[], owner: Address) {
   try {
     entries.set(threadId, { status: 'done', lastId, data: await summarize(msgs, owner) });
   } catch (e) {
-    entries.set(threadId, { status: 'error', lastId, error: e instanceof AiError ? e.message : 'unavailable' });
+    entries.set(threadId, { status: 'error', lastId, error: e instanceof AiError ? e.message : 'unavailable', detail: e instanceof AiError ? e.detail : undefined });
   }
   emit();
 }
@@ -100,7 +101,7 @@ export function SummaryCard({ threadId, msgs, owner }: { threadId: string; msgs:
           </div>
         ) : e.status === 'error' ? (
           <div class="ai-error">
-            <span>{aiErrorText(e.error)}</span>
+            <span>{aiErrorText(e.error, e.detail)}</span>
             <AiButton action="summarize" sm label={t('ai.retry')} onClick={() => run(threadId, msgs, owner)} />
           </div>
         ) : (

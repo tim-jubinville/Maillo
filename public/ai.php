@@ -181,19 +181,28 @@ if ($action === 'generate') {
         $payload['generationConfig']['responseMimeType'] = 'application/json';
     }
     count_use($usageFile, $email);
-    [$code, $res] = http_post_json(
-        'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent',
-        $payload,
-        ['x-goog-api-key: ' . $key]
-    );
+    @set_time_limit(120);
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent';
+    // Low thinking keeps answers quick enough for shared hosts' request time limits. Models that
+    // don't take a thinking level (older ones) refuse it, so ask once more without it.
+    $fast = $payload;
+    $fast['generationConfig']['thinkingConfig'] = ['thinkingLevel' => 'low'];
+    [$code, $res] = http_post_json($url, $fast, ['x-goog-api-key: ' . $key]);
+    if ($code === 400 && stripos(is_array($res) ? (string) ($res['error']['message'] ?? '') : '', 'think') !== false) {
+        [$code, $res] = http_post_json($url, $payload, ['x-goog-api-key: ' . $key]);
+    }
     if ($code === 429) {
         fail(429, 'gemini_quota');
     }
-    if ($code === 400 || $code === 401 || $code === 403) {
-        fail(502, 'gemini_rejected', ['detail' => is_array($res) ? (string) ($res['error']['status'] ?? '') : '']);
+    if ($code === 400 || $code === 401 || $code === 403 || $code === 404) {
+        $why = is_array($res) ? (string) ($res['error']['message'] ?? $res['error']['status'] ?? '') : '';
+        fail(502, 'gemini_rejected', ['detail' => function_exists('mb_substr') ? mb_substr($why, 0, 240) : substr($why, 0, 240)]);
+    }
+    if ($code === 0) {
+        fail(504, 'gemini_timeout');
     }
     if ($code !== 200 || !is_array($res)) {
-        fail(502, 'gemini_unreachable');
+        fail(502, 'gemini_unreachable', ['detail' => 'HTTP ' . $code]);
     }
     $cand = $res['candidates'][0] ?? null;
     $text = '';

@@ -18,12 +18,20 @@ export interface AiStatus {
 export interface AiResult {
   ok: boolean;
   error?: string;
+  detail?: string;
   text?: string;
   model?: string;
   usage?: { input: number; output: number };
 }
 
-export class AiError extends Error {}
+export class AiError extends Error {
+  /** Extra words from Google or the server, shown after the message. */
+  detail?: string;
+  constructor(code: string, detail?: string) {
+    super(code);
+    this.detail = detail;
+  }
+}
 
 async function call<T extends { ok: boolean; error?: string }>(fields: Record<string, string>): Promise<T> {
   const token = currentToken();
@@ -37,9 +45,19 @@ async function call<T extends { ok: boolean; error?: string }>(fields: Record<st
   } catch {
     throw new AiError('network');
   }
+  const body = await res.text().catch(() => '');
   try {
-    return (await res.json()) as T;
+    return JSON.parse(body) as T;
   } catch {
+    // Something printed before Maillo's own answer (an older install's PHP warnings): read the answer itself.
+    const at = body.lastIndexOf('{"ok":');
+    if (at >= 0) {
+      try {
+        return JSON.parse(body.slice(at)) as T;
+      } catch {
+        /* not Maillo's answer after all */
+      }
+    }
     // Not Maillo's answer: a firewall's or the server's own error page, or a missing file.
     const error = res.status === 403 || res.status === 406 || res.status === 501 ? 'blocked' : res.status >= 500 ? 'server_error' : 'unavailable';
     return { ok: false, error: error === 'unavailable' ? error : `${error}:${res.status}` } as T;
@@ -59,11 +77,12 @@ export const aiEnabled = () => config.features.ai && !config.demo;
 export const aiActionsOn = () => config.features.ai || config.demo;
 
 /** The error message for an ai.php error code. */
-export function aiErrorText(code?: string): string {
+export function aiErrorText(code?: string, detail?: string): string {
   const [name, status = ''] = (code ?? '').split(':');
   const key = `ai.err.${name}` as StringKey;
   const known = t(key, { status });
-  return known === key ? t('ai.err.generic', { code: code ?? 'unknown' }) : known;
+  const text = known === key ? t('ai.err.generic', { code: code ?? 'unknown' }) : known;
+  return detail ? `${text} (${detail})` : text;
 }
 
 export const aiStatus = () => call<AiStatus>({ action: 'status' });
@@ -79,6 +98,6 @@ export async function aiGenerate(instructions: string, input: string, opts: { js
     json: opts.json ? '1' : '',
     ...(opts.temperature !== undefined ? { temperature: String(opts.temperature) } : {})
   });
-  if (!r.ok || typeof r.text !== 'string') throw new AiError(r.error || 'unavailable');
+  if (!r.ok || typeof r.text !== 'string') throw new AiError(r.error || 'unavailable', r.detail);
   return r.text;
 }
