@@ -102,6 +102,10 @@ See [docs/INSTALL.md](docs/INSTALL.md). In short:
 
 Installs made before 0.6.9 use `config.js`, which Maillo no longer reads: move your settings to `maillo-config.php` before updating (see INSTALL.md).
 
+### iPhone app (experimental)
+
+An iOS build wrapped with Capacitor, for installing on your own iPhone through TestFlight. It signs in through the iOS sign-in sheet and keeps the refresh token in the Keychain. See [docs/IOS.md](docs/IOS.md).
+
 ## Try it without Google
 
 Open the app with `?demo` at the end of the address (for example `https://mail.example.com/?demo`), or set `demo` to true in `maillo-config.php`. Demo mode uses sample data and never contacts Google.

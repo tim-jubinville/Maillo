@@ -42,6 +42,9 @@ declare global {
 
 /** True in the demo build published with the website (MAILLO_DEMO=1 npm run build). */
 declare const __DEMO_BUILD__: boolean;
+/** True in the iOS app build (MAILLO_NATIVE=1, Capacitor). */
+declare const __NATIVE_BUILD__: boolean;
+export const isNative = __NATIVE_BUILD__;
 
 export const defaultAppName = 'Maillo';
 
@@ -121,16 +124,17 @@ function load(): AppConfig {
       calendar: !!raw.features?.calendar,
       tasks: !!raw.features?.tasks,
       notes: !!raw.features?.notes,
-      ai: !!raw.features?.ai,
+      ai: !isNative && !!raw.features?.ai,
       contactPhotos: !!raw.features?.contactPhotos,
-      staySignedIn: !!raw.features?.staySignedIn,
+      // The iOS app has no server behind it: it stays signed in on its own, and these need one.
+      staySignedIn: !isNative && !!raw.features?.staySignedIn,
       syncSettings: !!raw.features?.syncSettings,
-      keep: !!raw.features?.keep,
-      push: !!raw.features?.push
+      keep: !isNative && !!raw.features?.keep,
+      push: !isNative && !!raw.features?.push
     },
     links: { ...defaults.links, ...(raw.links ?? {}) },
     demo: __DEMO_BUILD__ || !!raw.demo || params.has('demo'),
-    accountCheck: raw.accountCheck === true
+    accountCheck: !isNative && raw.accountCheck === true
   };
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { config, isAllowedAccount, setup } from './config';
-import { currentToken, hadServerSession, hasServerSession, onAuthChange, prepareAuth, rememberAccount, rememberedAccount, renewFromServer, signIn, signOut, staySignedIn, tokenExpiresSoon } from './auth';
+import { currentToken, hadServerSession, hasServerSession, lastingSignIn, onAuthChange, prepareAuth, rememberAccount, rememberedAccount, renewFromServer, signIn, signOut, tokenExpiresSoon } from './auth';
 import { AuthRequired, gmailBackend, pool, quotaHeadroom, RateLimited } from './gmail/api';
 import { demoBackend } from './gmail/demo';
 import {
@@ -376,7 +376,7 @@ export async function boot() {
     }
     return setState({ phase: 'signin', authError: e instanceof Error ? e.message : String(e) });
   }
-  if (staySignedIn()) {
+  if (lastingSignIn()) {
     // Signed in on this device before: get a token from the server, no Google popup.
     if (currentToken()) renewFromServer().catch(() => undefined);
     else if (await renewFromServer().catch(() => false)) return start();

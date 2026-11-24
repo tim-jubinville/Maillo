@@ -4,7 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { aiGenerate, aiRemoveKey, aiSetKey, aiStatus, AiError, type AiStatus } from '../ai';
 import { hasServerSession, sessionCall, setServerReady, staySignedIn, type SessionReply } from '../auth';
 import { changeLanguage, onSyncStatus, pull, syncEnabled, syncStatus } from '../sync';
-import { config } from '../config';
+import { config, isNative } from '../config';
 import type { GFilter, GSendAs, GVacation } from '../gmail/types';
 import { t, type StringKey, locale } from '../i18n';
 import { labelColor, sizeLabel } from '../model';
@@ -23,6 +23,9 @@ import { SignatureEditor } from './SignatureEditor';
 import { KeyList } from './Keys';
 
 declare const __APP_VERSION__: string;
+
+/** Sections about the server or installing the web app, hidden in the iOS app. */
+const NOT_IN_APP: SettingsSection[] = ['app', 'updates'];
 
 const ICONS: Record<SettingsSection, [string, string]> = {
   general: ['gear', 'var(--c-scheduled)'],
@@ -53,7 +56,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
             <Icon name="arrowLeft" />
             <span class="nav-t">{t('settings.back')}</span>
           </a>
-          {SETTINGS_SECTIONS.filter((id) => id !== 'ai' || config.features.ai).map((id) => (
+          {SETTINGS_SECTIONS.filter((id) => (id !== 'ai' || config.features.ai) && !(isNative && NOT_IN_APP.includes(id))).map((id) => (
             <a class={`nav ${id === section ? 'on' : ''}`} href={`#/settings/${id}`} aria-current={id === section ? 'page' : undefined}>
               <Icon name={ICONS[id][0]} style={{ color: ICONS[id][1] }} />
               <span class="nav-t">{t(`settings.${id}` as StringKey)}</span>
@@ -64,13 +67,13 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
           {section === 'general' && <General />}
           {section === 'appearance' && <Appearance />}
           {section === 'notifications' && <NotificationSettings s={s} />}
-          {section === 'notifications' && <PushSettings />}
+          {section === 'notifications' && !isNative && <PushSettings />}
           {section === 'app' && <InstallApp />}
           {section === 'labels' && <Labels s={s} />}
           {section === 'filters' && <Filters s={s} />}
           {section === 'accounts' && (
             <>
-              <StaySignedIn />
+              {!isNative && <StaySignedIn />}
               <Accounts />
             </>
           )}

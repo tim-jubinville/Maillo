@@ -1050,3 +1050,18 @@ body.resizing iframe { pointer-events: none; }
   overflow-wrap: anywhere;
   user-select: text;
 }
+
+/* iPhone notch and home bar (the iOS app, and the web app added to the home screen): keep content clear of them. */
+@supports (padding: env(safe-area-inset-top)) {
+  .app { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .center { padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
+  .compose.popped { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .toasts { bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .pile-wrap { bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .fan { bottom: calc(96px + env(safe-area-inset-bottom)); }
+  @media (max-width: 900px) {
+    .sidebar { padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); padding-left: calc(12px + env(safe-area-inset-left)); }
+    .compose, .compose.max { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    .scrim { padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)); }
+  }
+}

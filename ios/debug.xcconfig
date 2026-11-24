@@ -1,0 +1,4 @@
+CAPACITOR_DEBUG = true
+
+// Your Apple team ID goes in local.xcconfig (gitignored), not in the project: see docs/IOS.md.
+#include? "local.xcconfig"

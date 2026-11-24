@@ -1,4 +1,5 @@
-import { config } from './config';
+import { config, isNative } from './config';
+import type { NativeToken } from './native';
 
 interface TokenResponse {
   access_token?: string;
@@ -181,8 +182,17 @@ function loadScript(): Promise<void> {
   });
 }
 
+declare const __NATIVE_BUILD__: boolean;
+// The iOS app's sign-in (src/native.ts), only built into the app.
+const native = (): Promise<typeof import('./native')> => (__NATIVE_BUILD__ ? import('./native') : Promise.reject(new Error('not_native')));
+
 export async function prepareAuth(): Promise<void> {
   if (config.demo || !config.googleClientId) return;
+  if (isNative) {
+    serverSession = await (await native()).hasNativeSession();
+    markDevice(serverSession);
+    return;
+  }
   const ready = staySignedIn() ? sessionCall({ action: 'ready' }).then((r) => (serverReady = !!(r.ok && r.configured))) : undefined;
   await loadScript();
   await ready;
@@ -234,6 +244,8 @@ export async function prepareAuth(): Promise<void> {
 // ---- Staying signed in (features.staySignedIn, through public/session.php) ----
 
 export const staySignedIn = () => config.features.staySignedIn && !config.demo;
+/** Whether sign-in lasts on this device: through session.php, or the iOS app's Keychain. */
+export const lastingSignIn = () => staySignedIn() || (isNative && !config.demo);
 let renewTimer: number | undefined;
 /** Whether this device has a server session (so tokens renew without a Google popup). */
 let serverSession = false;
@@ -288,9 +300,32 @@ let renewing: Promise<boolean> | null = null;
 
 /** A new access token from this device's server session. False when there is none (or it ended). */
 export function renewFromServer(): Promise<boolean> {
-  if (!staySignedIn()) return Promise.resolve(false);
+  if (!lastingSignIn()) return Promise.resolve(false);
   if (renewing) return renewing;
-  renewing = (async () => {
+  renewing = (isNative ? renewNative() : renewFromSessionPhp()).finally(() => {
+    renewing = null;
+  });
+  return renewing;
+}
+
+async function renewNative(): Promise<boolean> {
+  let r: NativeToken | null;
+  try {
+    r = await (await native()).nativeRefresh(config.googleClientId);
+  } catch {
+    // Offline: keep the session and try again in a minute.
+    serverSession = true;
+    clearTimeout(renewTimer);
+    renewTimer = window.setTimeout(() => renewFromServer().catch(() => undefined), 60_000);
+    return false;
+  }
+  serverSession = !!r;
+  markDevice(serverSession);
+  return !!r && useServerToken({ ok: true, ...r });
+}
+
+function renewFromSessionPhp(): Promise<boolean> {
+  return (async () => {
     const r = await sessionCall({ action: 'token' });
     serverSession = !!r.ok;
     // Offline or a server hiccup: keep the session and try again in a minute.
@@ -302,10 +337,7 @@ export function renewFromServer(): Promise<boolean> {
       return false;
     }
     return useServerToken(r);
-  })().finally(() => {
-    renewing = null;
-  });
-  return renewing;
+  })();
 }
 
 export function hasServerSession() {
@@ -316,7 +348,7 @@ const DEVICE_KEY = 'maillo.device';
 
 /** Whether this device had a lasting session last time, known before asking the server (for instant start). */
 export function hadServerSession(): boolean {
-  return staySignedIn() && localStorage.getItem(DEVICE_KEY) === '1';
+  return lastingSignIn() && localStorage.getItem(DEVICE_KEY) === '1';
 }
 
 function markDevice(on: boolean) {
@@ -366,6 +398,10 @@ function signInWithCode(switchAccount: boolean): Promise<string> {
 }
 
 export function signIn(opts: { switchAccount?: boolean } = {}): Promise<string> {
+  if (isNative) {
+    if (serverSession && !opts.switchAccount) return renewFromServer().then((ok) => (ok && session ? session.token : signInNative(opts)));
+    return signInNative(opts);
+  }
   if (!client) return Promise.reject(new Error('auth_not_ready'));
   // Signed in on the server already: no popup needed.
   if (serverSession && !opts.switchAccount) {
@@ -374,6 +410,16 @@ export function signIn(opts: { switchAccount?: boolean } = {}): Promise<string> 
   // Without the client secret on the server, sign-in is the hourly kind.
   if (staySignedIn() && serverReady) return signInWithCode(!!opts.switchAccount);
   return signInPopup(opts);
+}
+
+async function signInNative(opts: { switchAccount?: boolean }): Promise<string> {
+  const n = await native();
+  if (opts.switchAccount && serverSession) await n.nativeSignOut();
+  const r = await n.nativeSignIn(config.googleClientId, SCOPES, { hint: localStorage.getItem(HINT_KEY) || undefined, switchAccount: opts.switchAccount });
+  serverSession = true;
+  markDevice(true);
+  useServerToken({ ok: true, ...r });
+  return r.access_token;
 }
 
 /** Lets Settings switch to the lasting sign-in as soon as the secret is saved. */
@@ -402,7 +448,7 @@ export async function signOut(): Promise<void> {
   writeKeep(null);
   if (keep && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(keep);
   clearTimeout(renewTimer);
-  const ending = serverSession ? sessionCall({ action: 'signout' }) : undefined;
+  const ending = isNative ? native().then((n) => n.nativeSignOut()) : serverSession ? sessionCall({ action: 'signout' }) : undefined;
   serverSession = false;
   markDevice(false);
   writeSession(null);

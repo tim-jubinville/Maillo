@@ -1,0 +1,2 @@
+// Copy to local.xcconfig (gitignored) and fill in. Your team ID is in the Apple Developer site, under Membership details.
+DEVELOPMENT_TEAM = ABCDE12345
