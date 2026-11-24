@@ -209,8 +209,8 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
       d.fonts?.ready.then(measure).catch(() => undefined);
       for (const ms of [150, 600, 1500]) timers.push(window.setTimeout(measure, ms));
     };
-    // Slow remote images hold back the load event: don't keep the email hidden for them.
-    timers.push(window.setTimeout(() => setShown(true), 450));
+    // The load event waits for the email's images, so it arrives whole. Past 1.5 s, show it anyway.
+    timers.push(window.setTimeout(() => setShown(true), 1500));
     f.addEventListener('load', onLoad);
     if (f.contentDocument?.readyState === 'complete' && f.contentDocument.getElementById('mm-root')) onLoad();
     return () => {
