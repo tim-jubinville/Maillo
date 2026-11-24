@@ -24,12 +24,21 @@ export function SidePanel({ s }: { s: AppState }) {
         </a>
       </div>
       <div class="panel-body">
-        {p === 'calendar' && <Calendar />}
-        {p === 'tasks' && <Tasks />}
-        {p === 'keep' && <Keep />}
-        {p === 'contacts' && <ContactsPanel s={s} />}
+        <PanelBody s={s} p={p} />
       </div>
     </aside>
+  );
+}
+
+/** What a side panel shows; also used by the hover previews of the side icons. */
+export function PanelBody({ s, p }: { s: AppState; p: NonNullable<AppState['panel']> }) {
+  return (
+    <>
+      {p === 'calendar' && <Calendar />}
+      {p === 'tasks' && <Tasks />}
+      {p === 'keep' && <Keep />}
+      {p === 'contacts' && <ContactsPanel s={s} />}
+    </>
   );
 }
 

@@ -78,10 +78,69 @@ function flow(el: HTMLElement, from: { left: number; right: number }, duration =
   a.oncancel = done;
 }
 
+/**
+ * A ribbon that goes away (closing a conversation) leaves a stand-in that flows back into its leading edge,
+ * its buttons shrinking out from the far end. Called just before the ribbon leaves the page.
+ */
+const LOOK = ['background', 'boxShadow', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft', 'borderRadius', 'backdropFilter', 'color', 'display', 'alignItems', 'gap', 'padding', 'boxSizing'] as const;
+type Snap = { rect: DOMRect; look: Partial<Record<(typeof LOOK)[number], string>>; webkitBlur: string; rightRadius: string };
+
+/** The ribbon's place and look, kept up to date while it's on screen: by the time it leaves, its neighbours may already have changed it. */
+function snapshot(el: HTMLElement): Snap {
+  const cs = getComputedStyle(el);
+  const look: Snap['look'] = {};
+  for (const k of LOOK) look[k] = cs[k];
+  return { rect: el.getBoundingClientRect(), look, webkitBlur: cs.getPropertyValue('-webkit-backdrop-filter'), rightRadius: cs.borderTopRightRadius };
+}
+
+function retract(el: HTMLElement, snap: Snap) {
+  if (reduced() || !el.isConnected) return;
+  const r = snap.rect;
+  if (r.width < 60 || r.height === 0) return;
+  const g = el.cloneNode(true) as HTMLElement;
+  // The stand-in lives outside the columns, so it takes the ribbon's look with it.
+  for (const k of LOOK) g.style[k] = snap.look[k] ?? '';
+  g.style.setProperty('-webkit-backdrop-filter', snap.webkitBlur);
+  Object.assign(g.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, right: 'auto', bottom: 'auto', width: `${r.width}px`, height: `${r.height}px`, margin: '0', zIndex: '40', pointerEvents: 'none' });
+  g.removeAttribute('role');
+  g.setAttribute('aria-hidden', 'true');
+  g.inert = true;
+  g.classList.remove('glint');
+  g.style.setProperty('--flow-rad', snap.rightRadius === '0px' ? '0px' : '16px');
+  g.classList.add('flowing');
+  document.body.appendChild(g);
+  const duration = 420;
+  const a = g.animate(
+    [
+      { '--flow-r': '0px', opacity: 1 },
+      { opacity: 1, offset: 0.7 },
+      { '--flow-r': `${Math.max(0, r.width - 48)}px`, opacity: 0 }
+    ] as Keyframe[],
+    { duration, easing: 'cubic-bezier(0.55, 0, 0.75, 0.2)', fill: 'forwards' }
+  );
+  items(g)
+    .reverse()
+    .slice(0, 24)
+    .forEach((x, i) =>
+      x.animate(
+        [
+          { opacity: 1, transform: 'scale(1)', filter: 'blur(0px)' },
+          { opacity: 0, transform: 'scale(0.55)', filter: 'blur(5px)' }
+        ],
+        { duration: 220, delay: i * 14, easing: 'ease-in', fill: 'forwards' }
+      )
+    );
+  const done = () => g.remove();
+  a.onfinish = done;
+  a.oncancel = done;
+  window.setTimeout(done, duration + 2000);
+}
+
 export function ribbonMotion(el: HTMLElement, kind: string): () => void {
   if (typeof el.animate !== 'function') return () => undefined;
   let sig = signature(el);
   let rect = el.getBoundingClientRect();
+  let snap = snapshot(el);
 
   if (!reduced() && rect.width > 0) {
     const prev = gone.get(kind);
@@ -120,6 +179,7 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
 
   const ro = new ResizeObserver(() => {
     const r = el.getBoundingClientRect();
+    snap = snapshot(el);
     const grew = r.width - rect.width;
     const old = rect;
     rect = r;
@@ -136,5 +196,7 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
     mo.disconnect();
     ro.disconnect();
     gone.set(kind, { rect: el.getBoundingClientRect(), sig, at: performance.now() });
+    // Only the reading ribbon: the list ribbon leaves with the whole list (settings, a full-width conversation).
+    if (kind === 'read-ribbon') retract(el, snap);
   };
 }

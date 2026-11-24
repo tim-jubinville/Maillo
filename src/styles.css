@@ -27,7 +27,7 @@
   --field: rgba(255, 255, 255, 0.9);
   --panel: linear-gradient(180deg, #ffffff, rgba(255, 255, 255, 0.95));
   --sidebar-bg: linear-gradient(180deg, rgba(248, 250, 253, 0.9), rgba(255, 255, 255, 0.6));
-  --ribbon-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(238, 241, 246, 0.82));
+  --ribbon-bg: linear-gradient(180deg, rgba(243, 245, 249, 0.94), rgba(225, 230, 239, 0.9));
   --row-line: #edf0f5;
   --row-sel: color-mix(in srgb, var(--accent-tint) 75%, #ffffff);
   --row-chk: #f1f4fa;
@@ -1140,17 +1140,6 @@ body.resizing iframe { pointer-events: none; }
   /* List gestures: swipe actions, press and hold to select, pull to refresh. */
   .rows { overscroll-behavior-y: contain; }
   .row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y; }
-  .row.swiping { background: var(--swipe-c, var(--cloud)); overflow: hidden; }
-  .row.swiping::before { content: ''; position: absolute; inset: 0; width: auto; border-radius: 0; background: var(--row-bg, var(--surface)); transform: translateX(var(--sx, 0px)); z-index: 0; }
-  .row.swiping > :not(.row-acts) { position: relative; z-index: 1; transform: translateX(var(--sx, 0px)); }
-  .row.swiping::after {
-    content: attr(data-swipe-label); position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 20px;
-    color: #fff; font-weight: 700; font-size: calc(14px * var(--ts, 1)); opacity: 0.7; transition: opacity 0.12s; z-index: 0;
-  }
-  .row.swiping[data-side='right']::after { left: 0; }
-  .row.swiping[data-side='left']::after { right: 0; }
-  .row.swiping.armed::after { opacity: 1; }
-  .row.settling::before, .row.settling > *, .row.leaving::before, .row.leaving > * { transition: transform 0.17s ease; }
   .ptr { display: block; position: relative; height: 0; z-index: 6; pointer-events: none; }
   .ptr span {
     position: absolute; left: 50%; top: 4px; width: 36px; height: 36px; margin-left: -18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -1163,9 +1152,44 @@ body.resizing iframe { pointer-events: none; }
   .ptr:not(.on) span { transition: transform 0.2s ease, opacity 0.2s ease; }
 }
 
-/* Settings: the two swipe directions. */
-.swipe-set { display: flex; gap: 12px; flex-wrap: wrap; }
-.swipe-set label { display: flex; flex-direction: column; gap: 6px; font-size: calc(13px * var(--ts, 1)); color: var(--muted); }
+/* Settings: the two swipe directions, each with a looping picture of the gesture. */
+.swipe-set { display: flex; gap: 16px; flex-wrap: wrap; }
+.swipe-set label { display: flex; flex-direction: column; gap: 6px; font-size: calc(13px * var(--ts, 1)); color: var(--muted); width: 196px; }
+.swipe-set .select { width: 100%; }
+.swipe-demo { position: relative; display: block; height: 58px; border-radius: 12px; overflow: hidden; background: var(--c, var(--cloud)); border: 1px solid var(--line-soft); }
+.sd-back { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 12px; color: #fff; font-size: 12px; font-weight: 700; }
+.swipe-demo.to-left .sd-back { justify-content: flex-end; }
+.sd-back b { max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-row {
+  position: absolute; inset: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--surface);
+  animation: sd-right 2.6s ease-in-out infinite;
+}
+.swipe-demo.to-left .sd-row { animation-name: sd-left; }
+.swipe-demo.to-left .sd-finger { animation-name: sdf-left; }
+.swipe-demo.none .sd-row { animation-name: sd-nudge; }
+.swipe-demo.none .sd-finger { animation-name: sdf-nudge; }
+.sd-av { width: 26px; height: 26px; border-radius: 50%; flex: none; background: color-mix(in srgb, var(--accent) 25%, var(--cloud)); }
+.sd-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.sd-lines i { display: block; height: 6px; border-radius: 3px; background: var(--line); width: 80%; }
+.sd-lines i + i { width: 55%; opacity: 0.7; }
+.sd-finger {
+  position: absolute; top: 50%; left: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+  background: rgba(20, 33, 61, 0.22); box-shadow: 0 0 0 4px rgba(20, 33, 61, 0.08); animation: sdf-right 2.6s ease-in-out infinite;
+}
+[data-mode='dark'] .sd-finger { background: rgba(255, 255, 255, 0.35); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12); }
+@keyframes sd-right { 0%, 14% { transform: translateX(0); } 50%, 72% { transform: translateX(52%); } 92%, 100% { transform: translateX(0); } }
+@keyframes sd-left { 0%, 14% { transform: translateX(0); } 50%, 72% { transform: translateX(-52%); } 92%, 100% { transform: translateX(0); } }
+@keyframes sdf-right { 0%, 14% { transform: translateX(0); } 50%, 72% { transform: translateX(100px); opacity: 1; } 80% { opacity: 0; } 92% { transform: translateX(0); opacity: 0; } 100% { opacity: 1; } }
+@keyframes sdf-left { 0%, 14% { transform: translateX(0); } 50%, 72% { transform: translateX(-100px); opacity: 1; } 80% { opacity: 0; } 92% { transform: translateX(0); opacity: 0; } 100% { opacity: 1; } }
+@keyframes sdf-nudge { 0%, 20% { transform: translateX(0); } 40% { transform: translateX(12px); } 60%, 100% { transform: translateX(0); } }
+@keyframes sd-nudge { 0%, 20% { transform: translateX(0); } 40% { transform: translateX(6%); } 60%, 100% { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .sd-row, .sd-finger { animation: none; transform: translateX(46%); }
+  .swipe-demo.to-left .sd-row { transform: translateX(-46%); }
+  .sd-finger { transform: translateX(90px); }
+  .swipe-demo.to-left .sd-finger { transform: translateX(-90px); }
+  .swipe-demo.none .sd-row, .swipe-demo.none .sd-finger { transform: none; }
+}
 @media (max-width: 900px) {
   /* Toasts sit above the bottom ribbon or the piles. */
   .toasts { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
@@ -1202,3 +1226,35 @@ body.resizing iframe { pointer-events: none; }
 .readcol.drop-ok::after { content: ''; position: absolute; inset: 8px; border-radius: 16px; pointer-events: none; z-index: 20; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
 .readcol.drop-on::after { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .readcol.drop-ok iframe { pointer-events: none; }
+
+/* Swiping a row (touch on phones, two-finger trackpad on desktop): the row slides off a coloured backing naming the action. */
+.row.swiping { background: var(--swipe-c, var(--cloud)); overflow: hidden; }
+.row.swiping::before { content: ''; position: absolute; inset: 0; width: auto; border-radius: 0; background: var(--row-bg, var(--surface)); transform: translateX(var(--sx, 0px)); z-index: 0; }
+.row.swiping > :not(.row-acts) { position: relative; z-index: 1; transform: translateX(var(--sx, 0px)); }
+.row.swiping::after {
+  content: attr(data-swipe-label); position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 20px;
+  color: #fff; font-weight: 700; font-size: calc(14px * var(--ts, 1)); opacity: 0.7; transition: opacity 0.12s; z-index: 0;
+}
+.row.swiping[data-side='right']::after { left: 0; }
+.row.swiping[data-side='left']::after { right: 0; }
+.row.swiping.armed::after { opacity: 1; }
+.row.settling::before, .row.settling > *, .row.leaving::before, .row.leaving > * { transition: transform 0.17s ease; }
+.row.swiping .row-acts { display: none; }
+.rows { overscroll-behavior-x: none; }
+
+/* Hover previews of the right-bar apps, while the side panel is closed. */
+.peek {
+  --peek-h: min(520px, 80vh);
+  position: fixed; z-index: 58; right: calc(68px + 8px); top: clamp(8px, calc(var(--peek-top) - 12px), calc(100vh - var(--peek-h) - 12px));
+  width: 340px; max-height: var(--peek-h); display: flex; flex-direction: column; overflow: hidden; border-radius: 18px;
+  background: var(--surface-2); border: 1px solid var(--edge); color: var(--ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 6px rgba(20, 33, 61, 0.08), 0 22px 54px rgba(20, 33, 61, 0.22);
+  transform-origin: right top; animation: peek-in 260ms cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+[data-mode='dark'] .peek { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 6px rgba(0, 0, 0, 0.3), 0 22px 54px rgba(0, 0, 0, 0.5); }
+.peek-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 6px 16px; font-weight: 800; font-size: calc(15px * var(--ts, 1)); }
+.peek-head span { flex: 1; }
+.peek-body { flex: 1; min-height: 0; overflow: auto; padding-bottom: 8px; }
+.sp.peeking { background: var(--surface); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.12); }
+@keyframes peek-in { from { opacity: 0; transform: translateX(10px) scale(0.94); filter: blur(4px); } }
+@media (prefers-reduced-motion: reduce) { .peek { animation: none; } }
