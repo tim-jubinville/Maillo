@@ -151,6 +151,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
                 { id: 'forward', group: 0, prio: 2, w: 38, label: t('act.forward'), icon: 'forward' as const, run: () => openCompose('forward', last) }
               ]
             : []),
+          // Wider screens: shown first when there's room, folded first (they're also under the conversation).
+          ...(!narrow && last && !draft ? replyItems(last) : []),
           ...(inSpam
             ? [{ id: 'notspam', group: 1, prio: 10, w: 104, label: t('act.notSpam'), icon: 'spam' as const, text: true, run: () => actions.notSpam(id) }]
             : inTrash
@@ -524,7 +526,7 @@ function RibbonBar({
   const posW = position ? 72 : 0;
   const { shown, room } = fitItems(items, width - fixed);
   const showPos = !!position && room >= posW && shown.size === items.length;
-  const hidden = items.filter((i) => !shown.has(i.id));
+  const hidden = items.filter((i) => !shown.has(i.id) && !i.drop);
 
   return (
     <div class="toolbar nowrap" data-bar="thread" ref={bar}>
@@ -541,6 +543,18 @@ function RibbonBar({
       <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!canNext} onClick={onNext}><Icon name="chevRight" /></button>
     </div>
   );
+}
+
+/** Reply, Reply all and Forward for the reading ribbon, default reply first; Forward folds first. */
+function replyItems(last: ParsedMessage): BarItem[] {
+  const mode = defaultReplyMode(last);
+  const reply: BarItem = { id: 'reply', group: 0, prio: mode === 'reply' ? 1.6 : 1.3, w: 38, label: t('act.reply'), icon: 'reply', drop: true, run: () => openCompose('reply', last) };
+  const all: BarItem | null = replyAllExtras(last).length
+    ? { id: 'replyAll', group: 0, prio: mode === 'replyAll' ? 1.6 : 1.3, w: 38, label: t('act.replyAll'), icon: 'replyAll', drop: true, run: () => openCompose('replyAll', last) }
+    : null;
+  const forward: BarItem = { id: 'forward', group: 0, prio: 1, w: 38, label: t('act.forward'), icon: 'forward', drop: true, run: () => openCompose('forward', last) };
+  const replies = mode === 'replyAll' && all ? [all, reply] : all ? [reply, all] : [reply];
+  return [...replies, forward];
 }
 
 /** Reply, Reply all and Forward under a conversation; the default reply comes first. */

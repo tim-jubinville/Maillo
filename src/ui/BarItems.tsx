@@ -21,6 +21,8 @@ export interface BarItem {
   menu?: ComponentChildren;
   /** Content shown when this item is opened from the "…" menu. */
   sub?: (close: () => void) => ComponentChildren;
+  /** Left out of the "…" menu when it doesn't fit (it's available elsewhere). */
+  drop?: boolean;
 }
 
 export function useWidth(ref: RefObject<HTMLElement | null>): number {
