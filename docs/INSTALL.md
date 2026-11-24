@@ -139,7 +139,8 @@ location / {
 # PHP location (location ~ \.php$): Nginx uses the first matching one.
 location ~ (^|/)(maillo-config|maillo-common)\.php$ { return 404; }
 location ~ (^|/)\.(maillo|mailmax)- { return 404; }
-# Always checked for a newer version. An add_header here replaces the server's, so repeat them.
+# Always checked for a newer version (config.php sets its own headers: it only needs your PHP
+# location). An add_header here replaces the server's, so repeat them.
 location ~ ^/(sw\.js|manifest\.webmanifest|version\.json)$ {
   add_header Cache-Control no-cache;
   add_header X-Content-Type-Options nosniff always;
@@ -147,8 +148,6 @@ location ~ ^/(sw\.js|manifest\.webmanifest|version\.json)$ {
   add_header X-Frame-Options DENY always;
 }
 ```
-
-`config.php` sets its own caching headers, so it only needs your usual PHP location.
 
 Maillo's setup checklist looks for these rules in `.htaccess`, so on Nginx keep the release's `.htaccess` file in the folder as well (Nginx ignores it).
 
