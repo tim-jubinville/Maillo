@@ -94,6 +94,22 @@ function read_config(string $root): array
     ];
 }
 
+/**
+ * The key that encrypts refresh tokens at rest, when it's kept apart from them: a MAILLO_SESSION_KEY
+ * environment variable (best: outside the web folder) or sessionKey in maillo-config.php. 32 bytes,
+ * base64. '' means none is set, and session.php keeps a key in .maillo-oauth.php instead.
+ */
+function session_key_override(array $cfg): string
+{
+    foreach ([getenv('MAILLO_SESSION_KEY'), (string) ($cfg['raw']['sessionKey'] ?? '')] as $v) {
+        $key = is_string($v) && $v !== '' ? base64_decode(trim($v), true) : false;
+        if (is_string($key) && strlen($key) === 32) {
+            return $key;
+        }
+    }
+    return '';
+}
+
 /** A secret from, in order: maillo-config.php, the host's environment, then what Settings stored. Returns [value, source]. */
 function pick_secret(string $fromConfig, string $envName, string $stored): array
 {

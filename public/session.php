@@ -68,6 +68,11 @@ function client_secret(array $cfg, string $file): string
 /** The key that encrypts refresh tokens at rest, created the first time it's needed. */
 function crypto_key(string $file): string
 {
+    global $cfg;
+    $fixed = session_key_override($cfg);
+    if ($fixed !== '') {
+        return $fixed;
+    }
     $data = oauth_store($file);
     $key = base64_decode((string) ($data['key'] ?? ''), true);
     if (is_string($key) && strlen($key) === 32) {

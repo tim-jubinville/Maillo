@@ -42,7 +42,7 @@ function package_server_files(ZipArchive $zip, string $prefix): array
         return strpos($n, '/') === false && strpos($n, '..') === false;
     }));
 }
-const ALLOWED_EXT = ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'woff', 'woff2', 'txt', 'webmanifest', 'map', 'htaccess'];
+const ALLOWED_EXT = ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'woff', 'woff2', 'txt', 'webmanifest', 'map'];
 
 $root = __DIR__;
 $backupRoot = $root . DIRECTORY_SEPARATOR . '.maillo-backup';
@@ -479,9 +479,32 @@ if ($action === 'update') {
     $backup = $backupRoot . '/' . gmdate('Ymd-His') . '_' . preg_replace('/[^0-9A-Za-z.\-]/', '', $current ?: 'unknown');
     copy_tree($root, $backup, managed_files($root));
 
+    // If copying stops partway (disk full, permissions), put the previous version back rather than
+    // leave a mix of two versions. fail() exits, so this runs from a shutdown function.
+    $updating = true;
+    register_shutdown_function(function () use (&$updating, $backup, $root, $tmp) {
+        if (!$updating) {
+            return;
+        }
+        $files = list_files($backup);
+        foreach ($files as $rel) {
+            $data = @file_get_contents($backup . '/' . $rel);
+            if ($data !== false) {
+                @file_put_contents($root . '/' . $rel, $data, LOCK_EX);
+            }
+        }
+        // Files only the new version has go too.
+        foreach (array_diff(list_files($tmp), $files) as $rel) {
+            if (!is_protected($rel) && is_file($root . '/' . $rel)) {
+                @unlink($root . '/' . $rel);
+            }
+        }
+        rrmdir($tmp);
+    });
     $newFiles = list_files($tmp);
     copy_tree($tmp, $root, $newFiles);
     remove_stale($root, $newFiles);
+    $updating = false;
     rrmdir($tmp);
 
     foreach (array_slice(backups($backupRoot), KEEP_BACKUPS) as $old) {
