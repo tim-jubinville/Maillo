@@ -25,7 +25,7 @@ function fail(int $code, string $error, array $extra = []): void
 }
 
 const CONFIG_FILE = 'maillo-config.php';
-const FEATURES = ['calendar', 'tasks', 'notes', 'ai', 'contactPhotos', 'staySignedIn', 'syncSettings', 'keep', 'push'];
+const FEATURES = ['calendar', 'tasks', 'notes', 'ai', 'contactPhotos', 'staySignedIn', 'syncSettings', 'stickies', 'push'];
 
 /** A Pub/Sub topic's full name (projects/…/topics/…), or '' when it isn't one. */
 function push_topic(string $t): string

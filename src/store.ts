@@ -20,6 +20,7 @@ import { t, type StringKey } from './i18n';
 import { CATEGORY_LABEL, listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
+import { startStickies } from './stickies';
 import { startSync } from './sync';
 import { clearCache, getThread as cachedThread, openCache, putThread, saveMeta, saveRows, type ListSnap, type Warm } from './cache';
 import { checkForUpdate } from './updates';
@@ -476,6 +477,7 @@ async function start() {
     loadContactPhotos();
     loadNotes();
     startSync(api);
+    startStickies(api);
     watchForUpdates();
     // With the kept list on screen, refresh it quietly instead of showing a spinner.
     await loadList(true, warm && state.list.key === listHash(state.route as MailRoute));

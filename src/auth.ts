@@ -63,8 +63,7 @@ export const SCOPES = (() => {
     );
   }
   if (config.features.tasks) s.push('https://www.googleapis.com/auth/tasks');
-  // Keep is deliberately not here: see KEEP_SCOPE below.
-  if (config.features.notes || config.features.syncSettings) s.push('https://www.googleapis.com/auth/drive.appdata');
+  if (config.features.notes || config.features.syncSettings || config.features.stickies) s.push('https://www.googleapis.com/auth/drive.appdata');
   if (config.features.contactPhotos) {
     s.push(
       'https://www.googleapis.com/auth/contacts.readonly',
@@ -78,49 +77,6 @@ export const SCOPES = (() => {
 interface Session {
   token: string;
   expiresAt: number;
-}
-
-/**
- * Google never shows the Keep scope on a consent screen: an admin grants it through domain-wide
- * delegation. Asking for it in the main sign-in (which shows consent to get a refresh token) makes
- * Google refuse the whole sign-in with invalid_scope, so Keep gets its own token, asked for
- * separately and without a consent prompt, the first time the Keep panel needs it.
- */
-export const KEEP_SCOPE = 'https://www.googleapis.com/auth/keep';
-const KEEP_KEY = 'maillo.keep';
-let keepClient: TokenClient | null = null;
-let keepPending: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null;
-let keepSession: Session | null = (() => {
-  try {
-    const s = JSON.parse(sessionStorage.getItem(KEEP_KEY) || 'null') as Session | null;
-    return s && s.expiresAt > Date.now() + 60_000 ? s : null;
-  } catch {
-    return null;
-  }
-})();
-
-function writeKeep(s: Session | null) {
-  keepSession = s;
-  if (s) sessionStorage.setItem(KEEP_KEY, JSON.stringify(s));
-  else sessionStorage.removeItem(KEEP_KEY);
-}
-
-export function keepToken(): string | null {
-  return keepSession && keepSession.expiresAt > Date.now() + 30_000 ? keepSession.token : null;
-}
-
-export function dropKeepToken() {
-  writeKeep(null);
-}
-
-/** Asks Google for a Keep token. Opens a brief popup, so call it from a click or right after one. */
-export function requestKeepToken(): Promise<string> {
-  if (!keepClient) return Promise.reject(new Error('auth_not_ready'));
-  keepPending?.reject(new Error('superseded'));
-  return new Promise((resolve, reject) => {
-    keepPending = { resolve, reject };
-    keepClient!.requestAccessToken({ prompt: '', login_hint: localStorage.getItem(HINT_KEY) || undefined });
-  });
 }
 
 let session: Session | null = readSession();
@@ -216,29 +172,7 @@ export async function prepareAuth(): Promise<void> {
       p?.reject(new Error(e.type || 'auth_failed'));
     }
   });
-  if (config.features.keep) {
-    keepClient = window.google!.accounts.oauth2.initTokenClient({
-      client_id: config.googleClientId,
-      scope: KEEP_SCOPE,
-      // Only Keep in this token, so Google has nothing else to ask consent for.
-      include_granted_scopes: false,
-      callback: (r) => {
-        const p = keepPending;
-        keepPending = null;
-        if (r.error || !r.access_token || !(r.scope ?? '').split(' ').includes(KEEP_SCOPE)) {
-          p?.reject(new Error(r.error_description || r.error || 'keep_not_granted'));
-          return;
-        }
-        writeKeep({ token: r.access_token, expiresAt: Date.now() + (r.expires_in ?? 3600) * 1000 });
-        p?.resolve(r.access_token);
-      },
-      error_callback: (e) => {
-        const p = keepPending;
-        keepPending = null;
-        p?.reject(new Error(e.type || 'auth_failed'));
-      }
-    });
-  }
+
 }
 
 // ---- Staying signed in (features.staySignedIn, through public/session.php) ----
@@ -444,9 +378,6 @@ function signInPopup(opts: { switchAccount?: boolean } = {}): Promise<string> {
 
 export async function signOut(): Promise<void> {
   const token = session?.token;
-  const keep = keepSession?.token;
-  writeKeep(null);
-  if (keep && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(keep);
   clearTimeout(renewTimer);
   const ending = isNative ? native().then((n) => n.nativeSignOut()) : serverSession ? sessionCall({ action: 'signout' }) : undefined;
   serverSession = false;

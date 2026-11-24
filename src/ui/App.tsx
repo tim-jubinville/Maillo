@@ -350,8 +350,7 @@ type PanelId = NonNullable<AppState['panel']>;
 function SideIcons({ s }: { s: AppState }) {
   const items: { id: PanelId; icon: ColorIconName; label: string }[] = [
     { id: 'calendar', icon: 'calendar', label: t('panel.calendar') },
-    // Keep's API only exists for Google Workspace with an admin's approval, so it's opt-in.
-    ...(config.features.keep || config.demo ? [{ id: 'keep' as const, icon: 'keep' as const, label: t('panel.keep') }] : []),
+    ...(config.features.stickies || config.demo ? [{ id: 'stickies' as const, icon: 'stickies' as const, label: t('panel.stickies') }] : []),
     { id: 'tasks', icon: 'tasks', label: t('panel.tasks') },
     { id: 'contacts', icon: 'contacts', label: t('panel.contacts') }
   ];

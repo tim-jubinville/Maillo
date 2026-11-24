@@ -11,12 +11,11 @@ export interface AppConfig {
   accentColor: string;
   setAsideLabel: string;
   actionLabel: string;
-  features: { calendar: boolean; tasks: boolean; notes: boolean; ai: boolean; contactPhotos: boolean; staySignedIn: boolean; syncSettings: boolean; keep: boolean; push: boolean };
+  features: { calendar: boolean; tasks: boolean; notes: boolean; ai: boolean; contactPhotos: boolean; staySignedIn: boolean; syncSettings: boolean; stickies: boolean; push: boolean };
   links: {
     chat: string;
     meet: string;
     calendar: string;
-    keep: string;
     contacts: string;
     gmailSettings: string;
   };
@@ -61,12 +60,11 @@ const defaults: AppConfig = {
   accentColor: '',
   setAsideLabel: 'Set aside',
   actionLabel: 'Action required',
-  features: { calendar: false, tasks: false, notes: false, ai: false, contactPhotos: false, staySignedIn: false, syncSettings: false, keep: false, push: false },
+  features: { calendar: false, tasks: false, notes: false, ai: false, contactPhotos: false, staySignedIn: false, syncSettings: false, stickies: false, push: false },
   links: {
     chat: 'https://mail.google.com/chat/',
     meet: 'https://meet.google.com/',
     calendar: 'https://calendar.google.com/',
-    keep: 'https://keep.google.com/',
     contacts: 'https://contacts.google.com/',
     gmailSettings: 'https://mail.google.com/mail/u/0/#settings/general'
   },
@@ -129,7 +127,7 @@ function load(): AppConfig {
       // The iOS app has no server behind it: it stays signed in on its own, and these need one.
       staySignedIn: !isNative && !!raw.features?.staySignedIn,
       syncSettings: !!raw.features?.syncSettings,
-      keep: !isNative && !!raw.features?.keep,
+      stickies: !!raw.features?.stickies,
       push: !isNative && !!raw.features?.push
     },
     links: { ...defaults.links, ...(raw.links ?? {}) },

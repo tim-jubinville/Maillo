@@ -25,7 +25,7 @@ export interface NotifyPrefs {
 /** What swiping a conversation sideways does on a touch screen. */
 export type SwipeAction = 'archive' | 'trash' | 'read' | 'aside' | 'action' | 'none';
 
-export type PanelId = 'calendar' | 'tasks' | 'keep' | 'contacts';
+export type PanelId = 'calendar' | 'tasks' | 'stickies' | 'contacts';
 
 /** Column widths in pixels. */
 export interface LayoutPrefs {
@@ -118,6 +118,8 @@ const defaults: Prefs = {
 function read(): Prefs {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<Prefs>;
+    // The Keep panel was replaced by Stickies in 0.9.0.
+    if ((stored.panel as string) === 'keep') stored.panel = 'stickies';
     return { ...defaults, ...stored, notify: { ...defaults.notify, ...(stored.notify ?? {}) }, layout: { ...defaults.layout, ...(stored.layout ?? {}) } };
   } catch {
     return { ...defaults, notify: { ...defaults.notify }, layout: { ...defaults.layout } };

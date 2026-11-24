@@ -1,27 +1,28 @@
 import { useEffect, useState } from 'preact/hooks';
-import { requestKeepToken } from '../auth';
 import { config } from '../config';
-import { ApiError, KeepAuthRequired } from '../gmail/api';
-import type { CalendarEvent, KeepNote, TaskItem } from '../gmail/types';
+import type { CalendarEvent, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
 import { getPrefs, setPrefs } from '../prefs';
 import { api, toast, type AppState } from '../store';
 import { CIcon, type ColorIconName } from './ColorIcons';
 import { ContactsPanel } from './ContactsPanel';
+import { Stickies } from './Stickies';
 import { Icon } from './Icon';
 
 export function SidePanel({ s }: { s: AppState }) {
-  const titles = { calendar: t('panel.calendar'), tasks: t('panel.tasks'), keep: t('panel.keep'), contacts: t('panel.contacts') };
+  const titles = { calendar: t('panel.calendar'), tasks: t('panel.tasks'), stickies: t('panel.stickies'), contacts: t('panel.contacts') };
   const p = s.panel!;
-  const apps = { calendar: config.links.calendar, tasks: 'https://tasks.google.com/', keep: config.links.keep, contacts: config.links.contacts };
+  const apps: Record<string, string | undefined> = { calendar: config.links.calendar, tasks: 'https://tasks.google.com/', contacts: config.links.contacts };
   const open = t('panel.open', { name: titles[p] });
   return (
     <aside class="panel" aria-label={titles[p]}>
       <div class="panel-head">
         <span style={{ flex: 1 }}>{titles[p]}</span>
-        <a class="ib sm panel-open" href={apps[p]} target="_blank" rel="noopener noreferrer" aria-label={open} title={open}>
-          <Icon name="arrowUpRight" size={18} />
-        </a>
+        {apps[p] && (
+          <a class="ib sm panel-open" href={apps[p]} target="_blank" rel="noopener noreferrer" aria-label={open} title={open}>
+            <Icon name="arrowUpRight" size={18} />
+          </a>
+        )}
       </div>
       <div class="panel-body">
         <PanelBody s={s} p={p} />
@@ -36,7 +37,7 @@ export function PanelBody({ s, p }: { s: AppState; p: NonNullable<AppState['pane
     <>
       {p === 'calendar' && <Calendar />}
       {p === 'tasks' && <Tasks />}
-      {p === 'keep' && <Keep />}
+      {p === 'stickies' && <Stickies />}
       {p === 'contacts' && <ContactsPanel s={s} />}
     </>
   );
@@ -303,125 +304,3 @@ function Tasks() {
 }
 
 
-type KeepProblem = null | 'connect' | 'denied' | 'failed';
-
-// Token errors meaning Google (or the admin) won't grant Keep, as opposed to a closed or blocked popup.
-const KEEP_DENIED = /invalid_scope|access_denied|unauthorized_client|keep_not_granted/;
-
-function Keep() {
-  const [notes, setNotes] = useState<KeepNote[] | null>(null);
-  const [problem, setProblem] = useState<KeepProblem>(null);
-  const [detail, setDetail] = useState('');
-  const [title, setTitle] = useState('');
-  const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
-  const on = config.features.keep || config.demo;
-  const fromTokenError = (e: unknown) => setProblem(KEEP_DENIED.test(e instanceof Error ? e.message : '') ? 'denied' : 'connect');
-  /** Keep has its own token (see KEEP_SCOPE in auth.ts); with askForToken, a missing one is requested once. */
-  const load = (askForToken: boolean): Promise<void> =>
-    api.listKeepNotes().then(
-      (n) => {
-        setNotes(n);
-        setProblem(null);
-      },
-      (e) => {
-        if (!(e instanceof KeepAuthRequired)) {
-          // Google's own reason (API off, not allowed…) helps whoever sets this up.
-          setDetail(e instanceof ApiError ? `${e.status}: ${e.message}` : e instanceof Error ? e.message : '');
-          return setProblem('failed');
-        }
-        if (!askForToken) return setProblem('connect');
-        return requestKeepToken().then(() => load(false), fromTokenError);
-      }
-    );
-  // Opening the panel is a click, so the brief token popup is allowed here.
-  const connect = () => {
-    setProblem(null);
-    requestKeepToken().then(() => load(false), fromTokenError);
-  };
-  useEffect(() => {
-    if (on) load(true);
-  }, []);
-  if (!on)
-    return (
-      <PanelEmpty icon="keep" title={t('empty.keepOffTitle')} sub={t('empty.keepOff')} />
-    );
-  const add = async (e: Event) => {
-    e.preventDefault();
-    if (!title.trim() && !text.trim()) return;
-    setBusy(true);
-    try {
-      const n = await api.createKeepNote(title.trim(), text.trim());
-      setNotes((cur) => [n, ...(cur ?? [])]);
-      setTitle('');
-      setText('');
-    } catch (er) {
-      if (er instanceof KeepAuthRequired) setProblem('connect');
-      else toast(t('toast.error', { msg: er instanceof Error ? er.message : String(er) }));
-    } finally {
-      setBusy(false);
-    }
-  };
-  const remove = async (n: KeepNote) => {
-    if (!confirm(t('keep.deleteConfirm'))) return;
-    setNotes((cur) => cur?.filter((x) => x.name !== n.name) ?? null);
-    try {
-      await api.deleteKeepNote(n.name);
-    } catch (er) {
-      if (er instanceof KeepAuthRequired) return setProblem('connect');
-      toast(t('toast.error', { msg: er instanceof Error ? er.message : String(er) }));
-      load(false);
-    }
-  };
-  return (
-    <>
-      <form class="keep-new" onSubmit={add}>
-        <label class="sr-only" for="keep-title">{t('keep.title')}</label>
-        <input id="keep-title" class="bare" placeholder={t('keep.title')} value={title} disabled={busy} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} />
-        <label class="sr-only" for="keep-text">{t('keep.take')}</label>
-        <textarea id="keep-text" class="bare" rows={2} placeholder={t('keep.take')} value={text} disabled={busy}
-          onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') add(e);
-          }}
-        />
-        {(title.trim() || text.trim()) && <button class="btn sm primary" disabled={busy}>{t('keep.add')}</button>}
-      </form>
-      {problem === 'connect' && (
-        <PanelEmpty icon="keep" title={t('keep.connectTitle')} sub={t('keep.connect')}>
-          <button class="btn sm primary" onClick={connect}>{t('keep.connectBtn')}</button>
-        </PanelEmpty>
-      )}
-      {problem === 'denied' && (
-        <PanelEmpty icon="keep" title={t('keep.deniedTitle')} sub={t('keep.denied')}>
-          <button class="btn sm" onClick={connect}>{t('list.retry')}</button>
-        </PanelEmpty>
-      )}
-      {problem === 'failed' && (
-        <PanelEmpty icon="keep" title={t('keep.failedTitle')} sub={t('keep.failed')}>
-          {detail && <code class="pempty-detail">{detail}</code>}
-          <button class="btn sm" onClick={() => load(true)}>{t('list.retry')}</button>
-        </PanelEmpty>
-      )}
-      {!problem && notes === null && <div class="skeleton" style={{ margin: 0 }} />}
-      {!problem && notes?.length === 0 && <PanelEmpty icon="keep" title={t('keep.none')} sub={t('keep.noneSub')} />}
-      {notes?.map((n) => (
-        <div class="pcard keep-note">
-          <div class="keep-body">
-            {n.title && <b>{n.title}</b>}
-            {n.text && <p>{n.text.length > 400 ? `${n.text.slice(0, 400)}…` : n.text}</p>}
-            {n.items && (
-              <ul>
-                {n.items.slice(0, 8).map((i) => (
-                  <li class={i.checked ? 'done' : ''}><Icon name={i.checked ? 'check' : 'square'} size={13} />{i.text}</li>
-                ))}
-                {n.items.length > 8 && <li class="more">{t('pile.more', { n: n.items.length - 8 })}</li>}
-              </ul>
-            )}
-          </div>
-          <button class="ib sm keep-del" aria-label={t('keep.delete')} title={t('keep.delete')} onClick={() => remove(n)}><Icon name="trash" size={15} /></button>
-        </div>
-      ))}
-    </>
-  );
-}

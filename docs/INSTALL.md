@@ -18,7 +18,7 @@ The setup takes about 20 minutes.
    - **Gmail API** (required)
    - **Google Calendar API** (only if you turn on the calendar panel)
    - **Google Tasks API** (only if you turn on the tasks panel)
-   - **Google Drive API** (only if you turn on private notes)
+   - **Google Drive API** (only if you turn on private notes, settings sync or Stickies)
    - **People API** (only if you turn on contact photos)
    - **Generative Language API** (only if you turn on AI; see "Optional: AI with Gemini" below)
 
@@ -44,7 +44,7 @@ Go to **APIs & Services → OAuth consent screen** (called **Google Auth Platfor
 | `https://www.googleapis.com/auth/calendar.calendarlist.readonly` | Optional: your calendar's colour, for events without their own colour |
 | `https://www.googleapis.com/auth/calendar.calendars.readonly` | Optional: your calendar's colour labels, so events show the colours you picked in Google Calendar |
 | `https://www.googleapis.com/auth/tasks` | Optional: Tasks panel and "Add to Tasks" |
-| `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes and settings sync. Only gives access to Maillo's own hidden folder, not your Drive files |
+| `https://www.googleapis.com/auth/drive.appdata` | Optional: private notes, settings sync and Stickies. Only gives access to Maillo's own hidden folder, not your Drive files |
 | `https://www.googleapis.com/auth/contacts.readonly` | Optional: contact photos, from your Google Contacts |
 | `https://www.googleapis.com/auth/contacts.other.readonly` | Optional: contact photos, from "Other contacts" (people you've emailed) |
 | `https://www.googleapis.com/auth/directory.readonly` | Optional: contact photos of colleagues, from your Workspace directory |
@@ -87,7 +87,7 @@ Every setting is explained in the file itself, in plain language. Text goes betw
 | `features.calendar` | Shows today's events in the side panel, in their Google Calendar colours, with a Join button for video calls (Meet, Zoom, Teams, Webex). A toggle switches between a list of events and a day view on an hour grid. Adds three read-only Calendar permissions at sign-in. |
 | `features.tasks` | Shows Google Tasks in the side panel and an "Add to Tasks" button. Adds the Tasks permission. |
 | `features.notes` | Private notes on conversations. Notes are saved in a hidden app folder in Google Drive, so they sync between devices and never appear in Gmail or in your Drive. Adds the Drive app-data permission and needs the Google Drive API. |
-| `features.keep` | Google Keep side panel: your notes, a quick note field and delete. Workspace only; needs the Keep API and an admin's approval (see "Optional: Google Keep"). Off: the Keep icon is hidden. |
+| `features.stickies` | Stickies side panel: colourful notes written in Markdown (bold, italic, headings, lists, to-dos you can tick, links). Saved in `maillo-stickies.json` in the same hidden Drive app folder as notes and settings, so they follow you on every device. Adds the `drive.appdata` permission (shared with `features.notes` and `features.syncSettings`) and needs the Drive API. Off: the Stickies icon is hidden. |
 | `features.staySignedIn` | Each device stays signed in instead of a new Google sign-in every hour. Needs the client secret; see "Optional: stay signed in". |
 | `features.syncSettings` | Keeps Maillo's settings the same on all your devices through a hidden file in Google Drive. Adds the `drive.appdata` permission (shared with `features.notes`) and needs the Drive API. |
 | `features.contactPhotos` | Shows people's photos instead of initials, from your Google Contacts, "Other contacts" and, on Google Workspace, your organisation's directory. Read-only; photos are fetched once per browser session. Also lets search suggest people from your contacts and directory as you type, and turns on the Contacts side panel (your contacts, search, and full contact cards). Adds the three contacts/directory permissions and needs the People API. |
@@ -99,7 +99,7 @@ Every setting is explained in the file itself, in plain language. Text goes betw
 | `aiDailyLimit` | Maximum AI requests per account per day. `0` uses the default (300). |
 | `setAsideLabel` | Gmail label used for the Set aside pile. Maillo creates it the first time you set something aside. If you rename the label in Gmail, change this to match. |
 | `actionLabel` | Gmail label used for the Action required pile. Works like `setAsideLabel`. |
-| `links` | Addresses opened by Chat, Meet, Calendar, Keep, Contacts and Gmail settings. Change them if you use a different Google account index (`/u/1/`) or other apps. |
+| `links` | Addresses opened by Chat, Meet, Calendar, Contacts and Gmail settings. Change them if you use a different Google account index (`/u/1/`) or other apps. |
 | `demo` | `true` shows sample data and never contacts Google. |
 
 Changes take effect on the next page load. No rebuild is needed.
@@ -184,15 +184,15 @@ Maillo can call the Gemini API through `ai.php`, a small relay on your server, s
 
 Use a paid Gemini API plan for email. On the free tier, Google may use what you send to improve its products. Each account is limited to `aiDailyLimit` requests per day (300 by default), and Google's own spending cap applies on top.
 
-## Optional: Google Keep (Workspace only)
+## Optional: Stickies
 
-Google only opens its Keep API to Google Workspace accounts, and only once an administrator allows the app. The API can list, create and delete notes, but not edit them. Without `features.keep`, the Keep icon is hidden.
+Set `features.stickies` to `true`, make sure the **Google Drive API** is on, then sign out and in again (once, unless you already use notes or settings sync, which ask for the same permission). Open Stickies from the right bar:
 
-1. In Google Cloud, enable the **Google Keep API**.
-2. In the Google Admin console, open **Security → Access and data control → API controls → Manage domain-wide delegation → Add new**. Client ID: your OAuth client ID. Scope: `https://www.googleapis.com/auth/keep`.
-3. Set `features.keep` to `true` in `maillo-config.php`.
+- **New sticky** adds one at the top. Write in Markdown: `**bold**`, `_italic_`, `~~strikethrough~~`, `` `code` ``, `# headings`, lists, `- [ ] to-dos` (tick them right on the sticky), `> quotes` and links. Press Esc or click outside to finish.
+- Hover a sticky to change its colour (yellow, orange, pink, purple, blue, green or grey), edit it or delete it (with Undo).
+- Stickies save to `maillo-stickies.json` in Drive's hidden app folder: invisible in Drive, private to Maillo. Each save merges with the copy in Drive, so editing on two devices never loses a sticky.
 
-Keep isn't part of the main sign-in: Google never shows its permission on a consent screen, and asking for it there makes the whole sign-in fail (`invalid_scope`). The first time you open the Keep panel, Maillo asks for Keep on its own in a brief popup. If the panel says Keep isn't allowed yet, check step 2 (the client ID must match exactly) and give the change a few minutes.
+Google Keep was removed in 0.9.0: its API only works on Workspace with an admin's approval and kept asking for sign-in. Your Keep notes stay in Keep; remove `features.keep` and `links.keep` from `maillo-config.php` if you had them (they're ignored now).
 
 ## Optional: stay signed in
 
