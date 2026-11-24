@@ -12,7 +12,7 @@ import { THEMES, currentTheme } from '../theme';
 import { CHIMES, playChime } from '../chime';
 import { askPermission, permission, sendTest } from '../notify';
 import { disablePush, enablePush, pushStatus, pushSupported, testPush, type PushStatus } from '../push';
-import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs } from '../prefs';
+import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs, type SwipeAction } from '../prefs';
 import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
 import { api, applyUpdateCheck, loadLabels, setState, toast, type AppState } from '../store';
@@ -158,6 +158,23 @@ function General() {
       </Row>
       <Row title={t('settings.replyDefault')} help={t('settings.replyDefaultHelp')}>
         <Seg label={t('settings.replyDefault')} value={p.replyDefault} onChange={(v) => setPrefs({ replyDefault: v })} options={[{ value: 'reply', label: t('settings.replySender') }, { value: 'replyAll', label: t('settings.replyAllDefault') }]} />
+      </Row>
+      <Row title={t('settings.swipe')} help={t('settings.swipeHelp')}>
+        <span class="swipe-set">
+          {(['swipeRight', 'swipeLeft'] as const).map((k) => (
+            <label>
+              <span>{t(k === 'swipeRight' ? 'settings.swipeRight' : 'settings.swipeLeft')}</span>
+              <select class="select" value={p[k]} onChange={(e) => setPrefs({ [k]: (e.target as HTMLSelectElement).value as SwipeAction })}>
+                <option value="archive">{t('act.archive')}</option>
+                <option value="trash">{t('act.delete')}</option>
+                <option value="read">{t('settings.swipeRead')}</option>
+                <option value="aside">{t('act.pin.aside')}</option>
+                <option value="action">{t('act.pin.action')}</option>
+                <option value="none">{t('settings.swipeNone')}</option>
+              </select>
+            </label>
+          ))}
+        </span>
       </Row>
       <Row title={t('settings.images')} help={t('settings.imagesHelp')}>
         <Seg label={t('settings.images')} value={p.images} onChange={(v) => setPrefs({ images: v })} options={[{ value: 'ask', label: t('settings.imagesAsk') }, { value: 'always', label: t('settings.imagesAlways') }]} />

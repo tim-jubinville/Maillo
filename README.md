@@ -77,7 +77,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Optional Gemini relay (`ai.php`): the API key stays on your server, with a daily limit per account. Set it up in Settings → AI
 - Keyboard shortcuts (press `?`, or open them from the account menu), including `p` to set aside, `t` for Action required, `n` to add a note, and `v` / `l` to open Move to / Label as
 - Optional side panels: today's Calendar agenda as a list or a day view (in your Google Calendar colours, with a Join button for Meet, Zoom, Teams and Webex calls) and Google Tasks
-- Responsive layout for phones and tablets
+- Responsive layout for phones and tablets: conversation actions at the bottom within thumb reach, swipe between conversations, swipe actions on the list (set in Settings → General), press and hold to select, pull to refresh, a header that slides away while scrolling, and wide emails scaled to fit the screen
 - Demo mode with sample data
 
 ## Limits

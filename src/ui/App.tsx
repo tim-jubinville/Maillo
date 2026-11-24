@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { config, configMissing, setup } from '../config';
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
@@ -138,8 +138,19 @@ function SignIn({ s }: { s: AppState }) {
 
 function Header({ s }: { s: AppState }) {
   const online = navigator.onLine;
+  const ref = useRef<HTMLElement>(null);
+  // Its height, for sliding it away while scrolling on phones.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty('--hh', `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <header class="header">
+    <header class="header" ref={ref}>
       <div class="brandbox">
         <button
           class="ib"

@@ -4,6 +4,7 @@ import { b64urlToBase64, textToHtml, type ParsedMessage } from '../gmail/mime';
 import { t } from '../i18n';
 import { getPrefs, setPrefs } from '../prefs';
 import { api } from '../store';
+import { bindSwipe } from '../mobile';
 import { isDark } from '../theme';
 import { Icon } from './Icon';
 
@@ -148,6 +149,7 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     const f = frame.current;
     if (!f) return;
     let ro: ResizeObserver | undefined;
+    let unswipe: (() => void) | undefined;
     const timers: number[] = [];
     // Emails built for a fixed width (often 600 px newsletters) are scaled down to fit the column, as phone mail apps do,
     // instead of being cut off. Past the smallest legible scale they scroll sideways.
@@ -177,6 +179,9 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
       const d = f.contentDocument;
       const root = d?.getElementById('mm-root');
       if (!d || !root) return;
+      // Touches inside the frame never reach the page, so the frame listens for swipes itself.
+      unswipe?.();
+      unswipe = bindSwipe(d);
       ro = new ResizeObserver(measure);
       ro.observe(root);
       ro.observe(f);
@@ -192,6 +197,7 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     return () => {
       f.removeEventListener('load', onLoad);
       ro?.disconnect();
+      unswipe?.();
       timers.forEach(clearTimeout);
     };
   }, [doc]);

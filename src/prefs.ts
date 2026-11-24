@@ -22,6 +22,9 @@ export interface NotifyPrefs {
   badge: boolean;
 }
 
+/** What swiping a conversation sideways does on a touch screen. */
+export type SwipeAction = 'archive' | 'trash' | 'read' | 'aside' | 'action' | 'none';
+
 export type PanelId = 'calendar' | 'tasks' | 'keep' | 'contacts';
 
 /** Column widths in pixels. */
@@ -61,6 +64,8 @@ export interface Prefs {
   replyDefault: 'reply' | 'replyAll';
   /** Calendar panel: a list of events, or the day on an hour grid. */
   calView: 'list' | 'day';
+  swipeRight: SwipeAction;
+  swipeLeft: SwipeAction;
 }
 
 export const TEXT_SCALES = [0.88, 0.94, 1, 1.08, 1.16, 1.25];
@@ -88,6 +93,8 @@ const defaults: Prefs = {
   tooltips: true,
   replyDefault: 'reply',
   calView: 'list',
+  swipeRight: 'archive',
+  swipeLeft: 'aside',
   notify: {
     enabled: false,
     scope: 'primary',

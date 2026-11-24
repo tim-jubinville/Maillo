@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { config } from '../config';
 import { b64urlToBase64, displayName, type Attachment, type ParsedMessage } from '../gmail/mime';
 import { locale, t } from '../i18n';
-import { fullDate, labelColor, labelDisplayName, sizeLabel } from '../model';
+import { fullDate, labelColor, labelDisplayName, listDate, sizeLabel } from '../model';
+import { bindSwipe, setSwipeHandler, takeSwipeDir, useNarrow } from '../mobile';
 import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, api, closeThread, defaultReplyMode, expandQuickReply, replyAllExtras, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, personName, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
 import type { ThreadNote } from '../gmail/types';
@@ -85,6 +86,24 @@ function unsubscribe(m: ParsedMessage) {
 
 export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRoute; showBack: boolean }) {
   const o = s.open;
+  const narrow = useNarrow();
+  const scroller = useRef<HTMLDivElement>(null);
+  const enter = useRef<{ id: string; cls: string }>({ id: '', cls: '' });
+  // Phones: swipe sideways for the next or previous conversation.
+  const ids = s.list.rows.map((r) => r.id);
+  const idx = o ? ids.indexOf(o.id) : -1;
+  useEffect(() => {
+    setSwipeHandler((dir) => {
+      const next = ids[idx + dir];
+      if (idx >= 0 && next) go(threadHash(route, next));
+    });
+    return () => setSwipeHandler(null);
+  });
+  useEffect(() => (scroller.current ? bindSwipe(scroller.current) : undefined), [!!scroller.current, o?.id]);
+  if (o && enter.current.id !== o.id) {
+    const d = takeSwipeDir();
+    enter.current = { id: o.id, cls: d ? (d > 0 ? 'enter-next' : 'enter-prev') : '' };
+  }
   if (!o || !route.thread) {
     return (
       <section class="readcol" aria-label={t('read.label')}>
@@ -95,8 +114,6 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
       </section>
     );
   }
-  const ids = s.list.rows.map((r) => r.id);
-  const idx = ids.indexOf(o.id);
   const id = [o.id];
   const inInbox = o.labelIds.includes('INBOX');
   const inSpam = o.labelIds.includes('SPAM');
@@ -122,6 +139,13 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
         onPrev={() => go(threadHash(route, ids[idx - 1]))}
         onNext={() => go(threadHash(route, ids[idx + 1]))}
         items={[
+          // Phones: the ribbon sits at the bottom, so replying is in thumb reach.
+          ...(narrow && last && !draft
+            ? [
+                { id: 'reply', group: 0, prio: 9.5, w: 38, label: t(defaultReplyMode(last) === 'replyAll' ? 'act.replyAll' : 'act.reply'), icon: defaultReplyMode(last), run: () => openCompose(defaultReplyMode(last), last) },
+                { id: 'forward', group: 0, prio: 2, w: 38, label: t('act.forward'), icon: 'forward' as const, run: () => openCompose('forward', last) }
+              ]
+            : []),
           ...(inSpam
             ? [{ id: 'notspam', group: 1, prio: 10, w: 104, label: t('act.notSpam'), icon: 'spam' as const, text: true, run: () => actions.notSpam(id) }]
             : inTrash
@@ -178,8 +202,11 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
       />
 
       </Ribbon>
+      {showBack && (
+        <button class="read-back" aria-label={t('act.back')} title={t('act.back')} onClick={closeThread}><Icon name="arrowLeft" /></button>
+      )}
 
-      <div class="readscroll">
+      <div class="readscroll" ref={scroller}>
         {o.loading ? (
           <div class="readinner">
             <div class="skeleton" style={{ height: '34px', width: '60%', margin: 0 }} />
@@ -192,7 +219,7 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
             <button class="btn sm" onClick={() => go(listHash(route))}>{t('act.back')}</button>
           </div>
         ) : (
-          <div class="readinner">
+          <div class={`readinner ${enter.current.cls}`} key={o.id}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <h2 class="subject">{subject}</h2>
               <div class="labels-line">
@@ -342,7 +369,7 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
           <b style={{ fontSize: 'calc(14px * var(--ts, 1))', flex: 'none' }}>{senderName(m.from)}</b>
           <span class="ell" style={{ flex: 1, fontSize: 'calc(13px * var(--ts, 1))', color: 'var(--muted)' }}>{m.snippet}</span>
           {files.length > 0 && <Icon name="clip" size={14} style={{ color: 'var(--muted)' }} />}
-          <span class="msg-time">{fullDate(m.date).split(' (')[0]}</span>
+          <span class="msg-time"><span class="d-long">{fullDate(m.date).split(' (')[0]}</span><span class="d-short">{listDate(m.date)}</span></span>
         </button>
       </div>
     );
@@ -357,7 +384,7 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
               <span class="name">{personName(m.from)}</span>
               <span class="email">{m.from.email}</span>
               {m.listUnsubscribe && (
-                <button style={{ fontSize: 'calc(12px * var(--ts, 1))', fontWeight: 500, textDecoration: 'underline', textDecorationColor: 'var(--blue)' }} onClick={() => unsubscribe(m)}>
+                <button class="unsub-inline" style={{ fontSize: 'calc(12px * var(--ts, 1))', fontWeight: 500, textDecoration: 'underline', textDecorationColor: 'var(--blue)' }} onClick={() => unsubscribe(m)}>
                   {t('act.unsubscribe')}
                 </button>
               )}
@@ -375,7 +402,7 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
               </div>
             )}
           </div>
-          <span class="msg-time" title={m.date.toLocaleString(locale())}>{fullDate(m.date)}</span>
+          <span class="msg-time" title={m.date.toLocaleString(locale())}><span class="d-long">{fullDate(m.date)}</span><span class="d-short">{listDate(m.date)}</span></span>
           {(() => {
             const mode = defaultReplyMode(m);
             const label = t(mode === 'replyAll' ? 'act.replyAll' : 'act.reply');
@@ -392,6 +419,9 @@ function Message({ m, me, defaultOpen }: { m: ParsedMessage; me: string; default
                 <button class="mi" onClick={() => { close(); openCompose('replyAll', m); }}><Icon name="replyAll" size={16} />{t('act.replyAll')}</button>
                 <button class="mi" onClick={() => { close(); openCompose('forward', m); }}><Icon name="forward" size={16} />{t('act.forward')}</button>
                 <hr />
+                {m.listUnsubscribe && (
+                  <button class="mi mi-phone" onClick={() => { close(); unsubscribe(m); }}><Icon name="logout" size={16} />{t('act.unsubscribe')}</button>
+                )}
                 <button class="mi" onClick={() => { close(); showOriginal(m.id); }}><Icon name="file" size={16} />{t('act.original')}</button>
               </>
             )}
@@ -484,7 +514,8 @@ function RibbonBar({
 }) {
   const bar = useRef<HTMLDivElement>(null);
   const width = useWidth(bar);
-  const fixed = 18 + 38 + 76 + (showBack ? 52 : 0);
+  const narrow = useNarrow();
+  const fixed = 18 + 38 + 76 + (showBack && !narrow ? 52 : 0);
   const posW = position ? 72 : 0;
   const { shown, room } = fitItems(items, width - fixed);
   const showPos = !!position && room >= posW && shown.size === items.length;
@@ -494,8 +525,8 @@ function RibbonBar({
     <div class="toolbar nowrap" data-bar="thread" ref={bar}>
       {showBack && (
         <>
-          <button class="ib" aria-label={t('act.back')} title={t('act.back')} onClick={closeThread}><Icon name="arrowLeft" /></button>
-          <span class="sep" />
+          <button class="ib rb-back" aria-label={t('act.back')} title={t('act.back')} onClick={closeThread}><Icon name="arrowLeft" /></button>
+          <span class="sep rb-back" />
         </>
       )}
       <BarButtons items={items} shown={shown} />
