@@ -24,6 +24,10 @@ function out(int $code, array $data): void
     exit;
 }
 
+/**
+ * When Google or GitHub fails, answer 424, never 502 or 504: Cloudflare (often in front of
+ * installs) swaps a 502/504 for its own error page, and the browser loses the reason.
+ */
 function fail(int $code, string $error, array $extra = []): void
 {
     out($code, ['ok' => false, 'error' => $error] + $extra);

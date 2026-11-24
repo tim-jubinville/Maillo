@@ -372,17 +372,17 @@ if ($action === 'update') {
         }
         $asset = latest_release($root, false, $cfg['updateChannel'])['latest']['asset'] ?? null;
         if (!is_array($asset)) {
-            fail(502, 'download_failed');
+            fail(424, 'download_failed');
         }
         [$status, $data] = https_get($asset['url'], MAX_UPLOAD);
         if ($status === 413) {
             fail(400, 'too_large');
         }
         if ($status !== 200 || $data === '') {
-            fail(502, 'download_failed');
+            fail(424, 'download_failed');
         }
         if ($asset['sha256'] !== '' && !hash_equals($asset['sha256'], hash('sha256', $data))) {
-            fail(502, 'download_corrupt');
+            fail(424, 'download_corrupt');
         }
         $zipPath = (string) tempnam(sys_get_temp_dir(), 'maillo');
         if ($zipPath === '' || @file_put_contents($zipPath, $data) === false) {
