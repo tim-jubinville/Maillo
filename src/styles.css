@@ -262,10 +262,11 @@ a:hover { color: var(--violet); }
 
 .ribbon {
   position: absolute; top: 10px; left: 10px; right: 10px; z-index: 6; border-radius: 16px; overflow: hidden;
-  background: var(--ribbon-bg);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+  /* One look for every ribbon (list, conversation, joined or not): only what's in it changes.
+     Opaque, with a shadow that only falls downward, so two ribbons can join without a seam. */
+  background: var(--ribbon-bg), var(--surface);
   border: 1px solid var(--edge);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(20, 33, 61, 0.08), 0 10px 28px rgba(20, 33, 61, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 22px -14px rgba(20, 33, 61, 0.28);
 }
 .ribbon .sep { height: 26px; background: rgba(170, 180, 200, 0.45); }
 .ribbon .ib:hover:not(:disabled) { background: var(--surface); box-shadow: 0 1px 2px rgba(20, 33, 61, 0.12); }
@@ -287,16 +288,6 @@ a:hover { color: var(--violet); }
 .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon { left: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 /* The list ribbon reaches over the column divider, so the two read as one bar with no line between. */
 .list-ribbon.joined, .list-ribbon[data-hold] { z-index: 9; }
-/* Same backing on both halves so the joined bar has one even tone, and shadows that only fall downward (no seam).
-   The list ribbon always wears it, so nothing about it changes when a conversation opens beside it. */
-.list-ribbon, .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
-  background: var(--ribbon-bg), var(--surface);
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 22px -14px rgba(20, 33, 61, 0.28);
-}
-[data-mode='dark'] .list-ribbon, [data-mode='dark'] .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 22px -14px rgba(0, 0, 0, 0.6);
-}
 .list-ribbon.joined::after, .list-ribbon[data-hold]::after { content: ''; position: absolute; top: -1px; bottom: -1px; right: -2px; width: 3px; background: inherit; }
 .ib.pressed, .row-act.pressed { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); box-shadow: inset 0 1px 3px rgba(20, 33, 61, 0.18); }
 .ribbon .ib.pressed:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, var(--surface)); box-shadow: inset 0 1px 3px rgba(20, 33, 61, 0.22); }
@@ -829,7 +820,7 @@ body.resizing iframe { pointer-events: none; }
 }
 [data-mode='dark'] .tag.important { color: #f5dc8a; }
 [data-mode='dark'] .calbox { background: var(--surface-2); }
-[data-mode='dark'] .ribbon { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.3); }
+[data-mode='dark'] .ribbon { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 22px -14px rgba(0, 0, 0, 0.6); }
 [data-mode='dark'] .ribbon .sep { background: rgba(255, 255, 255, 0.14); }
 [data-mode='dark'] .ib:hover:not(:disabled) { color: var(--ink); }
 [data-mode='dark'] .sw { background: #3a4664; }
@@ -1110,6 +1101,9 @@ body.resizing iframe { pointer-events: none; }
 
   /* Reading: the ribbon moves to the bottom, within thumb reach; back stays at the top. */
   .read-ribbon { top: auto; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  /* At the bottom, over the conversation, it needs its shadow all around. */
+  .read-ribbon { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(20, 33, 61, 0.08), 0 10px 28px rgba(20, 33, 61, 0.14); }
+  [data-mode='dark'] .read-ribbon { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.4); }
   .read-ribbon .rb-back { display: none; }
   .read-back {
     display: inline-flex; position: absolute; top: 10px; left: 10px; z-index: 6; width: 40px; height: 40px; border-radius: 50%;
