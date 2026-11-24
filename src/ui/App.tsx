@@ -46,7 +46,6 @@ export function App() {
         {s.route.view === 'settings' ? (
           <div class="card glass settings-card">
             <Settings s={s} section={s.route.section} />
-            <SideIcons s={s} />
           </div>
         ) : (
           <MailCard s={s} route={s.route} />
