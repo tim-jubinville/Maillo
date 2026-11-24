@@ -17,7 +17,7 @@ import { KeyHelp, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
 import { inInbox, PileBar } from './Piles';
 import { Settings } from './Settings';
-import { SidePanel } from './SidePanel';
+import { PanelBody, SidePanel } from './SidePanel';
 import { ThreadList } from './ThreadList';
 
 export function App() {
@@ -345,27 +345,90 @@ function MailCard({ s, route }: { s: AppState; route: MailRoute }) {
   );
 }
 
+type PanelId = NonNullable<AppState['panel']>;
+
 function SideIcons({ s }: { s: AppState }) {
-  const items: { id: NonNullable<AppState['panel']>; icon: ColorIconName; label: string }[] = [
+  const items: { id: PanelId; icon: ColorIconName; label: string }[] = [
     { id: 'calendar', icon: 'calendar', label: t('panel.calendar') },
     // Keep's API only exists for Google Workspace with an admin's approval, so it's opt-in.
     ...(config.features.keep || config.demo ? [{ id: 'keep' as const, icon: 'keep' as const, label: t('panel.keep') }] : []),
     { id: 'tasks', icon: 'tasks', label: t('panel.tasks') },
     { id: 'contacts', icon: 'contacts', label: t('panel.contacts') }
   ];
+  // Hover previews: resting on an icon while the side panel is closed shows that app in a popover.
+  const [peek, setPeek] = useState<{ id: PanelId; top: number } | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const enabled = getPrefs().sidePeek && !s.panel;
+  const show = (id: PanelId, el: HTMLElement) => {
+    clearTimeout(timer.current);
+    if (!enabled) return;
+    const top = el.getBoundingClientRect().top;
+    timer.current = window.setTimeout(() => setPeek({ id, top }), peek ? 120 : 450);
+  };
+  const hide = () => {
+    clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setPeek(null), 220);
+  };
+  const stay = () => clearTimeout(timer.current);
+  useEffect(() => {
+    if (!enabled) setPeek(null);
+  }, [enabled]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (!peek) return;
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setPeek(null);
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [!!peek]);
+  const name = peek ? items.find((i) => i.id === peek.id)?.label ?? '' : '';
   return (
     <div class="side-icons">
       {items.map((i) => (
         <button
-          class={`sp ${s.panel === i.id ? 'on' : ''}`}
+          class={`sp ${s.panel === i.id ? 'on' : ''} ${peek?.id === i.id ? 'peeking' : ''}`}
           aria-label={i.label}
-          title={i.label}
+          title={enabled ? undefined : i.label}
           aria-pressed={s.panel === i.id}
-          onClick={() => setState({ panel: s.panel === i.id ? undefined : i.id })}
+          onMouseEnter={(e) => show(i.id, e.currentTarget)}
+          onMouseLeave={hide}
+          onClick={() => {
+            clearTimeout(timer.current);
+            setPeek(null);
+            setState({ panel: s.panel === i.id ? undefined : i.id });
+          }}
         >
           <CIcon name={i.icon} size={20} />
         </button>
       ))}
+      {peek && (
+        <div
+          class="peek"
+          key={peek.id}
+          role="dialog"
+          aria-label={name}
+          style={{ '--peek-top': `${peek.top}px` }}
+          onMouseEnter={stay}
+          onMouseLeave={hide}
+        >
+          <div class="peek-head">
+            <span>{name}</span>
+            <button
+              class="ib sm"
+              aria-label={t('panel.pin', { name })}
+              title={t('panel.pin', { name })}
+              onClick={() => {
+                setPeek(null);
+                setState({ panel: peek.id });
+              }}
+            >
+              <Icon name="pin" size={16} />
+            </button>
+          </div>
+          <div class="peek-body">
+            <PanelBody s={s} p={peek.id} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

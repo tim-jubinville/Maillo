@@ -66,6 +66,8 @@ export interface Prefs {
   calView: 'list' | 'day';
   swipeRight: SwipeAction;
   swipeLeft: SwipeAction;
+  /** Hovering a right-bar app icon while the side panel is closed shows a preview of it. */
+  sidePeek: boolean;
 }
 
 export const TEXT_SCALES = [0.88, 0.94, 1, 1.08, 1.16, 1.25];
@@ -95,6 +97,7 @@ const defaults: Prefs = {
   calView: 'list',
   swipeRight: 'archive',
   swipeLeft: 'aside',
+  sidePeek: true,
   notify: {
     enabled: false,
     scope: 'primary',

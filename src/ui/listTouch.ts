@@ -9,7 +9,7 @@ import { actions, getState, pileOf, refresh, toggleSelect } from '../store';
 const ARM = 90;
 const PULL_ARM = 64;
 
-const COLOR: Record<Exclude<SwipeAction, 'none'>, string> = {
+export const SWIPE_COLOR: Record<Exclude<SwipeAction, 'none'>, string> = {
   archive: '#25855f',
   trash: '#c8402f',
   read: '#2b59e8',
@@ -24,17 +24,17 @@ function swipeFor(kind: SwipeAction, r: ThreadRow): { label: string; color: stri
   const inSpam = r.labelIds.includes('SPAM');
   switch (kind) {
     case 'archive':
-      return r.labelIds.includes('INBOX') ? { label: t('act.archive'), color: COLOR.archive, run: () => actions.archive(id) } : null;
+      return r.labelIds.includes('INBOX') ? { label: t('act.archive'), color: SWIPE_COLOR.archive, run: () => actions.archive(id) } : null;
     case 'trash':
-      return inTrash ? null : { label: t('act.delete'), color: COLOR.trash, run: () => actions.trash(id) };
+      return inTrash ? null : { label: t('act.delete'), color: SWIPE_COLOR.trash, run: () => actions.trash(id) };
     case 'read':
-      return { label: r.unread ? t('act.markRead') : t('act.markUnread'), color: COLOR.read, run: () => actions.read(id, r.unread) };
+      return { label: r.unread ? t('act.markRead') : t('act.markUnread'), color: SWIPE_COLOR.read, run: () => actions.read(id, r.unread) };
     case 'aside':
     case 'action': {
       if (inTrash || inSpam) return null;
       const here = pileOf(r.labelIds) === kind;
       const label = here ? t(kind === 'aside' ? 'act.unpin.aside' : 'act.unpin.action') : t(kind === 'aside' ? 'act.pin.aside' : 'act.pin.action');
-      return { label, color: COLOR[kind], run: () => (here ? actions.unpin(id, true) : actions.pin(kind, id)) };
+      return { label, color: SWIPE_COLOR[kind], run: () => (here ? actions.unpin(id, true) : actions.pin(kind, id)) };
     }
     default:
       return null;
@@ -42,8 +42,8 @@ function swipeFor(kind: SwipeAction, r: ThreadRow): { label: string; color: stri
 }
 
 /**
- * Touch gestures on the conversation list (phones): swipe a row for its swipe action, press and hold to
- * select, tap to add to a selection already started, and pull down at the top to refresh.
+ * Gestures on the conversation list. Phones: swipe a row for its swipe action, press and hold to select, tap to
+ * add to a selection already started, and pull down at the top to refresh. Desktop: two-finger trackpad swipes.
  */
 export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: RefObject<HTMLDivElement | null>, key: string) {
   useEffect(() => {
@@ -74,6 +74,81 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       el.style.setProperty('--pull-r', `${v * 4}deg`);
       el.classList.toggle('on', v > 0);
       el.classList.toggle('armed', v >= PULL_ARM);
+    };
+
+    // Shared by touch and trackpad: follow the gesture, then act or settle back.
+    const drag = (row: HTMLElement, id: string, mx: number) => {
+      const r = getState().list.rows.find((x) => x.id === id);
+      const prefs = getPrefs();
+      const next = r ? swipeFor(mx > 0 ? prefs.swipeRight : prefs.swipeLeft, r) : null;
+      // Nothing to do in that direction: the row barely moves.
+      dx = next ? Math.max(-row.offsetWidth * 0.9, Math.min(row.offsetWidth * 0.9, mx)) : mx / 6;
+      swipe = next;
+      armed = !!next && Math.abs(mx) >= ARM;
+      row.classList.add('swiping');
+      row.classList.toggle('armed', armed);
+      row.style.setProperty('--sx', `${dx}px`);
+      row.dataset.side = mx > 0 ? 'right' : 'left';
+      if (next) {
+        row.style.setProperty('--swipe-c', next.color);
+        row.dataset.swipeLabel = next.label;
+      } else {
+        row.style.removeProperty('--swipe-c');
+        delete row.dataset.swipeLabel;
+      }
+    };
+    const release = (row: HTMLElement) => {
+      if (armed && swipe) {
+        const run = swipe.run;
+        row.style.setProperty('--sx', `${dx > 0 ? '' : '-'}110%`);
+        row.classList.add('leaving');
+        window.setTimeout(() => {
+          row.classList.remove('leaving');
+          reset(row);
+          run();
+        }, 170);
+      } else {
+        row.classList.add('settling');
+        row.style.setProperty('--sx', '0px');
+        window.setTimeout(() => {
+          row.classList.remove('settling');
+          reset(row);
+        }, 180);
+      }
+      armed = false;
+      swipe = null;
+    };
+
+    // Trackpads (desktop): a two-finger sideways scroll over a row swipes it. It acts once the fingers
+    // and their momentum have stopped; momentum that keeps coming afterwards is swallowed.
+    let wheel: { row: HTMLElement; id: string; mx: number; timer?: number } | null = null;
+    let quietUntil = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (isNarrow() || e.ctrlKey) return;
+      const now = performance.now();
+      if (!wheel) {
+        if (Math.abs(e.deltaX) < 1 || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+        if (now < quietUntil) {
+          quietUntil = now + 250;
+          e.preventDefault();
+          return;
+        }
+        const row = (e.target as Element).closest<HTMLElement>('.row[data-id]');
+        if (!row) return;
+        wheel = { row, id: row.dataset.id!, mx: 0 };
+        armed = false;
+        swipe = null;
+      }
+      e.preventDefault();
+      wheel.mx -= e.deltaX * (e.deltaMode === 1 ? 16 : 1);
+      drag(wheel.row, wheel.id, wheel.mx);
+      clearTimeout(wheel.timer);
+      wheel.timer = window.setTimeout(() => {
+        if (!wheel) return;
+        release(wheel.row);
+        wheel = null;
+        quietUntil = performance.now() + 250;
+      }, 140);
     };
 
     const down = (e: TouchEvent) => {
@@ -118,25 +193,7 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       }
       if (mode === 'swipe' && start.row) {
         e.preventDefault();
-        const r = getState().list.rows.find((x) => x.id === start!.id);
-        const prefs = getPrefs();
-        const next = r ? swipeFor(mx > 0 ? prefs.swipeRight : prefs.swipeLeft, r) : null;
-        // Nothing to do in that direction: the row barely moves.
-        dx = next ? mx : mx / 6;
-        swipe = next;
-        armed = !!next && Math.abs(mx) >= ARM;
-        const row = start.row;
-        row.classList.add('swiping');
-        row.classList.toggle('armed', armed);
-        row.style.setProperty('--sx', `${dx}px`);
-        row.dataset.side = mx > 0 ? 'right' : 'left';
-        if (next) {
-          row.style.setProperty('--swipe-c', next.color);
-          row.dataset.swipeLabel = next.label;
-        } else {
-          row.style.removeProperty('--swipe-c');
-          delete row.dataset.swipeLabel;
-        }
+        drag(start.row, start.id, mx);
       } else if (mode === 'pull') {
         if (box.scrollTop > 0) return;
         pull = Math.min(my * 0.5, 90);
@@ -150,23 +207,7 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       const row = start.row;
       if (mode === 'swipe' && row) {
         suppress = true;
-        if (armed && swipe) {
-          const run = swipe.run;
-          row.style.setProperty('--sx', `${dx > 0 ? '' : '-'}110%`);
-          row.classList.add('leaving');
-          window.setTimeout(() => {
-            row.classList.remove('leaving');
-            reset(row);
-            run();
-          }, 170);
-        } else {
-          row.classList.add('settling');
-          row.style.setProperty('--sx', '0px');
-          window.setTimeout(() => {
-            row.classList.remove('settling');
-            reset(row);
-          }, 180);
-        }
+        release(row);
       } else if (mode === 'pull') {
         if (pull >= PULL_ARM) {
           ptr.current?.classList.add('spin');
@@ -205,6 +246,7 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       if (mode === 'long' || suppress) e.preventDefault();
     };
 
+    box.addEventListener('wheel', onWheel, { passive: false });
     box.addEventListener('touchstart', down, { passive: true });
     box.addEventListener('touchmove', move, { passive: false });
     box.addEventListener('touchend', up, { passive: true });
@@ -213,6 +255,8 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
     box.addEventListener('contextmenu', menu);
     return () => {
       clearTimeout(timer);
+      box.removeEventListener('wheel', onWheel);
+      clearTimeout(wheel?.timer);
       box.removeEventListener('touchstart', down);
       box.removeEventListener('touchmove', move);
       box.removeEventListener('touchend', up);

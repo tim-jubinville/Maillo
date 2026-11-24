@@ -12,6 +12,7 @@ import { THEMES, currentTheme } from '../theme';
 import { CHIMES, playChime } from '../chime';
 import { askPermission, permission, sendTest } from '../notify';
 import { disablePush, enablePush, pushStatus, pushSupported, testPush, type PushStatus } from '../push';
+import { SWIPE_COLOR } from './listTouch';
 import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs, type SwipeAction } from '../prefs';
 import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
@@ -150,6 +151,9 @@ function General() {
       <Row title={t('settings.pane')} help={t('settings.paneHelp')}>
         <Seg label={t('settings.pane')} value={p.pane} onChange={(v) => setPrefs({ pane: v })} options={[{ value: 'right', label: t('settings.paneRight') }, { value: 'off', label: t('settings.paneOff') }]} />
       </Row>
+      <Row title={t('settings.sidePeek')} help={t('settings.sidePeekHelp')}>
+        <Switch label={t('settings.sidePeek')} on={p.sidePeek} onChange={(v) => setPrefs({ sidePeek: v })} />
+      </Row>
       <Row title={t('cat.label')}>
         <Switch label={t('cat.label')} on={p.tabs} onChange={(v) => { setPrefs({ tabs: v }); setState({ catNew: {} }); }} />
       </Row>
@@ -161,19 +165,27 @@ function General() {
       </Row>
       <Row title={t('settings.swipe')} help={t('settings.swipeHelp')}>
         <span class="swipe-set">
-          {(['swipeRight', 'swipeLeft'] as const).map((k) => (
-            <label>
-              <span>{t(k === 'swipeRight' ? 'settings.swipeRight' : 'settings.swipeLeft')}</span>
-              <select class="select" value={p[k]} onChange={(e) => setPrefs({ [k]: (e.target as HTMLSelectElement).value as SwipeAction })}>
-                <option value="archive">{t('act.archive')}</option>
-                <option value="trash">{t('act.delete')}</option>
-                <option value="read">{t('settings.swipeRead')}</option>
-                <option value="aside">{t('act.pin.aside')}</option>
-                <option value="action">{t('act.pin.action')}</option>
-                <option value="none">{t('settings.swipeNone')}</option>
-              </select>
-            </label>
-          ))}
+          {(['swipeRight', 'swipeLeft'] as const).map((k) => {
+            const dir = k === 'swipeRight' ? 'right' : 'left';
+            const v = p[k];
+            const names: Record<SwipeAction, string> = {
+              archive: t('act.archive'),
+              trash: t('act.delete'),
+              read: t('settings.swipeRead'),
+              aside: t('act.pin.aside'),
+              action: t('act.pin.action'),
+              none: t('settings.swipeNone')
+            };
+            return (
+              <label class="swipe-opt">
+                <SwipeDemo dir={dir} action={v} name={names[v]} />
+                <span>{t(k === 'swipeRight' ? 'settings.swipeRight' : 'settings.swipeLeft')}</span>
+                <select class="select" value={v} onChange={(e) => setPrefs({ [k]: (e.target as HTMLSelectElement).value as SwipeAction })}>
+                  {(Object.keys(names) as SwipeAction[]).map((a) => <option value={a}>{names[a]}</option>)}
+                </select>
+              </label>
+            );
+          })}
         </span>
       </Row>
       <Row title={t('settings.images')} help={t('settings.imagesHelp')}>
@@ -1239,5 +1251,20 @@ function InstallApp() {
         {st === 'installed' && <Icon name="check" size={22} style={{ color: 'var(--accent)' }} />}
       </div>
     </Section>
+  );
+}
+
+/** A little looping picture of a row being swiped, so it's obvious which direction each setting is for. */
+function SwipeDemo({ dir, action, name }: { dir: 'left' | 'right'; action: SwipeAction; name: string }) {
+  const color = action === 'none' ? undefined : SWIPE_COLOR[action];
+  return (
+    <span class={`swipe-demo to-${dir} ${action === 'none' ? 'none' : ''}`} style={color ? { '--c': color } : undefined} aria-hidden="true">
+      <span class="sd-back">{action !== 'none' && <b>{name}</b>}</span>
+      <span class="sd-row">
+        <span class="sd-av" />
+        <span class="sd-lines"><i /><i /></span>
+      </span>
+      <span class="sd-finger" />
+    </span>
   );
 }
