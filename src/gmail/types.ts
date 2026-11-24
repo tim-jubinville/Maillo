@@ -159,6 +159,7 @@ export interface CalendarEvent {
   description?: string;
   hangoutLink?: string;
   conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[] };
+  attendees?: { self?: boolean; responseStatus?: string }[];
   /** Display colour: the event's own colour, or its calendar's. Filled by the backend. */
   color?: string;
 }
