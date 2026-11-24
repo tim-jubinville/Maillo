@@ -4,7 +4,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 
 - No database and no third-party service in between; one settings file (`maillo-config.php`) and a few small PHP files: settings for the browser (`config.php`), an updater (`update.php`), lasting sign-in (`session.php`) and a Gemini relay (`ai.php`)
 - Sign in with Google; access tokens stay in the browser tab and are never stored on a server
-- Runs on any web host with PHP 7.4 or later and HTTPS: shared hosting (Apache, cPanel) or Nginx with PHP-FPM. Static hosts without PHP (Cloudflare Pages, Netlify, GitHub Pages) aren't supported
+- Runs on any web host with PHP 7.4 or later (8.1+ recommended) and HTTPS: shared hosting (Apache, cPanel) or Nginx with PHP-FPM. Static hosts without PHP (Cloudflare Pages, Netlify, GitHub Pages) aren't supported
 - English and French interface
 
 ## Features
@@ -47,7 +47,7 @@ A self-hosted web interface for Gmail. Your mail stays in your Google account; M
 - Optional: the same settings on all your devices, synced through a hidden file in Google Drive
 - Light on Google's API quota: checks for changes with Gmail's history (2 units) before reloading anything, fetches conversation headers in batches, remembers them on the device between visits, and slows down instead of failing when Google rate-limits
 - Instant start: the inbox (with labels, counts and piles) appears at once from what this device kept, then refreshes quietly in the background
-- Recently opened conversations are kept on the device (IndexedDB), so they reopen at once and can be read offline; the conversations either side of the open one are fetched ahead, so the ribbon arrows and j/k feel instant
+- Recently opened conversations are kept on the device (IndexedDB), so they reopen at once and can be read offline; the conversations either side of the open one are fetched ahead, so the ribbon arrows and j/k feel instant (turn it off per device in Settings → General on a shared computer)
 - Compose in its own browser window: the pop-out button in the compose header, or Shift + click on Compose; the draft keeps saving and can come back into Maillo
 - Compose, reply, reply all, forward (with the original attachments)
 - Rich text formatting, links, signatures, attachments (drag and drop works)

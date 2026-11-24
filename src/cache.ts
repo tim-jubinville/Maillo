@@ -33,9 +33,31 @@ function done(tx: IDBTransaction): Promise<void> {
   });
 }
 
+const OFF_KEY = 'maillo.noDeviceCache';
+
+/** Whether this device keeps mail between visits (Settings → General; per device, never synced). */
+export function deviceCacheOn(): boolean {
+  try {
+    return localStorage.getItem(OFF_KEY) !== '1';
+  } catch {
+    return true;
+  }
+}
+
+/** Turns keeping mail on this device on or off; off deletes what's kept right away. */
+export async function setDeviceCache(on: boolean) {
+  try {
+    if (on) localStorage.removeItem(OFF_KEY);
+    else localStorage.setItem(OFF_KEY, '1');
+  } catch {
+    /* can't remember the choice: this visit only */
+  }
+  if (!on) await clearCache();
+}
+
 function open(): Promise<IDBDatabase | null> {
   if (db) return Promise.resolve(db);
-  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+  if (typeof indexedDB === 'undefined' || !deviceCacheOn()) return Promise.resolve(null);
   return new Promise((resolve) => {
     let r: IDBOpenDBRequest;
     try {

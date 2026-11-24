@@ -1,4 +1,4 @@
-# Apache settings for a static install.
+# Apache settings for Maillo. Nginx ignores this file: see INSTALL.md for the same rules.
 Options -Indexes
 DirectoryIndex index.html
 AddType application/manifest+json .webmanifest
