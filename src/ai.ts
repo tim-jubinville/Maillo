@@ -40,8 +40,18 @@ async function call<T extends { ok: boolean; error?: string }>(fields: Record<st
   try {
     return (await res.json()) as T;
   } catch {
-    return { ok: false, error: 'unavailable' } as T;
+    // Not Maillo's answer: a firewall's or the server's own error page, or a missing file.
+    const error = res.status === 403 || res.status === 406 || res.status === 501 ? 'blocked' : res.status >= 500 ? 'server_error' : 'unavailable';
+    return { ok: false, error: error === 'unavailable' ? error : `${error}:${res.status}` } as T;
   }
+}
+
+/** UTF-8 text as base64, so firewalls on the host don't inspect (and block) email text and prompts. */
+function b64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
 }
 
 export const aiEnabled = () => config.features.ai && !config.demo;
@@ -50,8 +60,9 @@ export const aiActionsOn = () => config.features.ai || config.demo;
 
 /** The error message for an ai.php error code. */
 export function aiErrorText(code?: string): string {
-  const key = `ai.err.${code}` as StringKey;
-  const known = t(key);
+  const [name, status = ''] = (code ?? '').split(':');
+  const key = `ai.err.${name}` as StringKey;
+  const known = t(key, { status });
   return known === key ? t('ai.err.generic', { code: code ?? 'unknown' }) : known;
 }
 
@@ -62,8 +73,9 @@ export const aiRemoveKey = () => call<AiStatus>({ action: 'remove_key' });
 export async function aiGenerate(instructions: string, input: string, opts: { json?: boolean; temperature?: number } = {}): Promise<string> {
   const r = await call<AiResult>({
     action: 'generate',
-    instructions,
-    input,
+    enc: 'b64',
+    instructions: b64(instructions),
+    input: b64(input),
     json: opts.json ? '1' : '',
     ...(opts.temperature !== undefined ? { temperature: String(opts.temperature) } : {})
   });
