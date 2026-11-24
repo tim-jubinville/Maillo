@@ -818,7 +818,7 @@ body.resizing iframe { pointer-events: none; }
 [data-mode='dark'] .msg-body .paper { background: #ffffff; padding: 14px 16px; }
 @media (max-width: 900px) {
   [data-mode='dark'] .msg-body .paper { padding: 12px; }
-  [data-mode='dark'] .msg-body .paper.fit { padding: 0; }
+  [data-mode='dark'] .msg-body .paper.fit { padding: 0; background: transparent; }
 }
 [data-mode='dark'] .tag.important { color: #f5dc8a; }
 [data-mode='dark'] .calbox { background: var(--surface-2); }

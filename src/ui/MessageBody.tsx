@@ -165,9 +165,12 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
       const root = d?.getElementById('mm-root');
       if (!root) return;
       fit(d!, root);
-      const h = Math.ceil(root.getBoundingClientRect().height);
+      // Scaled heights land on fractions; round down so no sliver of the card shows below the email.
+      const rh = root.getBoundingClientRect().height;
+      const h = root.style.zoom ? Math.floor(rh) : Math.ceil(rh);
       const scrollbar = d!.documentElement.scrollWidth > d!.documentElement.clientWidth ? 16 : 0;
-      setHeight(Math.max(40, h + scrollbar + 8));
+      // Scaled emails end flush with their own background; others get a little breathing room below.
+      setHeight(Math.max(40, h + scrollbar + (root.style.zoom ? 0 : 8)));
     };
     const onLoad = () => {
       measure();
