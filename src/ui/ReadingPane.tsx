@@ -12,7 +12,9 @@ import type { ThreadNote } from '../gmail/types';
 import { Avatar, Menu, Ribbon, downloadBase64 } from './common';
 import { CIcon } from './ColorIcons';
 import { Icon } from './Icon';
+import { aiActionsOn } from '../ai';
 import { BarButtons, fitItems, MoreMenu, useWidth, type BarItem } from './BarItems';
+import { requestSummary, SummarizeButton, SummaryCard } from './AiSummary';
 import { LabelList, LabelMenu, MoveList, MoveMenu } from './Menus';
 import { MessageBody } from './MessageBody';
 import { PILE_ICON, pileKey } from './Piles';
@@ -128,6 +130,9 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
   const pile = pileOf(o.labelIds);
   const note = s.notes[o.id];
   const editingNote = s.noteEditing === o.id;
+  const meSendAs = s.sendAs.find((x) => x.isDefault) ?? s.sendAs.find((x) => x.sendAsEmail === s.me);
+  const owner = { name: meSendAs?.displayName ?? '', email: s.me };
+  const ai = aiActionsOn() && !o.loading && !o.error && msgs.length > 0;
 
   return (
     <section
@@ -173,7 +178,10 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
           { id: 'unread', group: 2, prio: 7, w: 38, label: t('act.markUnread'), icon: 'unread' as const, run: () => actions.read(id, false) },
           ...(config.features.tasks ? [{ id: 'tasks', group: 2, prio: 3, w: 38, label: t('act.addTask'), icon: 'tasks' as const, run: () => actions.addTask(o.id) }] : []),
           { id: 'move', group: 3, prio: 5, w: 38, label: t('act.moveTo'), icon: 'move' as const, menu: <MoveMenu s={s} ids={id} />, sub: (close) => <MoveList s={s} ids={id} onDone={close} /> },
-          { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label' as const, menu: <LabelMenu s={s} ids={id} current={o.labelIds} />, sub: (close) => <LabelList s={s} ids={id} current={o.labelIds} onDone={close} /> }
+          { id: 'labels', group: 3, prio: 4, w: 38, label: t('act.labelAs'), icon: 'label' as const, menu: <LabelMenu s={s} ids={id} current={o.labelIds} />, sub: (close) => <LabelList s={s} ids={id} current={o.labelIds} onDone={close} /> },
+          ...(ai
+            ? [{ id: 'summarize', group: 4, prio: 8, w: 124, label: t('ai.summarize'), icon: 'ai-summarize' as const, run: () => requestSummary(o.id, msgs, owner), menu: <SummarizeButton threadId={o.id} msgs={msgs} owner={owner} /> }]
+            : [])
         ]}
         more={(close) => (
           <>
@@ -246,6 +254,8 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
             {notesEnabled && (note || editingNote) && (
               <StickyNote key={o.id} threadId={o.id} note={note} editing={editingNote} />
             )}
+
+            {ai && <SummaryCard threadId={o.id} msgs={msgs} owner={owner} />}
 
             {inSpam && (
               <div class="notice warn" role="note">

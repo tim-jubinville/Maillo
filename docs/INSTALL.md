@@ -192,6 +192,14 @@ Maillo can call the Gemini API through `ai.php`, a small relay on your server, s
 4. Put the key in `geminiApiKey` in `maillo-config.php`. Or open **Settings → AI**, paste the key and click **Save key**: Maillo checks it with Google, then stores it in `.maillo-ai.php` on the server (never served, backed up or replaced by updates). A `GEMINI_API_KEY` environment variable also works. If more than one is set, `maillo-config.php` wins, then the environment variable.
 5. Click **Test the connection**.
 
+Once it's on, three AI actions appear, each with the same gradient look so AI is always easy to tell apart:
+
+- **Summarize** in a conversation's toolbar: a short summary, key points and what you're asked to do. It stays for the session; a newer message offers **Refresh**.
+- **Proofread** in compose: a list of fixes to accept or skip one by one (or all at once). Undo takes them back. Your signature and quoted text are left out.
+- **Draft** in compose: say what the message should say (or pick Say yes, Decline politely, Ask for details, Say thanks in a reply), browse versions, then **Insert**. Nothing is sent for you.
+
+AI only runs when you click one of these. What it sends to Gemini: the conversation's messages without their quoted copies (Summarize, Draft) or your own text (Proofread).
+
 Use a paid Gemini API plan for email. On the free tier, Google may use what you send to improve its products. Each account is limited to `aiDailyLimit` requests per day (300 by default), and Google's own spending cap applies on top.
 
 ## Optional: Stickies

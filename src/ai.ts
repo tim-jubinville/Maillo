@@ -1,5 +1,6 @@
 import { currentToken } from './auth';
 import { config } from './config';
+import { t, type StringKey } from './i18n';
 
 // Talks to public/ai.php, which holds the Gemini API key server-side.
 
@@ -44,13 +45,28 @@ async function call<T extends { ok: boolean; error?: string }>(fields: Record<st
 }
 
 export const aiEnabled = () => config.features.ai && !config.demo;
+/** Whether the AI buttons show. Demo mode shows them too, with made-up answers. */
+export const aiActionsOn = () => config.features.ai || config.demo;
+
+/** The error message for an ai.php error code. */
+export function aiErrorText(code?: string): string {
+  const key = `ai.err.${code}` as StringKey;
+  const known = t(key);
+  return known === key ? t('ai.err.generic', { code: code ?? 'unknown' }) : known;
+}
 
 export const aiStatus = () => call<AiStatus>({ action: 'status' });
 export const aiSetKey = (key: string) => call<AiStatus>({ action: 'set_key', key });
 export const aiRemoveKey = () => call<AiStatus>({ action: 'remove_key' });
 
-export async function aiGenerate(instructions: string, input: string, opts: { json?: boolean } = {}): Promise<string> {
-  const r = await call<AiResult>({ action: 'generate', instructions, input, json: opts.json ? '1' : '' });
+export async function aiGenerate(instructions: string, input: string, opts: { json?: boolean; temperature?: number } = {}): Promise<string> {
+  const r = await call<AiResult>({
+    action: 'generate',
+    instructions,
+    input,
+    json: opts.json ? '1' : '',
+    ...(opts.temperature !== undefined ? { temperature: String(opts.temperature) } : {})
+  });
   if (!r.ok || typeof r.text !== 'string') throw new AiError(r.error || 'unavailable');
   return r.text;
 }

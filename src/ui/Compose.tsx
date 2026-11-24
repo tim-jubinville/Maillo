@@ -5,6 +5,9 @@ import { fileToBase64, htmlToText, parseAddressList, type Address } from '../gma
 import { t, type StringKey } from '../i18n';
 import { sizeLabel } from '../model';
 import { closeCompose, discardCompose, getState, saveDraft, sendCompose, signatureBlock, signatureHtml, toast, updateCompose, type AppState, type ComposeState } from '../store';
+import { aiActionsOn } from '../ai';
+import { AiButton } from './AiButton';
+import { DraftPanel, ProofreadPanel, type AiPanel } from './ComposeAi';
 import { popInCompose, popOutCompose } from './Popout';
 import { Avatar } from './common';
 import { Icon } from './Icon';
@@ -16,6 +19,9 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [fmt, setFmt] = useState(true);
   const [showQuoted, setShowQuoted] = useState(false);
+  const [ai, setAi] = useState<AiPanel>(null);
+  // Bumped so asking to proofread again starts a fresh check.
+  const [aiRun, setAiRun] = useState(0);
   const saveTimer = useRef<number | undefined>(undefined);
   const htmlTimer = useRef<number | undefined>(undefined);
 
@@ -214,6 +220,20 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
           </div>
         )}
 
+        {ai === 'proof' && <ProofreadPanel key={aiRun} editor={editor} onChange={() => syncHtml()} onClose={() => setAi(null)} />}
+        {ai === 'draft' && (
+          <DraftPanel
+            c={c}
+            editor={editor}
+            onInsert={(subject) => {
+              if (subject && !getState().compose?.subject) patch({ subject });
+              syncHtml(true);
+              setAi(null);
+            }}
+            onClose={() => setAi(null)}
+          />
+        )}
+
         {fmt && (
           <div class="fmtbar" role="toolbar" aria-label="Formatting">
             <button class="ib" aria-label={t('compose.undo')} title={t('compose.undo')} onClick={() => exec('undo')}><Icon name="undo" /></button>
@@ -272,6 +292,12 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
             >
               <Icon name="signature" />
             </button>
+          )}
+          {aiActionsOn() && (
+            <span class="ai-acts">
+              <AiButton action="proofread" sm label={t('ai.proofread')} onClick={() => { setAi('proof'); setAiRun((n) => n + 1); }} />
+              <AiButton action="draft" sm label={t('ai.draft')} onClick={() => setAi(ai === 'draft' ? null : 'draft')} />
+            </span>
           )}
           <button class="ib" style={{ marginLeft: 'auto', color: 'var(--c-trash)' }} aria-label={t('compose.discard')} title={t('compose.discard')} onClick={discardCompose}>
             <Icon name="trash" />
