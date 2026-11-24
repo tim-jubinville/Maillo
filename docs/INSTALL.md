@@ -190,7 +190,9 @@ Google only opens its Keep API to Google Workspace accounts, and only once an ad
 
 1. In Google Cloud, enable the **Google Keep API**.
 2. In the Google Admin console, open **Security → Access and data control → API controls → Manage domain-wide delegation → Add new**. Client ID: your OAuth client ID. Scope: `https://www.googleapis.com/auth/keep`.
-3. Set `features.keep` to `true` in `maillo-config.php`, then sign out and in again.
+3. Set `features.keep` to `true` in `maillo-config.php`.
+
+Keep isn't part of the main sign-in: Google never shows its permission on a consent screen, and asking for it there makes the whole sign-in fail (`invalid_scope`). The first time you open the Keep panel, Maillo asks for Keep on its own in a brief popup. If the panel says Keep isn't allowed yet, check step 2 (the client ID must match exactly) and give the change a few minutes.
 
 ## Optional: stay signed in
 

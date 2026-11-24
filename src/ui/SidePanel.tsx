@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
+import { requestKeepToken } from '../auth';
 import { config } from '../config';
+import { KeepAuthRequired } from '../gmail/api';
 import type { CalendarEvent, KeepNote, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
 import { getPrefs, setPrefs } from '../prefs';
@@ -292,23 +294,39 @@ function Tasks() {
 }
 
 
+type KeepProblem = null | 'connect' | 'denied' | 'failed';
+
+// Token errors meaning Google (or the admin) won't grant Keep, as opposed to a closed or blocked popup.
+const KEEP_DENIED = /invalid_scope|access_denied|unauthorized_client|keep_not_granted/;
+
 function Keep() {
   const [notes, setNotes] = useState<KeepNote[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [problem, setProblem] = useState<KeepProblem>(null);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const on = config.features.keep || config.demo;
-  const load = () =>
+  const fromTokenError = (e: unknown) => setProblem(KEEP_DENIED.test(e instanceof Error ? e.message : '') ? 'denied' : 'connect');
+  /** Keep has its own token (see KEEP_SCOPE in auth.ts); with askForToken, a missing one is requested once. */
+  const load = (askForToken: boolean): Promise<void> =>
     api.listKeepNotes().then(
       (n) => {
         setNotes(n);
-        setFailed(false);
+        setProblem(null);
       },
-      () => setFailed(true)
+      (e) => {
+        if (!(e instanceof KeepAuthRequired)) return setProblem('failed');
+        if (!askForToken) return setProblem('connect');
+        return requestKeepToken().then(() => load(false), fromTokenError);
+      }
     );
+  // Opening the panel is a click, so the brief token popup is allowed here.
+  const connect = () => {
+    setProblem(null);
+    requestKeepToken().then(() => load(false), fromTokenError);
+  };
   useEffect(() => {
-    if (on) load();
+    if (on) load(true);
   }, []);
   if (!on)
     return (
@@ -324,7 +342,8 @@ function Keep() {
       setTitle('');
       setText('');
     } catch (er) {
-      toast(t('toast.error', { msg: er instanceof Error ? er.message : String(er) }));
+      if (er instanceof KeepAuthRequired) setProblem('connect');
+      else toast(t('toast.error', { msg: er instanceof Error ? er.message : String(er) }));
     } finally {
       setBusy(false);
     }
@@ -335,8 +354,9 @@ function Keep() {
     try {
       await api.deleteKeepNote(n.name);
     } catch (er) {
+      if (er instanceof KeepAuthRequired) return setProblem('connect');
       toast(t('toast.error', { msg: er instanceof Error ? er.message : String(er) }));
-      load();
+      load(false);
     }
   };
   return (
@@ -353,13 +373,23 @@ function Keep() {
         />
         {(title.trim() || text.trim()) && <button class="btn sm primary" disabled={busy}>{t('keep.add')}</button>}
       </form>
-      {failed && (
-        <PanelEmpty icon="keep" title={t('keep.failedTitle')} sub={t('keep.failed')}>
-          <button class="btn sm" onClick={load}>{t('list.retry')}</button>
+      {problem === 'connect' && (
+        <PanelEmpty icon="keep" title={t('keep.connectTitle')} sub={t('keep.connect')}>
+          <button class="btn sm primary" onClick={connect}>{t('keep.connectBtn')}</button>
         </PanelEmpty>
       )}
-      {!failed && notes === null && <div class="skeleton" style={{ margin: 0 }} />}
-      {!failed && notes?.length === 0 && <PanelEmpty icon="keep" title={t('keep.none')} sub={t('keep.noneSub')} />}
+      {problem === 'denied' && (
+        <PanelEmpty icon="keep" title={t('keep.deniedTitle')} sub={t('keep.denied')}>
+          <button class="btn sm" onClick={connect}>{t('list.retry')}</button>
+        </PanelEmpty>
+      )}
+      {problem === 'failed' && (
+        <PanelEmpty icon="keep" title={t('keep.failedTitle')} sub={t('keep.failed')}>
+          <button class="btn sm" onClick={() => load(true)}>{t('list.retry')}</button>
+        </PanelEmpty>
+      )}
+      {!problem && notes === null && <div class="skeleton" style={{ margin: 0 }} />}
+      {!problem && notes?.length === 0 && <PanelEmpty icon="keep" title={t('keep.none')} sub={t('keep.noneSub')} />}
       {notes?.map((n) => (
         <div class="pcard keep-note">
           <div class="keep-body">

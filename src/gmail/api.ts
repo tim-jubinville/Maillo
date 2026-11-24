@@ -1,6 +1,6 @@
 import { locale } from '../i18n';
 import { config } from '../config';
-import { currentToken, dropSession } from '../auth';
+import { currentToken, dropKeepToken, dropSession, keepToken } from '../auth';
 import type {
   CalendarEvent,
   ContactCard,
@@ -33,6 +33,9 @@ export class ApiError extends Error {
 }
 
 export class AuthRequired extends Error {}
+
+/** The Keep panel has no Keep token yet (or it ran out); it asks for one with requestKeepToken. */
+export class KeepAuthRequired extends Error {}
 
 type Query = Record<string, string | number | boolean | string[] | undefined>;
 
@@ -110,9 +113,9 @@ function retryDelay(res: Response, attempt: number): number {
   return 800 * 2 ** attempt + Math.random() * 400;
 }
 
-async function request<T>(url: string, init: RequestInit & { query?: Query; units?: number } = {}, attempt = 0): Promise<T> {
-  const token = currentToken();
-  if (!token) throw new AuthRequired();
+async function request<T>(url: string, init: RequestInit & { query?: Query; units?: number; keep?: boolean } = {}, attempt = 0): Promise<T> {
+  const token = init.keep ? keepToken() : currentToken();
+  if (!token) throw init.keep ? new KeepAuthRequired() : new AuthRequired();
   if (attempt === 0) await budget(init.units ?? unitsFor(url, init.method ?? 'GET'));
   const res = await slot(() =>
     fetch(url + qs(init.query), {
@@ -125,6 +128,10 @@ async function request<T>(url: string, init: RequestInit & { query?: Query; unit
     })
   );
   if (res.status === 401) {
+    if (init.keep) {
+      dropKeepToken();
+      throw new KeepAuthRequired();
+    }
     dropSession();
     throw new AuthRequired();
   }
@@ -600,7 +607,7 @@ export const gmailBackend: MailBackend = {
     const out: KeepNote[] = [];
     let pageToken: string | undefined;
     for (let page = 0; page < 3; page++) {
-      const r = await request<{ notes?: GKeepNote[]; nextPageToken?: string }>(`${KEEP}/notes`, { query: { pageSize: 50, filter: 'trashed = false', pageToken } });
+      const r = await request<{ notes?: GKeepNote[]; nextPageToken?: string }>(`${KEEP}/notes`, { keep: true, query: { pageSize: 50, filter: 'trashed = false', pageToken } });
       out.push(...(r.notes ?? []).map(toKeepNote));
       pageToken = r.nextPageToken;
       if (!pageToken) break;
@@ -608,10 +615,10 @@ export const gmailBackend: MailBackend = {
     return out.sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
   },
   createKeepNote: async (title, text) =>
-    toKeepNote(await request<GKeepNote>(`${KEEP}/notes`, { method: 'POST', body: JSON.stringify({ title, body: { text: { text } } }) })),
+    toKeepNote(await request<GKeepNote>(`${KEEP}/notes`, { keep: true, method: 'POST', body: JSON.stringify({ title, body: { text: { text } } }) })),
   deleteKeepNote: async (name) => {
     if (!/^notes\/[\w-]+$/.test(name)) throw new ApiError(400, 'bad note');
-    await request(`${KEEP}/${name}`, { method: 'DELETE' });
+    await request(`${KEEP}/${name}`, { keep: true, method: 'DELETE' });
   },
   loadSettings: async () => {
     if (!settingsFileId) {
