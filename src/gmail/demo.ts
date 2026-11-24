@@ -56,6 +56,9 @@ const seeds: Seed[][] = [
     { from: 'Priya Shah <priya@mail.example>', subject: 'Photos from the cottage', body: '12 photos from the weekend. The sunrise ones came out great.', ago: 5 * D, labels: ['CATEGORY_PERSONAL', 'Label_personal', 'Label_aside'], files: [{ name: 'IMG_2041.jpg', type: 'image/jpeg', size: 4_200_000 }, { name: 'IMG_2044.jpg', type: 'image/jpeg', size: 3_800_000 }] }
   ],
   [
+    { from: 'Northline Mobile <billing@northline.example>', subject: 'Your monthly bill is ready', body: '<table width="640" cellpadding="0" cellspacing="0" style="width:640px;font-family:Arial,sans-serif;background:#f2f1f6"><tr><td style="padding:16px 24px;text-align:right;color:#777;font-size:13px">Trouble viewing this email? View it online</td></tr><tr><td style="padding:24px 40px;font-size:40px;color:#3d2466;font-weight:bold">Your monthly bill is ready</td></tr><tr><td style="padding:0 40px 24px"><table width="560" cellpadding="0" cellspacing="0"><tr><td width="280" style="padding:16px;background:#fff;font-size:15px">Amount due<br><b style="font-size:28px">$84.20</b></td><td width="280" style="padding:16px;background:#fff;font-size:15px">Due date<br><b style="font-size:28px">Dec 12</b></td></tr></table></td></tr><tr><td style="padding:0 40px 32px"><a href="https://northline.example/bill" style="display:inline-block;padding:14px 28px;background:#3d2466;color:#fff;border-radius:6px;text-decoration:none;font-weight:bold">View my bill</a></td></tr></table>', ago: 4 * H, labels: ['INBOX', 'IMPORTANT', 'CATEGORY_UPDATES'], unsub: true }
+  ],
+  [
     { from: 'Club de design <info@club.example>', subject: 'Soirée des membres : programme de décembre', body: '<p>Bonjour à tous,</p><p>Voici le programme de notre soirée des membres : trois courtes présentations, suivies d’un apéro.</p><p>Au plaisir de vous y voir,<br>L’équipe du Club</p>', ago: 6 * D, labels: ['INBOX', 'CATEGORY_PERSONAL'] }
   ],
   [

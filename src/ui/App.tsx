@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { config, configMissing, setup } from '../config';
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName } from '../model';
@@ -15,7 +15,7 @@ import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
 import { KeyHelp, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
-import { PileBar } from './Piles';
+import { inInbox, PileBar } from './Piles';
 import { Settings } from './Settings';
 import { SidePanel } from './SidePanel';
 import { ThreadList } from './ThreadList';
@@ -30,7 +30,7 @@ export function App() {
   if (s.phase === 'boot') return <div class="center"><p>{t('app.loading')}</p></div>;
   if (s.phase === 'signin' || s.phase === 'denied') return <SignIn s={s} />;
   return (
-    <div class={`app ${s.piles.aside.rows.length || s.piles.action.rows.length ? 'has-pile' : ''}`}>
+    <div class={`app ${inInbox(s) && (s.piles.aside.rows.length || s.piles.action.rows.length) ? 'has-pile' : ''}`}>
       <ColorSprite />
       <Header s={s} />
       {s.sessionExpired && (
@@ -52,6 +52,10 @@ export function App() {
         )}
       </div>
       <PileBar s={s} />
+      {/* Phones: compose floats at the bottom right, within thumb reach. */}
+      <button class="compose-fab" aria-label={t('nav.compose')} title={t('nav.compose')} onClick={() => openCompose()}>
+        <Icon name="pencil" />
+      </button>
       {s.compose && !s.compose.popout && <Compose key={s.compose.key} s={s} c={s.compose} />}
       {s.compose?.popout && (
         <PopoutWindow title={s.compose.subject || t('compose.new')}>
@@ -138,8 +142,19 @@ function SignIn({ s }: { s: AppState }) {
 
 function Header({ s }: { s: AppState }) {
   const online = navigator.onLine;
+  const ref = useRef<HTMLElement>(null);
+  // Its height, for sliding it away while scrolling on phones.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty('--hh', `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <header class="header">
+    <header class="header" ref={ref}>
       <div class="brandbox">
         <button
           class="ib"
@@ -156,9 +171,6 @@ function Header({ s }: { s: AppState }) {
       </div>
       <SearchBox s={s} />
       <div class="header-right">
-        <button class="compose-fab" aria-label={t('nav.compose')} title={t('nav.compose')} onClick={() => openCompose()}>
-          <Icon name="pencil" />
-        </button>
         <Menu
           label={t('header.account', { email: s.me })}
           class={`avatar-btn ${online || config.demo ? '' : 'offline'} ${s.update ? 'has-update' : ''}`}

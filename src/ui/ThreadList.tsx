@@ -13,6 +13,7 @@ import { Icon } from './Icon';
 import { LabelList, LabelMenu, MoveList, MoveMenu } from './Menus';
 import { PILE_ICON } from './Piles';
 import { useVirtualRows } from './virtual';
+import { useListTouch } from './listTouch';
 
 /** Scrolls the list so a conversation is visible, even when its row isn't rendered (the list only renders rows on screen). */
 let revealer: ((id: string) => void) | null = null;
@@ -67,6 +68,8 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
   const focusWithin = useRef<string | undefined>(undefined);
   const dragFrom = useRef<string | undefined>(undefined);
   const keep = new Set([s.focusId, s.open?.id, focusWithin.current, s.dragging ? dragFrom.current : undefined].filter((x): x is string => !!x));
+  const ptr = useRef<HTMLDivElement>(null);
+  useListTouch(scroller, ptr, rowsKey);
   const v = useVirtualRows(ids, ROW_ESTIMATE[split ? 'card' : 'line'][compact ? 'compact' : 'normal'], scroller, keep);
   useEffect(() => {
     revealer = (id) => v.reveal(ids.indexOf(id));
@@ -94,8 +97,9 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
                 aria-selected={on}
                 aria-label={label}
                 title={on ? undefined : label}
-                class={`tab tab-${c} ${on ? "on" : ""}`}
+                class={`tab tab-${c} ${on ? "on" : ""} ${s.dragging === 'threads' && !on ? 'drop-ok' : ''}`}
                 onClick={() => go(listHash({ ...route, category: c, thread: undefined }))}
+                {...(!on ? dropZone('threads', (ids) => actions.moveCategory(ids, c)) : {})}
               >
                 <span class="tab-ic">
                   <CIcon name={CAT_ICON[c]} size={20} />
@@ -127,6 +131,7 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
 
       </div>
 
+      <div class="ptr" ref={ptr} aria-hidden="true"><span><Icon name="refresh" size={18} /></span></div>
       <div
         class={`rows ${showTabs ? `in ${slide.current}` : ''}`}
         role="list"

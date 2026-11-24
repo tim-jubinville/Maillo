@@ -21,6 +21,12 @@ function openFromPile(s: AppState, p: PileId, id: string) {
   go(threadHash({ ...r, thread: undefined }, id));
 }
 
+/** Piles only show over the inbox (any category, list or open conversation). */
+export function inInbox(s: AppState): boolean {
+  const r = s.route;
+  return r.view === 'mail' && r.q === undefined && !r.label && (r.folder ?? 'inbox') === 'inbox';
+}
+
 function who(r: ThreadRow) {
   return r.senders.slice(-2).map((x) => x.name).join(', ') || r.lastFrom.email;
 }
@@ -56,7 +62,7 @@ export function PileBar({ s }: { s: AppState }) {
   const dragging = s.dragging === 'threads';
   // While dragging conversations, every pile shows as a drop target, even an empty one.
   const visible = PILES.filter((p) => dragging || s.piles[p].rows.length > 0);
-  if (!visible.length) return null;
+  if (!visible.length || !inInbox(s)) return null;
   return (
     <div ref={wrap} class={`pile-wrap ${open ? 'is-open' : ''}`}>
       {visible.map((p) => {

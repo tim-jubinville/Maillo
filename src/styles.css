@@ -229,13 +229,18 @@ a:hover { color: var(--violet); }
   align-self: flex-start; box-shadow: 0 1px 2px rgba(20, 33, 61, 0.1), 0 3px 10px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 .compose-btn:hover { filter: brightness(1.08); }
-/* Phones only: compose sits beside the avatar, since the sidebar is hidden. */
+/* Phones only: compose floats at the bottom right, since the sidebar is hidden. Above the piles when they show. */
 .compose-fab {
-  display: none; width: 40px; height: 40px; border-radius: 50%; border: 0; align-items: center; justify-content: center; cursor: pointer;
-  background: var(--accent-fill); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); margin-right: 6px;
+  display: none; position: fixed; z-index: 47; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  width: 56px; height: 56px; border-radius: 18px; border: 0; align-items: center; justify-content: center; cursor: pointer;
+  background: var(--accent-fill); color: #fff; box-shadow: 0 2px 4px rgba(20, 33, 61, 0.14), 0 8px 24px color-mix(in srgb, var(--accent) 40%, transparent);
+  transition: bottom 0.22s ease, transform 0.22s ease, opacity 0.18s ease;
 }
 .compose-fab:hover { filter: brightness(1.08); }
-.compose-fab svg { width: 20px; height: 20px; }
+.compose-fab:active { transform: scale(0.94); }
+.compose-fab svg { width: 22px; height: 22px; }
+.app.has-pile:not(.head-hidden) .compose-fab { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+.app:has(.card.reading) .compose-fab, .app.kb-open .compose-fab, .app:has(.settings) .compose-fab { transform: scale(0.6); opacity: 0; pointer-events: none; }
 .nav {
   display: flex; align-items: center; gap: 14px; height: 38px; padding: 0 12px; border-radius: 10px; font-size: calc(14px * var(--ts, 1));
   color: var(--ink-2); width: 100%; text-align: left; text-decoration: none;
@@ -731,8 +736,16 @@ body.resizing iframe { pointer-events: none; }
   .listcol.split { flex: 1 1 auto; min-width: 0; border-right: 0; }
   .card.reading .listcol { display: none; }
   .card:not(.reading) .readcol { display: none; }
-  .readscroll { padding-bottom: 32px; }
+  /* Reading on phones: messages run edge to edge, HTML emails use the full screen width. */
+  .readinner { gap: 16px; }
+  .msgs { margin: 0 -14px; border-radius: 0; border-left: 0; border-right: 0; }
+  .msg-collapsed { padding: 12px 14px; }
+  .msg-full { padding: 14px 14px 18px; gap: 12px; }
+  .msg-head { gap: 10px; }
+  .msg-head .ib { width: 32px; height: 32px; }
   .msg-body { padding-left: 0; }
+  /* Emails scaled to fit (fixed-width newsletters) bleed to the screen edges; simple ones keep the side margin. */
+  .msg-body .paper.fit { margin: 0 -14px; border-radius: 0; }
   .header { display: flex; gap: 8px; flex-wrap: wrap; }
   .header .brand-name { font-size: calc(18px * var(--ts, 1)); }
   .search { order: 3; flex-basis: 100%; width: auto; }
@@ -807,6 +820,10 @@ body.resizing iframe { pointer-events: none; }
 [data-mode='dark'] .sig-ed { background: #ffffff; color: #14213d; }
 [data-mode='dark'] .sig-ed a { color: #1a4fd6; }
 [data-mode='dark'] .msg-body .paper { background: #ffffff; padding: 14px 16px; }
+@media (max-width: 900px) {
+  [data-mode='dark'] .msg-body .paper { padding: 12px; }
+  [data-mode='dark'] .msg-body .paper.fit { padding: 0; background: transparent; }
+}
 [data-mode='dark'] .tag.important { color: #f5dc8a; }
 [data-mode='dark'] .calbox { background: var(--surface-2); }
 [data-mode='dark'] .ribbon { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.3); }
@@ -1065,3 +1082,105 @@ body.resizing iframe { pointer-events: none; }
     .scrim { padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)); }
   }
 }
+
+/* Phones: thumb-first reading, gestures and space-saving header. */
+.read-back, .ptr, .d-short, .mi.mi-phone { display: none; }
+.readinner.enter-next { animation: read-in 220ms ease-out; --read-from: 28px; }
+.readinner.enter-prev { animation: read-in 220ms ease-out; --read-from: -28px; }
+@keyframes read-in { from { opacity: 0; transform: translateX(var(--read-from)); } }
+@keyframes ptr-spin { to { transform: translateY(calc(var(--pull, 0px) - 40px)) rotate(360deg); } }
+@media (hover: none) { .search .kbd { display: none; } }
+
+@media (max-width: 900px) {
+  /* Header: search hides behind its icon, and the header slides away while scrolling down. */
+  .header { position: relative; flex-wrap: nowrap; transition: margin-top 0.22s ease, opacity 0.18s ease; }
+  .app.head-hidden .header:not(:focus-within) { margin-top: calc(-1 * var(--hh, 64px)); opacity: 0; pointer-events: none; }
+  .header-right { margin-left: 0; }
+  .search, .search:focus-within { order: 0; flex: none; }
+  .search { width: 40px; height: 40px; padding: 0; margin-left: auto; justify-content: center; cursor: pointer; transition: width 0.22s ease, background-color 0.18s; }
+  .search .kbd { display: none; }
+  .search input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .search > .ib { display: none; }
+  .search:focus-within { position: absolute; z-index: 70; top: 50%; right: 10px; transform: translateY(-50%); width: calc(100% - 20px); margin: 0; padding: 0 6px 0 14px; justify-content: flex-start; }
+  .search:focus-within input { position: static; opacity: 1; cursor: text; }
+  .search:focus-within > .ib { display: inline-flex; }
+
+  /* Reading: the ribbon moves to the bottom, within thumb reach; back stays at the top. */
+  .read-ribbon { top: auto; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .read-ribbon .rb-back { display: none; }
+  .read-back {
+    display: inline-flex; position: absolute; top: 10px; left: 10px; z-index: 6; width: 40px; height: 40px; border-radius: 50%;
+    align-items: center; justify-content: center; color: var(--ink-2); background: var(--ribbon-bg); border: 1px solid var(--edge);
+    -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(20, 33, 61, 0.08), 0 10px 28px rgba(20, 33, 61, 0.1);
+  }
+  [data-mode='dark'] .read-back { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.3); }
+  .readscroll, .app.has-pile .readscroll { padding: 62px 14px calc(var(--rh, 76px) + 12px); }
+  .app.kb-open .read-ribbon, .app.kb-open .pile-wrap { display: none; }
+  .app.kb-open .readscroll { padding-bottom: 24px; }
+
+  /* Message header: short date, Unsubscribe in the ⋯ menu, bigger tap targets. */
+  .subject { font-size: calc(20px * var(--ts, 1)); }
+  .d-long, .unsub-inline { display: none; }
+  .d-short { display: inline; }
+  .mi.mi-phone { display: flex; }
+  .msg-time { max-width: none; }
+  .msg-head .ib { width: 40px; height: 40px; }
+  .tag .x { width: 24px; height: 24px; }
+
+  /* Piles step aside while reading or scrolling down the list. */
+  .app:has(.card.reading) .pile-wrap:not(.is-open), .app.head-hidden .pile-wrap:not(.is-open) { transform: translateY(110px); opacity: 0; }
+  .app:has(.card.reading) .pile-wrap:not(.is-open) > *, .app.head-hidden .pile-wrap:not(.is-open) > * { pointer-events: none; }
+
+  /* Compose fills the space above the on-screen keyboard. */
+  .compose, .compose.max { top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 100dvh); }
+
+  /* List gestures: swipe actions, press and hold to select, pull to refresh. */
+  .rows { overscroll-behavior-y: contain; }
+  .row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y; }
+  .row.swiping { background: var(--swipe-c, var(--cloud)); overflow: hidden; }
+  .row.swiping::before { content: ''; position: absolute; inset: 0; width: auto; border-radius: 0; background: var(--row-bg, var(--surface)); transform: translateX(var(--sx, 0px)); z-index: 0; }
+  .row.swiping > :not(.row-acts) { position: relative; z-index: 1; transform: translateX(var(--sx, 0px)); }
+  .row.swiping::after {
+    content: attr(data-swipe-label); position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 20px;
+    color: #fff; font-weight: 700; font-size: calc(14px * var(--ts, 1)); opacity: 0.7; transition: opacity 0.12s; z-index: 0;
+  }
+  .row.swiping[data-side='right']::after { left: 0; }
+  .row.swiping[data-side='left']::after { right: 0; }
+  .row.swiping.armed::after { opacity: 1; }
+  .row.settling::before, .row.settling > *, .row.leaving::before, .row.leaving > * { transition: transform 0.17s ease; }
+  .ptr { display: block; position: relative; height: 0; z-index: 6; pointer-events: none; }
+  .ptr span {
+    position: absolute; left: 50%; top: 4px; width: 36px; height: 36px; margin-left: -18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--surface); color: var(--muted); box-shadow: 0 4px 14px rgba(20, 33, 61, 0.18); opacity: 0;
+    transform: translateY(calc(var(--pull, 0px) - 40px)) rotate(var(--pull-r, 0deg));
+  }
+  .ptr.on span { opacity: 1; }
+  .ptr.armed span { color: var(--accent); }
+  .ptr.spin span { animation: ptr-spin 0.7s linear infinite; }
+  .ptr:not(.on) span { transition: transform 0.2s ease, opacity 0.2s ease; }
+}
+
+/* Settings: the two swipe directions. */
+.swipe-set { display: flex; gap: 12px; flex-wrap: wrap; }
+.swipe-set label { display: flex; flex-direction: column; gap: 6px; font-size: calc(13px * var(--ts, 1)); color: var(--muted); }
+@media (max-width: 900px) {
+  /* Toasts sit above the bottom ribbon or the piles. */
+  .toasts { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+  .app.head-hidden:not(:has(.card.reading)) .toasts { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Ribbon motion (ribbonMotion.ts): a glint sweeps across the glass when the ribbon flows or changes. */
+.ribbon.glint::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.5) 48%, rgba(255, 255, 255, 0.15) 54%, transparent 70%) no-repeat;
+  background-size: 260% 100%; mix-blend-mode: soft-light; animation: ribbon-glint 650ms ease-out forwards;
+}
+[data-mode='dark'] .ribbon.glint::before { background-image: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.18) 48%, rgba(255, 255, 255, 0.05) 54%, transparent 70%); mix-blend-mode: screen; }
+@keyframes ribbon-glint { from { background-position: 110% 0; opacity: 1; } to { background-position: -40% 0; opacity: 0.2; } }
+.list-ribbon { transition: border-radius 260ms ease; }
+@media (prefers-reduced-motion: reduce) { .ribbon.glint::before { animation: none; display: none; } }
+/* Inbox category tabs take conversations dragged onto them. */
+.tab.drop-ok { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+.tab.drop-on { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent); transform: translateY(-1px); }
+@media (max-width: 900px) { .toasts { max-width: calc(100% - 112px); } }
