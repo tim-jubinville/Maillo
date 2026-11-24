@@ -199,9 +199,9 @@ export function Compose({ s, c }: { s: AppState; c: ComposeState }) {
           </div>
         )}
 
-        {c.attachments.length > 0 && (
+        {c.attachments.some((a) => !a.contentId) && (
           <div class="c-atts">
-            {c.attachments.map((a) => (
+            {c.attachments.filter((a) => !a.contentId).map((a) => (
               <span class="c-att">
                 <Icon name="clip" size={14} />
                 <span class="ell">{a.filename}</span>
