@@ -47,6 +47,16 @@ export function applyTheme() {
   root.style.setProperty('--bg-bottom', th.bottom);
   root.style.colorScheme = dark ? 'dark' : 'light';
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#111827' : th.top);
+  setFavicon(dark);
+}
+
+// Tab icon follows the app's own light/dark mode, not only the system's.
+function setFavicon(dark: boolean) {
+  document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]').forEach((link) => {
+    const href = link.getAttribute('href') ?? '';
+    const next = dark ? href.replace(/favicon(-dark)?/, 'favicon-dark') : href.replace('favicon-dark', 'favicon');
+    if (next !== href) link.setAttribute('href', next);
+  });
 }
 
 export function initTheme() {

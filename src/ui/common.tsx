@@ -9,11 +9,11 @@ import { getState, personName } from '../store';
 /** The built-in app icon. `dark` forces one variant; otherwise it follows the colour mode. */
 export function AppIcon({ size = 30, dark }: { size?: number; dark?: boolean }) {
   const s = { width: `${size}px`, height: `${size}px` };
-  if (dark !== undefined) return <img class="app-icon" src={dark ? './icon-dark.svg' : './icon.svg'} alt="" style={s} />;
+  if (dark !== undefined) return <img class="app-icon" src={dark ? './icon-dark.png' : './icon.png'} alt="" style={s} />;
   return (
     <span class="app-icon" aria-hidden="true" style={s}>
-      <img class="only-light" src="./icon.svg" alt="" />
-      <img class="only-dark" src="./icon-dark.svg" alt="" />
+      <img class="only-light" src="./icon.png" alt="" />
+      <img class="only-dark" src="./icon-dark.png" alt="" />
     </span>
   );
 }

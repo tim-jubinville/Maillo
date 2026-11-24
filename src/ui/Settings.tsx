@@ -1204,8 +1204,8 @@ function InstallApp() {
   return (
     <Section title={t('app.title')} note={t('app.note')}>
       <div class="app-hero">
-        <img class="for-light" src="./icon.svg" alt="" width={72} height={72} />
-        <img class="for-dark" src="./icon-dark.svg" alt="" width={72} height={72} />
+        <img class="for-light" src="./icon.png" alt="" width={72} height={72} />
+        <img class="for-dark" src="./icon-dark.png" alt="" width={72} height={72} />
         <div class="slbl">
           {st === 'installed' && <><b>{t('app.installed')}</b><span>{t('app.installedHelp')}</span></>}
           {st === 'ready' && <><b>{t('app.ready')}</b><span>{t('app.readyHelp')}</span></>}
