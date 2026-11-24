@@ -100,7 +100,8 @@ function snapshot(el: HTMLElement): Snap {
 }
 
 function retract(el: HTMLElement, snap: Snap) {
-  if (reduced()) return;
+  // During a phone slide the ribbon leaves with its page; a stand-in would linger over the list.
+  if (reduced() || document.documentElement.dataset.slide) return;
   const r = snap.rect;
   if (r.width < 60 || r.height === 0) return;
   const g = el.cloneNode(true) as HTMLElement;
@@ -154,7 +155,8 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
   let rect = el.getBoundingClientRect();
   let snap = snapshot(el);
 
-  if (!reduced() && rect.width > 0) {
+  // Sliding back to the list on a phone: the list's ribbon is simply there, as part of the page underneath.
+  if (!reduced() && rect.width > 0 && document.documentElement.dataset.slide !== 'pop') {
     const now = performance.now();
     // A ribbon of another kind that just left from exactly this spot (reading pane off: list ↔ conversation)
     // is the same bar with new contents: it doesn't move or resize, only its buttons change.
