@@ -85,7 +85,8 @@ export function CallBadge() {
       <Icon name="video" size={16} />
       <span class="call-txt">
         <b>{t('panel.join')}</b>
-        <span>{when}</span>
+        <span class="call-name">{name}</span>
+        <span class="call-when">{when}</span>
       </span>
     </a>
   );
