@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest something Maillo could do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Some Gmail features can't be offered by third-party apps through the Gmail API (snooze, schedule send, confidential mode and others). Check the [Limits](https://github.com/tim-jubinville/Maillo#limits) section of the README before asking for one of them.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or problem, rather than the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help?
+      description: How you picture it working in Maillo.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you do it today?
+      description: In Gmail, another app, or a workaround.
