@@ -9,6 +9,12 @@ const ITEMS = 'button, .sep, .sel-n, .cb, .count';
 // The last ribbon of each kind that went away, so its replacement can morph from it instead of flowing in anew.
 const gone = new Map<string, { rect: DOMRect; sig: Set<string>; at: number }>();
 
+let lastMount: { rect: DOMRect; at: number } | null = null;
+
+function samePlace(a: DOMRect, b: DOMRect): boolean {
+  return Math.abs(a.left - b.left) < 4 && Math.abs(a.top - b.top) < 4 && Math.abs(a.width - b.width) < 4;
+}
+
 const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 function items(el: HTMLElement): HTMLElement[] {
@@ -94,7 +100,7 @@ function snapshot(el: HTMLElement): Snap {
 }
 
 function retract(el: HTMLElement, snap: Snap) {
-  if (reduced() || !el.isConnected) return;
+  if (reduced()) return;
   const r = snap.rect;
   if (r.width < 60 || r.height === 0) return;
   const g = el.cloneNode(true) as HTMLElement;
@@ -149,8 +155,16 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
   let snap = snapshot(el);
 
   if (!reduced() && rect.width > 0) {
-    const prev = gone.get(kind);
-    if (prev && prev.rect.width > 0 && performance.now() - prev.at < 450) {
+    const now = performance.now();
+    // A ribbon of another kind that just left from exactly this spot (reading pane off: list ↔ conversation)
+    // is the same bar with new contents: it doesn't move or resize, only its buttons change.
+    const here = [...gone.values()].find((g) => now - g.at < 450 && samePlace(g.rect, rect));
+    const prev = here ?? gone.get(kind);
+    lastMount = { rect, at: now };
+    if (here) {
+      popIn(items(el).filter((x) => !here.sig.has(keyOf(x))));
+      glint(el);
+    } else if (prev && prev.rect.width > 0 && now - prev.at < 450) {
       // Replacing a ribbon of the same kind: morph from its outline, and only new buttons swell in.
       flow(el, prev.rect, 460);
       popIn(items(el).filter((x) => !prev.sig.has(keyOf(x))));
@@ -203,7 +217,20 @@ export function ribbonMotion(el: HTMLElement, kind: string): () => void {
     ro.disconnect();
     // Only the reading ribbon: the list ribbon leaves with the whole list (settings, a full-width conversation).
     // First, before anything reads the page's layout, so the list ribbon never shows unjoined in between.
-    if (kind === 'read-ribbon') retract(el, snap);
-    gone.set(kind, { rect: snap.rect, sig, at: performance.now() });
+    // Decided once the update is done: if another ribbon took this exact spot (reading pane off), the bar stays
+    // and only its contents change, so there's nothing to retract.
+    const left = snap;
+    const at = performance.now();
+    if (kind === 'read-ribbon') {
+      // Hold the list ribbon joined right away, before anything lays the page out with it unjoined.
+      const list = (left.look.borderRadius ?? '').startsWith('0px') ? document.querySelector<HTMLElement>('.list-ribbon') : null;
+      list?.setAttribute('data-hold', '');
+      queueMicrotask(() => {
+        list?.removeAttribute('data-hold');
+        if (lastMount && lastMount.at >= at - 1 && samePlace(lastMount.rect, left.rect)) return;
+        retract(el, left);
+      });
+    }
+    gone.set(kind, { rect: snap.rect, sig, at });
   };
 }
