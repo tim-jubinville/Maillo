@@ -731,8 +731,17 @@ body.resizing iframe { pointer-events: none; }
   .listcol.split { flex: 1 1 auto; min-width: 0; border-right: 0; }
   .card.reading .listcol { display: none; }
   .card:not(.reading) .readcol { display: none; }
-  .readscroll { padding-bottom: 32px; }
+  /* Reading on phones: messages run edge to edge, HTML emails use the full screen width. */
+  .readscroll { padding: calc(var(--rh, 76px) + 10px) 14px 32px; }
+  .readinner { gap: 16px; }
+  .msgs { margin: 0 -14px; border-radius: 0; border-left: 0; border-right: 0; }
+  .msg-collapsed { padding: 12px 14px; }
+  .msg-full { padding: 14px 14px 18px; gap: 12px; }
+  .msg-head { gap: 10px; }
+  .msg-head .ib { width: 32px; height: 32px; }
   .msg-body { padding-left: 0; }
+  /* Emails scaled to fit (fixed-width newsletters) bleed to the screen edges; simple ones keep the side margin. */
+  .msg-body .paper.fit { margin: 0 -14px; border-radius: 0; }
   .header { display: flex; gap: 8px; flex-wrap: wrap; }
   .header .brand-name { font-size: calc(18px * var(--ts, 1)); }
   .search { order: 3; flex-basis: 100%; width: auto; }
@@ -807,6 +816,10 @@ body.resizing iframe { pointer-events: none; }
 [data-mode='dark'] .sig-ed { background: #ffffff; color: #14213d; }
 [data-mode='dark'] .sig-ed a { color: #1a4fd6; }
 [data-mode='dark'] .msg-body .paper { background: #ffffff; padding: 14px 16px; }
+@media (max-width: 900px) {
+  [data-mode='dark'] .msg-body .paper { padding: 12px; }
+  [data-mode='dark'] .msg-body .paper.fit { padding: 0; }
+}
 [data-mode='dark'] .tag.important { color: #f5dc8a; }
 [data-mode='dark'] .calbox { background: var(--surface-2); }
 [data-mode='dark'] .ribbon { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.3); }

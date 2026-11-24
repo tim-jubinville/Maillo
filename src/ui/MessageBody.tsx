@@ -149,10 +149,22 @@ export function MessageBody({ m, showQuotedDefault }: { m: ParsedMessage; showQu
     if (!f) return;
     let ro: ResizeObserver | undefined;
     const timers: number[] = [];
+    // Emails built for a fixed width (often 600 px newsletters) are scaled down to fit the column, as phone mail apps do,
+    // instead of being cut off. Past the smallest legible scale they scroll sideways.
+    const fit = (d: Document, root: HTMLElement) => {
+      if (!m.html) return;
+      root.style.zoom = '';
+      const avail = d.documentElement.clientWidth;
+      const natural = d.documentElement.scrollWidth;
+      const wide = avail > 0 && natural > avail + 1;
+      if (wide) root.style.zoom = String(Math.max(0.4, Math.floor((avail / natural) * 1000) / 1000));
+      f.parentElement?.classList.toggle('fit', wide);
+    };
     const measure = () => {
       const d = f.contentDocument;
       const root = d?.getElementById('mm-root');
       if (!root) return;
+      fit(d!, root);
       const h = Math.ceil(root.getBoundingClientRect().height);
       const scrollbar = d!.documentElement.scrollWidth > d!.documentElement.clientWidth ? 16 : 0;
       setHeight(Math.max(40, h + scrollbar + 8));
