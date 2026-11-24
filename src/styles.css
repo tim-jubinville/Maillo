@@ -440,7 +440,7 @@ a:hover { color: var(--violet); }
 .msg-time { font-size: calc(12px * var(--ts, 1)); color: var(--muted); white-space: nowrap; padding-top: 3px; }
 .msg-body { padding-left: 52px; }
 .msg-body .frame-wrap { opacity: 0; }
-.msg-body .frame-wrap.shown { opacity: 1; transition: opacity 0.28s ease-out; }
+.msg-body .frame-wrap.shown { opacity: 1; transition: opacity 0.35s ease-out; }
 @media (prefers-reduced-motion: reduce) { .msg-body .frame-wrap.shown { transition: none; } }
 .msg-body iframe { width: 100%; border: 0; display: block; min-height: 40px; background: transparent; }
 .trim-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 22px; border-radius: 999px; background: var(--cloud); color: var(--ink-2); margin-top: 8px; }
@@ -1282,8 +1282,9 @@ textarea.diag-text { width: min(560px, 62vw); height: auto; padding: 10px 12px; 
   background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.5) 48%, rgba(255, 255, 255, 0.15) 54%, transparent 70%) no-repeat;
   background-size: 260% 100%; mix-blend-mode: soft-light; animation: ribbon-glint 650ms ease-out forwards;
 }
-[data-mode='dark'] .ribbon.glint::before { background-image: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.18) 48%, rgba(255, 255, 255, 0.05) 54%, transparent 70%); mix-blend-mode: screen; }
-@keyframes ribbon-glint { from { background-position: 110% 0; opacity: 1; } to { background-position: -40% 0; opacity: 0.2; } }
+/* Dark glass: a faint sheen, not a light sweep; anything brighter reads as a flash on a dark page. */
+[data-mode='dark'] .ribbon.glint::before { background-image: linear-gradient(100deg, transparent 34%, rgba(255, 255, 255, 0.06) 48%, rgba(255, 255, 255, 0.02) 54%, transparent 66%); mix-blend-mode: normal; }
+@keyframes ribbon-glint { from { background-position: 110% 0; opacity: 1; } to { background-position: -40% 0; opacity: 0; } }
 .list-ribbon { transition: border-radius 260ms ease; }
 @media (prefers-reduced-motion: reduce) { .ribbon.glint::before { animation: none; display: none; } }
 /* Inbox category tabs take conversations dragged onto them. */
