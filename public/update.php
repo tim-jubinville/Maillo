@@ -28,7 +28,7 @@ const CHECK_MIN_GAP = 60;
 // them here (no new risk, since the package's update.php replaces this one anyway).
 // maillo-config.php is listed so updaters before 0.6.9 accept the package; it's protected, so this one never
 // replaces it.
-const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php', 'config.php', 'maillo-config.php', 'push.php'];
+const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php', 'config.php', 'maillo-config.php', 'push.php', 'setup.php'];
 
 /** SERVER_FILES as declared by the update.php inside a package (top-level .php names only). */
 function package_server_files(ZipArchive $zip, string $prefix): array
@@ -310,6 +310,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 $cfg = read_config($root);
 $email = authorize($cfg);
 $action = (string) ($_POST['action'] ?? 'status');
+
+// Each release ships setup.php for new installs; this one is set up already, so it has no use here.
+if (is_file($root . '/setup.php')) {
+    @unlink($root . '/setup.php');
+}
 
 if ($action === 'status') {
     out(200, [
