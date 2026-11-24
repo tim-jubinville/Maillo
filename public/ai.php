@@ -8,7 +8,8 @@
  *   status       whether a key is stored, the model, and today's usage
  *   set_key      store a Gemini API key (key)
  *   remove_key   delete the stored key
- *   generate     run instructions on input text (instructions, input, json=1 for JSON output, temperature 0–1)
+ *   generate     run instructions on input text (instructions, input, enc=b64 when both are base64,
+ *                json=1 for JSON output, temperature 0–1)
  *
  * The key comes from maillo-config.php (geminiApiKey) if it's set there, else a GEMINI_API_KEY
  * environment variable, else the one saved from Settings in .maillo-ai.php (.mailmax-ai.php before
@@ -152,6 +153,15 @@ if ($action === 'generate') {
     }
     $instructions = (string) ($_POST['instructions'] ?? '');
     $input = (string) ($_POST['input'] ?? '');
+    // Maillo sends both base64-encoded: email text and prompts often trip hosts' firewalls
+    // (ModSecurity rules), which then answer with an error page instead of reaching this file.
+    if (($_POST['enc'] ?? '') === 'b64') {
+        $instructions = base64_decode($instructions, true);
+        $input = base64_decode($input, true);
+        if ($instructions === false || $input === false) {
+            fail(400, 'bad_input');
+        }
+    }
     if ($input === '' || strlen($input) > MAX_INPUT || strlen($instructions) > MAX_INSTRUCTIONS) {
         fail(400, 'bad_input');
     }
