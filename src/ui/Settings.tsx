@@ -21,6 +21,7 @@ import { callUpdater, checkForUpdate, type UpdateCheck, type UpdaterStatus } fro
 import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon, iconUrl } from './Icon';
 import { SignatureEditor } from './SignatureEditor';
+import { DiagnosticsButton } from './Diagnostics';
 import { KeyList } from './Keys';
 
 declare const __APP_VERSION__: string;
@@ -91,11 +92,20 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
             <Section title={t('settings.about')} note={t('settings.syncNote')}>
               <div class="srow"><div class="slbl"><b>{config.appName}</b><span>{t('settings.version', { v: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '' })}</span></div></div>
               <div class="srow"><div class="slbl"><b>{t('settings.account', { email: s.me })}</b></div></div>
+              <DiagnosticsRow />
             </Section>
           )}
         </main>
       </div>
     </div>
+  );
+}
+
+function DiagnosticsRow() {
+  return (
+    <Row title={t('diag.title')} help={t('diag.help')}>
+      <DiagnosticsButton />
+    </Row>
   );
 }
 

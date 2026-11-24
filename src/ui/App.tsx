@@ -10,6 +10,7 @@ import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
 import { composeInWindow, PopoutWindow } from './Popout';
 import { SearchBox } from './SearchBox';
+import { DiagnosticsButton } from './Diagnostics';
 import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
@@ -104,6 +105,7 @@ function SetupChecklist() {
           <button class="btn primary" onClick={() => location.reload()}>{t('setup.again')}</button>
           <a class="btn" href="?demo">{t('auth.demo')}</a>
         </div>
+        <DiagnosticsButton />
       </div>
     </div>
   );

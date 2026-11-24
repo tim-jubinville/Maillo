@@ -1347,3 +1347,11 @@ body.resizing iframe { pointer-events: none; }
 @keyframes slide-out-right { to { transform: translateX(100%); } }
 @keyframes slide-under-out { to { transform: translateX(-28%); filter: brightness(0.92); } }
 @keyframes slide-under-in { from { transform: translateX(-28%); filter: brightness(0.92); } }
+
+/* Copy diagnostics */
+.diag { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+.diag .btn { display: inline-flex; gap: 6px; align-items: center; }
+.signin .diag { align-items: flex-start; width: 100%; }
+.signin .diag-text { width: 100%; }
+.diag-note { color: var(--muted); font-size: calc(12px * var(--ts, 1)); }
+.diag-text { width: min(560px, 62vw); height: auto; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: calc(12px * var(--ts, 1)); line-height: 1.5; resize: vertical; color: var(--ink-2); }

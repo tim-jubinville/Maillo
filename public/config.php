@@ -20,10 +20,47 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     header('Cache-Control: no-store');
     header('X-Content-Type-Options: nosniff');
     $cfg = read_config($root);
-    if (($_POST['action'] ?? '') !== 'check_account') {
-        fail(400, 'unknown_action');
+    $action = (string) ($_POST['action'] ?? '');
+    if ($action === 'check_account') {
+        out(200, ['ok' => true, 'email' => authorize($cfg)]);
     }
-    out(200, ['ok' => true, 'email' => authorize($cfg)]);
+    if ($action === 'diagnostics') {
+        // For bug reports: versions and yes/no answers only. No addresses, keys or settings' values.
+        authorize($cfg);
+        $soft = strtolower((string) ($_SERVER['SERVER_SOFTWARE'] ?? ''));
+        $server = 'other';
+        foreach (['litespeed', 'nginx', 'apache', 'caddy', 'iis'] as $name) {
+            if (strpos($soft, $name) !== false) {
+                $server = $name;
+                break;
+            }
+        }
+        $version = @json_decode((string) @file_get_contents($root . '/version.json'), true);
+        $stored = @include $root . '/.maillo-oauth.php';
+        $features = [];
+        foreach (FEATURES as $f) {
+            $features[$f] = !empty($cfg['raw']['features'][$f]);
+        }
+        out(200, [
+            'ok' => true,
+            'release' => is_array($version) ? (string) ($version['version'] ?? '') : '',
+            'php' => PHP_VERSION,
+            'server' => $server,
+            'extensions' => [
+                'curl' => function_exists('curl_init'),
+                'openssl' => function_exists('openssl_encrypt'),
+                'zip' => class_exists('ZipArchive'),
+                'mbstring' => function_exists('mb_substr'),
+            ],
+            'checks' => setup_checks($root, load_php_config($root))['checks'],
+            'features' => $features,
+            'clientSecret' => pick_secret($cfg['clientSecret'], 'GOOGLE_CLIENT_SECRET', is_array($stored) ? (string) ($stored['secret'] ?? '') : '')[0] !== '',
+            'pushTopic' => $cfg['pushTopic'] !== '',
+            'updateCheck' => $cfg['updateCheck'],
+            'updateChannel' => $cfg['updateChannel'],
+        ]);
+    }
+    fail(400, 'unknown_action');
 }
 
 header('Content-Type: application/javascript; charset=utf-8');
