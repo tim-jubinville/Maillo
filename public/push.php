@@ -252,9 +252,12 @@ function push_client_secret(array $cfg, string $root): string
     return is_string($env) && $env !== '' ? $env : (string) ($stored['secret'] ?? '');
 }
 
-function unseal_rt(string $sealed, string $root): string
+function unseal_rt(string $sealed, string $root, array $cfg): string
 {
-    $key = base64_decode((string) (php_read($root . '/.maillo-oauth.php')['key'] ?? ''), true);
+    $key = function_exists('session_key_override') ? session_key_override($cfg) : '';
+    if ($key === '') {
+        $key = base64_decode((string) (php_read($root . '/.maillo-oauth.php')['key'] ?? ''), true);
+    }
     $raw = base64_decode($sealed, true);
     if (!is_string($key) || strlen($key) !== 32 || !is_string($raw) || strlen($raw) < 29) {
         return '';
@@ -274,7 +277,7 @@ function server_token(array $cfg, string $root, string $email): string
         }
     }
     $secret = push_client_secret($cfg, $root);
-    $rt = $best ? unseal_rt((string) ($best['rt'] ?? ''), $root) : '';
+    $rt = $best ? unseal_rt((string) ($best['rt'] ?? ''), $root, $cfg) : '';
     if ($rt === '' || $secret === '') {
         return '';
     }

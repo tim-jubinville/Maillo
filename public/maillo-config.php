@@ -43,6 +43,11 @@ return [
     // You can also add it later in Settings > Account.
     'googleClientSecret' => '',
 
+    // Optional. Keeps the key that encrypts sign-ins apart from them: 32 random bytes, base64
+    // (php -r "echo base64_encode(random_bytes(32));"). A MAILLO_SESSION_KEY environment variable,
+    // outside the web folder, is better still. Changing it signs every device out once.
+    // 'sessionKey' => '',
+
     // Required. Who may use this install: full addresses, whole domains, or both.
     'allowedAccounts' => [],    // e.g. ['you@example.com']
     'allowedDomains' => [],     // e.g. ['example.com']

@@ -139,7 +139,7 @@ location ~ (^|/)\.(maillo|mailmax)- { return 404; }
 location ~ ^/(config\.php|sw\.js|manifest\.webmanifest)$ { add_header Cache-Control no-cache; }
 ```
 
-Maillo's setup checklist looks for these rules in `.htaccess`, so on Nginx keep the release's `.htaccess` file in the folder as well (Nginx ignores it).
+Maillo's setup checklist looks for these rules in `.htaccess`, so on Nginx keep the release's `.htaccess` file in the folder as well (Nginx ignores it). It also asks your server for a throwaway `.maillo-` file once a day, and marks private files as unprotected if the server hands it out.
 
 Maillo can also live in a sub-folder (for example `https://example.com/mail/`). The authorised origin is still just `https://example.com`.
 
@@ -206,6 +206,8 @@ Browser-only sign-in lasts one hour, after which Google asks again. With `sessio
 How it works: signing in hands `session.php` a one-time code. It trades it for a Google refresh token, which stays on the server, encrypted (AES-256-GCM, key in `.maillo-oauth.php`) in `.maillo-sessions/`. The browser gets only an HttpOnly, SameSite=Strict cookie and asks `session.php` for a fresh one-hour access token when it needs one, so notifications also keep working in the background. Signing out ends that device's session only. **Settings → Accounts & signatures → Sign out everywhere** ends every device's session and revokes Maillo's access to the account (Google treats any revocation as ending the whole grant, on every device). Sessions also end after 180 days without use, when the account is removed from `allowedAccounts`/`allowedDomains`, or when access is revoked at [myaccount.google.com/permissions](https://myaccount.google.com/permissions). Removing the secret in Settings ends every session.
 
 If your consent screen is in **Testing** (External user type), Google expires refresh tokens after 7 days; publish the app or use the Internal user type to avoid that. Needs PHP's OpenSSL extension (standard).
+
+**Keeping the key apart (optional).** Refresh tokens are encrypted with a key that `session.php` keeps in `.maillo-oauth.php`, next to them. To keep it elsewhere, set a `MAILLO_SESSION_KEY` environment variable in your hosting panel (best, since it lives outside the web folder) or `sessionKey` in `maillo-config.php`, to 32 random bytes in base64 (`php -r "echo base64_encode(random_bytes(32));"`). Changing the key signs every device out once.
 
 ## Optional: new mail within seconds, and notifications while Maillo is closed
 

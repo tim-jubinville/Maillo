@@ -86,6 +86,42 @@ function htaccess_protects(string $root): bool
     return strpos($h, 'maillo-config') !== false && strpos($h, '.(maillo|mailmax)-') !== false;
 }
 
+/**
+ * Whether the web actually serves .maillo-* files, which hold sign-ins and other private data: asks this
+ * server for a throwaway one. Rules in .htaccess don't help where they're ignored (Nginx, AllowOverride
+ * None). Checked at most once a day; null when the server couldn't be reached to tell.
+ */
+function private_files_exposed(string $root): ?bool
+{
+    $cache = $root . '/.maillo-probe.json';
+    $last = @json_decode((string) @file_get_contents($cache), true);
+    if (is_array($last) && (int) ($last['checked'] ?? 0) > time() - 86400) {
+        return isset($last['exposed']) ? (bool) $last['exposed'] : null;
+    }
+    $token = bin2hex(random_bytes(16));
+    $name = '.maillo-probe-' . bin2hex(random_bytes(6)) . '.txt';
+    if (@file_put_contents($root . '/' . $name, $token) === false) {
+        return null;
+    }
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+    $host = preg_replace('/[^A-Za-z0-9.\-]/', '', explode(':', (string) ($_SERVER['HTTP_HOST'] ?? ''))[0]);
+    $path = rtrim(str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/'))), '/') . '/';
+    $body = '';
+    $code = 0;
+    if ($host !== '' && function_exists('curl_init')) {
+        $ch = curl_init(($https ? 'https://' : 'http://') . $host . $path . $name);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 3, CURLOPT_CONNECTTIMEOUT => 2, CURLOPT_FOLLOWLOCATION => false]);
+        $body = (string) curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+    }
+    @unlink($root . '/' . $name);
+    // A login wall (Cloudflare Access) answers with a redirect: private from the public, which is what counts.
+    $exposed = $code === 0 ? null : ($code === 200 && trim($body) === $token);
+    @file_put_contents($cache, json_encode(['checked' => time(), 'exposed' => $exposed]));
+    return $exposed;
+}
+
 /** The setup checklist: yes/no answers only, nothing about the settings themselves. */
 function setup_checks(string $root, ?array $c): array
 {
@@ -97,7 +133,8 @@ function setup_checks(string $root, ?array $c): array
         'clientId' => (bool) preg_match('/^[0-9A-Za-z\-]+\.apps\.googleusercontent\.com$/', text($c['googleClientId'] ?? '', 200)),
         'allowed' => (bool) (clean_list($c['allowedAccounts'] ?? []) || clean_list($c['allowedDomains'] ?? [])),
         'php' => PHP_VERSION_ID >= 70400,
-        'htaccess' => htaccess_protects($root),
+        // The rules must be in .htaccess (the checklist's hint), and the server must really refuse the files.
+        'htaccess' => htaccess_protects($root) && ($c === [] || isset($c['__error']) || private_files_exposed($root) !== true),
         'writable' => is_writable($root),
         'openssl' => function_exists('openssl_encrypt'),
         'curl' => function_exists('curl_init'),
