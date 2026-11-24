@@ -2,7 +2,7 @@
 
 Maillo is a web app with a few small PHP files on the server side. You need:
 
-- A web host that runs **PHP 7.4 or later** and serves files over **HTTPS** (Google sign-in requires it). Shared hosting (cPanel and similar) is the easiest; Nginx with PHP-FPM works too. Static hosts that can't run PHP (Cloudflare Pages, Netlify, GitHub Pages) aren't supported.
+- A web host that runs **PHP 7.4 or later** (8.1 or later recommended: older versions no longer get security fixes) and serves files over **HTTPS** (Google sign-in requires it). Shared hosting (cPanel and similar) is the easiest; Nginx with PHP-FPM works too. Static hosts that can't run PHP (Cloudflare Pages, Netlify, GitHub Pages) aren't supported.
 - An address for it, such as `https://mail.example.com`
 - A Google account with Gmail, and access to [Google Cloud Console](https://console.cloud.google.com/)
 
@@ -126,18 +126,29 @@ assets/
 **Nginx with PHP-FPM.** `.htaccess` doesn't apply, so add the same protections yourself:
 
 ```nginx
+# In the server block. "always" keeps the headers on error pages too.
+add_header X-Content-Type-Options nosniff always;
+add_header Referrer-Policy no-referrer always;
+add_header X-Frame-Options DENY always;
+add_header Cross-Origin-Opener-Policy same-origin-allow-popups always;
+
 location / {
   try_files $uri $uri/ /index.html;
-  add_header X-Content-Type-Options nosniff;
-  add_header Referrer-Policy no-referrer;
-  add_header X-Frame-Options DENY;
-  add_header Cross-Origin-Opener-Policy same-origin-allow-popups;
 }
-# Settings, secrets, sessions and backups are never served.
+# Settings, secrets, sessions and backups are never served. Put these two above your
+# PHP location (location ~ \.php$): Nginx uses the first matching one.
 location ~ (^|/)(maillo-config|maillo-common)\.php$ { return 404; }
 location ~ (^|/)\.(maillo|mailmax)- { return 404; }
-location ~ ^/(config\.php|sw\.js|manifest\.webmanifest)$ { add_header Cache-Control no-cache; }
+# Always checked for a newer version. An add_header here replaces the server's, so repeat them.
+location ~ ^/(sw\.js|manifest\.webmanifest|version\.json)$ {
+  add_header Cache-Control no-cache;
+  add_header X-Content-Type-Options nosniff always;
+  add_header Referrer-Policy no-referrer always;
+  add_header X-Frame-Options DENY always;
+}
 ```
+
+`config.php` sets its own caching headers, so it only needs your usual PHP location.
 
 Maillo's setup checklist looks for these rules in `.htaccess`, so on Nginx keep the release's `.htaccess` file in the folder as well (Nginx ignores it).
 
@@ -213,7 +224,7 @@ Without this, Maillo checks for new mail about once a minute, and only notifies 
 
 How it works: Gmail can only announce new mail through **Google Cloud Pub/Sub**, so there's a little setup in Google Cloud. Pub/Sub posts each announcement to `push.php` on your server. `push.php` asks Gmail what's new (using the sign-in that `session.php` keeps, so staying signed in is needed), applies each device's notification rules from **Settings → Notifications** (scope, people, labels, preview, sound, quiet hours), and sends an encrypted web push to that device. Push messages are encrypted for the device and signed with your install's own key, so the browser's push service (Google, Mozilla, Apple or Microsoft, depending on the browser) only carries them.
 
-**You need:** PHP 7.3 or later with OpenSSL, staying signed in set up (see above), and the same Google Cloud project (Google may ask you to add billing details to use Pub/Sub; its free monthly allowance covers a personal mailbox many times over).
+**You need:** PHP's OpenSSL extension, staying signed in set up (see above), and the same Google Cloud project (Google may ask you to add billing details to use Pub/Sub; its free monthly allowance covers a personal mailbox many times over).
 
 1. **Enable Pub/Sub.** In Google Cloud (the same project as your OAuth client), open **APIs & Services → Library** and enable the **Cloud Pub/Sub API**.
 2. **Create a topic.** Open **Pub/Sub → Topics → Create topic**. Name it `maillo`, untick "Add a default subscription", and create it. Copy its full name, `projects/your-project-id/topics/maillo`.
@@ -272,7 +283,7 @@ If you do not want browser updates at all, delete `update.php` from the server.
 ## Security notes
 
 - Maillo runs in the browser. Google access tokens are kept in the tab's session storage and are cleared when you sign out or close the tab. The server-side files are `update.php` (updates and logo), `ai.php` (optional Gemini relay) and `session.php` (optional lasting sign-in). They check your Google sign-in and allowed account before doing anything, using `maillo-common.php`. `config.php` gives the browser only the safe part of `maillo-config.php`; allowed accounts and secrets never leave the server, and `.htaccess` blocks `maillo-config.php` from the web. With `staySignedIn`, refresh tokens never reach the browser: they stay encrypted on the server behind an HttpOnly cookie, and `session.php` only answers requests carrying Maillo's own header (so other sites can't use the cookie). With `push`, `push.php` uses those same server-side sign-ins to read new mail's sender, subject and snippet, and sends them to your devices encrypted end to end (RFC 8291), signed with your install's own key (RFC 8292).
-- To open instantly and work offline, Maillo keeps conversation headers (sender, subject, snippet), what each list showed, labels and counts, and the last 150 conversations you opened (or that were fetched ahead of you) in the browser's IndexedDB on this device. It's tied to your account (another account starts from empty) and deleted when you sign out. Nothing is kept in demo mode. On a shared computer, sign out when you're done.
+- To open instantly and work offline, Maillo keeps conversation headers (sender, subject, snippet), what each list showed, labels and counts, and the last 150 conversations you opened (or that were fetched ahead of you) in the browser's IndexedDB on this device. It's tied to your account (another account starts from empty) and deleted when you sign out. Nothing is kept in demo mode. On a shared computer, turn off **Settings → General → Keep mail on this device** (it deletes what's kept right away), or sign out when you're done.
 - Email content is shown in a sandboxed frame with scripts disabled, and is sanitised before display.
 - Remote images are blocked until you allow them, so senders cannot tell when you open a message.
 - The content security policy only allows connections to Google's APIs.

@@ -13,6 +13,7 @@ import { CHIMES, playChime } from '../chime';
 import { askPermission, permission, sendTest } from '../notify';
 import { disablePush, enablePush, pushStatus, pushSupported, testPush, type PushStatus } from '../push';
 import { SWIPE_COLOR } from './listTouch';
+import { deviceCacheOn, setDeviceCache } from '../cache';
 import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs, type SwipeAction } from '../prefs';
 import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
@@ -139,6 +140,15 @@ function SyncRow() {
   );
 }
 
+function DeviceCacheRow() {
+  const [on, setOn] = useState(deviceCacheOn());
+  return (
+    <Row title={t('settings.deviceCache')} help={t('settings.deviceCacheHelp')}>
+      <Switch label={t('settings.deviceCache')} on={on} onChange={(v) => { setOn(v); setDeviceCache(v); }} />
+    </Row>
+  );
+}
+
 function General() {
   const p = getPrefs();
   const stored = localStorage.getItem('maillo.lang');
@@ -157,6 +167,7 @@ function General() {
       <Row title={t('cat.label')}>
         <Switch label={t('cat.label')} on={p.tabs} onChange={(v) => { setPrefs({ tabs: v }); setState({ catNew: {} }); }} />
       </Row>
+      {!config.demo && <DeviceCacheRow />}
       <Row title={t('settings.undo')} help={t('settings.undoHelp')}>
         <Seg label={t('settings.undo')} value={p.undoSeconds} onChange={(v) => setPrefs({ undoSeconds: v })} options={[0, 5, 10, 20, 30].map((n) => ({ value: n, label: n ? `${n}s` : t('settings.off') }))} />
       </Row>
