@@ -773,11 +773,14 @@ body.resizing iframe { pointer-events: none; }
   .sidebar.open { transform: none; }
   .drawer-apps { display: flex; gap: 4px; margin-top: auto; padding: 14px 4px 0; border-top: 1px solid var(--line-soft); }
   .drawer-apps .sp { width: 40px; height: 40px; }
+  /* Full screen under the header, which stays put (and comes back if it had slid away while scrolling). */
   .panel.sheet {
-    display: flex; position: fixed; z-index: 56; inset: 0; width: auto; border-left: 0;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display: flex; position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; top: calc(env(safe-area-inset-top, 0px) + var(--hh, 64px));
+    width: auto; border-left: 0; padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     animation: sheet-in 0.2s ease-out;
   }
+  .app:has(.panel.sheet) .header { margin-top: 0; opacity: 1; pointer-events: auto; }
+  .app:has(.panel.sheet) .compose-fab, .app:has(.panel.sheet) .pile-wrap { display: none; }
   .panel.sheet .panel-head { padding-left: 8px; border-bottom: 1px solid var(--line-soft); }
   .overlay-sidebar.open { display: block; position: fixed; inset: 0; z-index: 54; background: rgba(15, 22, 38, 0.3); }
   .listcol.split { flex: 1 1 auto; min-width: 0; border-right: 0; }
@@ -1329,7 +1332,8 @@ body.resizing iframe { pointer-events: none; }
 
 /* Phones: opening a conversation pushes it in from the right; closing pops it back out (see onHash). */
 @media (max-width: 900px) {
-  .header { view-transition-name: header; }
+  /* view-transition-name makes the header its own stacking layer: lift it so its menus open over the page. */
+  .header { view-transition-name: header; position: relative; z-index: 30; }
   .compose-fab { view-transition-name: fab; }
   .pile-wrap { view-transition-name: piles; }
   ::view-transition-group(root) { animation-duration: 0.36s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
