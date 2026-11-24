@@ -3,7 +3,7 @@
  * Updates this install from a release zip uploaded in Settings > Updates, or fetched
  * straight from the project's latest GitHub release, and stores the custom logo set in
  * Settings > Appearance. Checks for a newer release at most twice a day (updateCheck
- * in maillo-config.php turns that off).
+ * in maillo-config.php turns that off; updateChannel 'beta' also offers pre-releases).
  * Only allowed accounts (allowedAccounts or allowedDomains) can use it, and the request
  * must carry a valid Google access token issued to this install's OAuth client.
  * maillo-config.php and .htaccess are never replaced.
@@ -226,21 +226,50 @@ function https_get(string $url, int $max, array $headers = []): array
     return strlen($body) > $max ? [413, ''] : [$status, $body];
 }
 
-/** The latest published release, from a cache refreshed at most every CHECK_EVERY seconds. */
-function latest_release(string $root, bool $force): array
+/** A release's x.y.z version, or '' for anything else (drafts, odd tags). */
+function release_version($r): string
+{
+    if (!is_array($r) || !empty($r['draft'])) {
+        return '';
+    }
+    $v = ltrim((string) ($r['tag_name'] ?? ''), 'v');
+    return preg_match('/^\d+\.\d+\.\d+$/', $v) ? $v : '';
+}
+
+/**
+ * The newest release for this install's channel, from a cache refreshed at most every CHECK_EVERY
+ * seconds. 'stable' follows GitHub's latest release, which never includes pre-releases. 'beta'
+ * takes the highest version among recent releases, pre-releases included.
+ */
+function latest_release(string $root, bool $force, string $channel = 'stable'): array
 {
     $file = $root . '/.maillo-update.json';
     $cache = @json_decode((string) @file_get_contents($file), true);
-    $age = is_array($cache) ? time() - (int) ($cache['checked'] ?? 0) : PHP_INT_MAX;
-    if (is_array($cache) && $age < ($force ? CHECK_MIN_GAP : CHECK_EVERY)) {
+    $sameChannel = is_array($cache) && ($cache['channel'] ?? 'stable') === $channel;
+    $age = $sameChannel ? time() - (int) ($cache['checked'] ?? 0) : PHP_INT_MAX;
+    if ($sameChannel && $age < ($force ? CHECK_MIN_GAP : CHECK_EVERY)) {
         return $cache;
     }
-    [$status, $body] = https_get('https://api.github.com/repos/' . RELEASE_REPO . '/releases/latest', 512 * 1024, ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28']);
-    $r = $status === 200 ? json_decode($body, true) : null;
-    $version = is_array($r) ? ltrim((string) ($r['tag_name'] ?? ''), 'v') : '';
-    if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+    $headers = ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28'];
+    $r = null;
+    if ($channel === 'beta') {
+        [$status, $body] = https_get('https://api.github.com/repos/' . RELEASE_REPO . '/releases?per_page=20', 1024 * 1024, $headers);
+        $list = $status === 200 ? json_decode($body, true) : null;
+        foreach (is_array($list) ? $list : [] as $item) {
+            $v = release_version($item);
+            if ($v !== '' && ($r === null || version_compare($v, release_version($r), '>'))) {
+                $r = $item;
+            }
+        }
+    } else {
+        [$status, $body] = https_get('https://api.github.com/repos/' . RELEASE_REPO . '/releases/latest', 512 * 1024, $headers);
+        $r = $status === 200 ? json_decode($body, true) : null;
+    }
+    $version = release_version($r);
+    if ($version === '') {
         // Keep the last good answer; retry after CHECK_MIN_GAP instead of on every request.
-        $fallback = is_array($cache) ? $cache : ['latest' => null];
+        $fallback = $sameChannel ? $cache : ['latest' => null];
+        $fallback['channel'] = $channel;
         $fallback['checked'] = time() - CHECK_EVERY + CHECK_MIN_GAP;
         $fallback['error'] = 'check_failed';
         @file_put_contents($file, json_encode($fallback), LOCK_EX);
@@ -260,11 +289,13 @@ function latest_release(string $root, bool $force): array
     }
     $page = (string) ($r['html_url'] ?? '');
     $data = [
+        'channel' => $channel,
         'checked' => time(),
         'latest' => [
             'version' => $version,
             'url' => strpos($page, 'https://github.com/') === 0 ? $page : '',
             'published' => (string) ($r['published_at'] ?? ''),
+            'prerelease' => !empty($r['prerelease']),
             'asset' => $asset,
         ],
     ];
@@ -290,6 +321,7 @@ if ($action === 'status') {
         'writable' => is_writable($root),
         'maxUpload' => min(MAX_UPLOAD, bytes_from_ini((string) ini_get('upload_max_filesize')), bytes_from_ini((string) ini_get('post_max_size'))),
         'updateCheck' => $cfg['updateCheck'],
+        'updateChannel' => $cfg['updateChannel'],
         'backups' => array_map(function ($d) {
             $parts = explode('_', $d, 2);
             return ['id' => $d, 'version' => $parts[1] ?? ''];
@@ -301,7 +333,7 @@ if ($action === 'check') {
     if (!$cfg['updateCheck']) {
         out(200, ['ok' => true, 'enabled' => false]);
     }
-    $rel = latest_release($root, ($_POST['force'] ?? '') === '1');
+    $rel = latest_release($root, ($_POST['force'] ?? '') === '1', $cfg['updateChannel']);
     $current = installed_version($root);
     $latest = $rel['latest'] ?? null;
     out(200, [
@@ -311,6 +343,8 @@ if ($action === 'check') {
         'latest' => $latest['version'] ?? '',
         'url' => $latest['url'] ?? '',
         'published' => $latest['published'] ?? '',
+        'prerelease' => !empty($latest['prerelease']),
+        'channel' => $cfg['updateChannel'],
         'available' => $latest !== null && $current !== '' && version_compare($latest['version'], $current, '>'),
         'canInstall' => !empty($latest['asset']) && class_exists('ZipArchive') && is_writable($root),
         'checked' => (int) ($rel['checked'] ?? 0),
@@ -331,7 +365,7 @@ if ($action === 'update') {
         if (!$cfg['updateCheck']) {
             fail(403, 'check_disabled');
         }
-        $asset = latest_release($root, false)['latest']['asset'] ?? null;
+        $asset = latest_release($root, false, $cfg['updateChannel'])['latest']['asset'] ?? null;
         if (!is_array($asset)) {
             fail(502, 'download_failed');
         }
@@ -353,7 +387,7 @@ if ($action === 'update') {
         register_shutdown_function(function () use ($zipPath) {
             @unlink($zipPath);
         });
-        $expected = (string) (latest_release($root, false)['latest']['version'] ?? '');
+        $expected = (string) (latest_release($root, false, $cfg['updateChannel'])['latest']['version'] ?? '');
     } else {
         $file = $_FILES['package'] ?? null;
         if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {

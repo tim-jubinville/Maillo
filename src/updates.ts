@@ -14,6 +14,7 @@ export interface UpdaterStatus {
   path?: string;
   current?: string;
   updateCheck?: boolean;
+  updateChannel?: 'stable' | 'beta';
 }
 
 export interface UpdateCheck {
@@ -27,6 +28,8 @@ export interface UpdateCheck {
   available?: boolean;
   canInstall?: boolean;
   checked?: number;
+  prerelease?: boolean;
+  channel?: 'stable' | 'beta';
 }
 
 /** POST to update.php with the current Google token. Resolves with its JSON reply, or { ok: false, error: 'unavailable' }. */

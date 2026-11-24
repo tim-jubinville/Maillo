@@ -243,6 +243,8 @@ Set `features.syncSettings` to `true` (it needs the Drive API and the `drive.app
 
 The check tells GitHub that an install exists at your server's address, nothing more. To turn it off, set `'updateCheck' => false` in `maillo-config.php`: GitHub then never hears from your install, and you update by uploading zips. Your host must allow outgoing HTTPS requests (the curl extension, or `allow_url_fopen`).
 
+**Beta channel.** New releases first go out as GitHub pre-releases, which the check doesn't offer. To try them before everyone else, set `'updateChannel' => 'beta'` in `maillo-config.php`: the check then offers the newest release, pre-releases included, and **Settings → Updates** says the install is on the beta channel. Set it back to `'stable'` (the default) to get official releases only. Going back to stable doesn't downgrade you: you stay on the pre-release until the next official version is newer.
+
 **From the browser.** Open **Settings → Updates**, choose the new release zip and click **Install update**. Maillo:
 
 - checks that the zip is a Maillo release and refuses unexpected files
