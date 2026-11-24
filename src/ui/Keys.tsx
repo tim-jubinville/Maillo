@@ -64,6 +64,7 @@ export function useShortcuts(s: AppState) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'Escape') {
         if (st.showKeys) setState({ showKeys: false });
+        else if (st.sheet) setState({ sheet: undefined });
         return;
       }
       if (!getPrefs().shortcuts || typing(e.target) || st.compose && !st.compose.minimized) return;

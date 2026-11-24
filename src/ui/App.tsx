@@ -62,6 +62,7 @@ export function App() {
           <Compose key={`pop-${s.compose.key}`} s={s} c={s.compose} />
         </PopoutWindow>
       )}
+      {s.sheet && <SidePanel s={s} p={s.sheet} sheet />}
       <Toasts s={s} />
       {s.showKeys && <KeyHelp />}
     </div>
@@ -321,6 +322,14 @@ function Sidebar({ s }: { s: AppState }) {
           </a>
         );
       })}
+      {/* Phones hide the right-hand icon column; its apps sit quietly at the foot of the drawer instead. */}
+      <div class="drawer-apps" role="group" aria-label={t('nav.apps')}>
+        {panelApps().map((i) => (
+          <button class="sp" aria-label={i.label} title={i.label} onClick={() => setState({ sidebarOpen: false, sheet: i.id })}>
+            <CIcon name={i.icon} size={20} />
+          </button>
+        ))}
+      </div>
     </nav>
   );
 }
@@ -347,13 +356,18 @@ function MailCard({ s, route }: { s: AppState; route: MailRoute }) {
 
 type PanelId = NonNullable<AppState['panel']>;
 
-function SideIcons({ s }: { s: AppState }) {
-  const items: { id: PanelId; icon: ColorIconName; label: string }[] = [
+/** The apps of the right-hand icon column (and of the phone drawer's app row). */
+function panelApps(): { id: PanelId; icon: ColorIconName; label: string }[] {
+  return [
     { id: 'calendar', icon: 'calendar', label: t('panel.calendar') },
     ...(config.features.stickies || config.demo ? [{ id: 'stickies' as const, icon: 'stickies' as const, label: t('panel.stickies') }] : []),
     { id: 'tasks', icon: 'tasks', label: t('panel.tasks') },
     { id: 'contacts', icon: 'contacts', label: t('panel.contacts') }
   ];
+}
+
+function SideIcons({ s }: { s: AppState }) {
+  const items = panelApps();
   // Hover previews: resting on an icon while the side panel is closed shows that app in a popover.
   const [peek, setPeek] = useState<{ id: PanelId; top: number } | null>(null);
   const timer = useRef<number | undefined>(undefined);
