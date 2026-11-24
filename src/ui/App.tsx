@@ -14,6 +14,7 @@ import { SetupWizard } from './SetupWizard';
 import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
+import { DiagnosticsButton } from './Diagnostics';
 import { KeyHelp, useShortcuts } from './Keys';
 import { ReadingPane } from './ReadingPane';
 import { inInbox, PileBar } from './Piles';
@@ -110,6 +111,7 @@ function SetupChecklist() {
             );
           })}
         </ul>
+        <DiagnosticsButton />
         <p class="setup-note">{t('setup.private')}</p>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button class={`btn ${guided ? '' : 'primary'}`} onClick={() => location.reload()}>{t('setup.again')}</button>

@@ -23,30 +23,16 @@ body:
         3. See …
     validations:
       required: true
-  - type: input
-    id: version
+  - type: textarea
+    id: diagnostics
     attributes:
-      label: Maillo version
-      description: Shown in Settings → About.
-      placeholder: "0.6.18"
-    validations:
-      required: true
-  - type: dropdown
-    id: host
-    attributes:
-      label: Host type
-      options:
-        - Shared hosting (Apache, cPanel)
-        - Nginx with PHP-FPM
-        - Other
-        - Demo mode (?demo)
-    validations:
-      required: true
-  - type: input
-    id: browser
-    attributes:
-      label: Browser and device
-      placeholder: "Safari 18 on iPhone, installed to Home Screen"
+      label: Diagnostics
+      description: In Maillo, open Settings → About and click **Copy diagnostics** (or the same button on the setup screen), then paste it here. It holds versions, browser and server details only, no addresses or messages.
+      render: text
+      placeholder: |
+        Maillo diagnostics, …
+        App: …
+        Server: PHP …
     validations:
       required: true
   - type: dropdown
