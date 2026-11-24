@@ -1,7 +1,8 @@
 name: Release
 
 # Builds the install zip and attaches it to the release, whether the release
-# comes from pushing a v* tag or is created by hand on GitHub.
+# comes from pushing a v* tag or is created by hand on GitHub. The tag sets the
+# version: release whatever is on main as v1.2.3 and the zip says 1.2.3.
 # A release made from a tag push starts as a pre-release: only installs on the beta
 # channel see it. To release it to everyone, edit it on GitHub, untick "Set as a
 # pre-release" and tick "Set as the latest release". Same tag, same zip.
@@ -23,14 +24,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Check tag matches package.json version
+      # The tag is the version: package.json's version is only used for local builds,
+      # so pull requests never touch it and never conflict over it.
+      - name: Take the version from the tag
         run: |
           tag="${GITHUB_REF_NAME}"
-          version="$(node -p "require('./package.json').version")"
-          if [[ "$tag" == v* && "$tag" != "v$version" ]]; then
-            echo "::error::Tag $tag does not match package.json version $version. Bump the version or fix the tag."
+          version="${tag#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag $tag isn't a version like v1.2.3."
             exit 1
           fi
+          npm version "$version" --no-git-tag-version --allow-same-version
       - name: Pre-release unless the release already says otherwise
         id: kind
         env:
