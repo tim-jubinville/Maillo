@@ -119,7 +119,8 @@ public class MailloNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
     @objc func signOut(_ call: CAPPluginCall) {
         let refresh = keychainGet()
         keychainRemove()
-        guard let token = refresh else {
+        // Revoking ends Google's whole grant (every device), so only "sign out everywhere" does it.
+        guard let token = refresh, call.getBool("revoke") ?? false else {
             call.resolve()
             return
         }

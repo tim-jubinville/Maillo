@@ -376,16 +376,24 @@ function signInPopup(opts: { switchAccount?: boolean } = {}): Promise<string> {
   });
 }
 
-export async function signOut(): Promise<void> {
+/**
+ * Signs this device out. Google revokes the whole grant when any token is revoked, which would also end
+ * every other device's sign-in and push, so only `everywhere` revokes.
+ */
+export async function signOut(opts: { everywhere?: boolean } = {}): Promise<void> {
   const token = session?.token;
   clearTimeout(renewTimer);
-  const ending = isNative ? native().then((n) => n.nativeSignOut()) : serverSession ? sessionCall({ action: 'signout' }) : undefined;
+  const ending = isNative
+    ? native().then((n) => n.nativeSignOut(!!opts.everywhere))
+    : serverSession || opts.everywhere
+      ? sessionCall({ action: 'signout', ...(opts.everywhere ? { everywhere: '1' } : {}) }, !!opts.everywhere)
+      : undefined;
   serverSession = false;
   markDevice(false);
+  await ending;
   writeSession(null);
   localStorage.removeItem(HINT_KEY);
-  if (token && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(token);
-  await ending;
+  if (opts.everywhere && token && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(token);
 }
 
 export function dropSession() {

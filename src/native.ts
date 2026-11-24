@@ -17,7 +17,7 @@ interface MailloNativePlugin {
   refresh(o: { clientId: string }): Promise<NativeToken>;
   hasSession(): Promise<{ value: boolean }>;
   /** Removes the refresh token and asks Google to end it. */
-  signOut(): Promise<void>;
+  signOut(opts: { revoke: boolean }): Promise<void>;
 }
 
 const Native = registerPlugin<MailloNativePlugin>('MailloNative');
@@ -93,6 +93,6 @@ export async function nativeRefresh(clientId: string): Promise<NativeToken | nul
   }
 }
 
-export function nativeSignOut(): Promise<void> {
-  return Native.signOut().catch(() => undefined);
+export function nativeSignOut(revoke = false): Promise<void> {
+  return Native.signOut({ revoke }).catch(() => undefined);
 }

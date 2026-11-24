@@ -12,6 +12,9 @@ const en = {
   'auth.demo': 'Try the demo',
   'auth.failed': 'Sign-in did not complete. Try again.',
   'auth.signOut': 'Sign out',
+  'auth.signOutEverywhere': 'Sign out everywhere',
+  'auth.signOutEverywhereHelp': 'Signs out every device and browser, ends notifications while Maillo is closed, and removes Maillo’s access to your Google account. The next sign-in asks for permission again.',
+  'auth.signOutEverywhereConfirm': 'Sign out of Maillo on every device?',
   'auth.expired': 'Your session expired. Sign in again to continue.',
 
   'nav.compose': 'Compose',
@@ -769,6 +772,9 @@ const fr: Record<StringKey, string> = {
   'auth.demo': 'Essayer la démo',
   'auth.failed': 'La connexion n’a pas abouti. Réessayez.',
   'auth.signOut': 'Se déconnecter',
+  'auth.signOutEverywhere': 'Se déconnecter partout',
+  'auth.signOutEverywhereHelp': 'Déconnecte tous vos appareils et navigateurs, arrête les notifications quand Maillo est fermé et retire à Maillo l’accès à votre compte Google. À la prochaine connexion, Google vous redemandera votre accord.',
+  'auth.signOutEverywhereConfirm': 'Vous déconnecter de Maillo sur tous vos appareils?',
   'auth.expired': 'Votre session a expiré. Reconnectez-vous pour continuer.',
 
   'nav.compose': 'Nouveau message',

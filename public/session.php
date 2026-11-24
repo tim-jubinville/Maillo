@@ -10,7 +10,7 @@
  *   ready          whether the client secret is set up, so sign-in can use this file
  *   exchange       trade an authorization code (code) for a session
  *   token          a fresh access token for this device's session
- *   signout        forget this device's session and revoke its refresh token
+ *   signout        forget this device's session (everywhere=1: revoke Google's access, ending every device's session)
  *   secret_status  whether the OAuth client secret is stored (token required)
  *   set_secret     store the OAuth client secret (token, secret)
  *   remove_secret  delete the stored secret and every session (token)
@@ -289,13 +289,28 @@ if ($action === 'token') {
 }
 
 if ($action === 'signout') {
+    // Revoking a token ends Google's whole grant for the account, on every device. So a normal sign-out
+    // only forgets this device's session; "everywhere" revokes, and drops the account's other sessions too.
+    $everywhere = ($_POST['everywhere'] ?? '') === '1';
     $s = read_session($sessionDir);
+    $email = $s ? strtolower((string) $s['email']) : '';
+    if ($everywhere && $email === '' && (string) ($_POST['token'] ?? '') !== '') {
+        $email = authorize($cfg);
+    }
     if ($s) {
-        $refresh = unseal((string) ($s['rt'] ?? ''), crypto_key($secretFile));
+        $refresh = $everywhere ? unseal((string) ($s['rt'] ?? ''), crypto_key($secretFile)) : '';
         if ($refresh !== '') {
             http_post_form('https://oauth2.googleapis.com/revoke', ['token' => $refresh]);
         }
         @unlink($s['file']);
+    }
+    if ($everywhere && $email !== '') {
+        foreach (glob($sessionDir . '/*.php') ?: [] as $f) {
+            $other = include $f;
+            if (is_array($other) && strtolower((string) ($other['email'] ?? '')) === $email) {
+                @unlink($f);
+            }
+        }
     }
     set_cookie('', time() - 3600);
     out(200, ['ok' => true]);
