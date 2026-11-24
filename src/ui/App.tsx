@@ -10,6 +10,7 @@ import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
 import { composeInWindow, PopoutWindow } from './Popout';
 import { SearchBox } from './SearchBox';
+import { SetupWizard } from './SetupWizard';
 import { layoutVars, Splitter } from './Splitter';
 import { CIcon, ColorSprite, type ColorIconName } from './ColorIcons';
 import { Icon } from './Icon';
@@ -74,6 +75,10 @@ const SETUP_ITEMS = ['configFile', 'configValid', 'clientId', 'allowed', 'php', 
 /** First run: what's still missing in maillo-config.php or on the server, as plain yes/no items. */
 function SetupChecklist() {
   const st = setup!;
+  const [wizard, setWizard] = useState(false);
+  // The guided setup can fill in the Client ID and accounts, when that's what's missing and the file can be written.
+  const guided = (!st.checks.clientId || !st.checks.allowed) && (!st.checks.configFile || st.checks.configValid) && st.checks.writable !== false;
+  if (wizard) return <SetupWizard onCancel={() => setWizard(false)} />;
   // Nothing else matters until the file exists and can be read.
   const items = SETUP_ITEMS.filter((k) => (k === 'configFile' ? true : st.checks.configFile && (k === 'configValid' || st.checks.configValid)));
   return (
@@ -82,6 +87,12 @@ function SetupChecklist() {
         <Brand />
         <h1>{t('setup.title')}</h1>
         <p>{t('setup.body')}</p>
+        {guided && (
+          <div class="setup-guided">
+            <p>{t('setup.wizardHelp')}</p>
+            <button class="btn primary" onClick={() => setWizard(true)}>{t('setup.wizard')}</button>
+          </div>
+        )}
         <ul class="setup-list">
           {items.map((k) => {
             const ok = !!st.checks[k];
@@ -101,7 +112,7 @@ function SetupChecklist() {
         </ul>
         <p class="setup-note">{t('setup.private')}</p>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button class="btn primary" onClick={() => location.reload()}>{t('setup.again')}</button>
+          <button class={`btn ${guided ? '' : 'primary'}`} onClick={() => location.reload()}>{t('setup.again')}</button>
           <a class="btn" href="?demo">{t('auth.demo')}</a>
         </div>
       </div>

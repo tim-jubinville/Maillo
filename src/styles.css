@@ -700,6 +700,7 @@ body.resizing iframe { pointer-events: none; }
 .signin { width: 100%; max-width: 420px; padding: 36px 32px; display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
 .signin h1 { margin: 6px 0 0; font-size: calc(28px * var(--ts, 1)); font-weight: 800; letter-spacing: -0.02em; }
 .signin p { margin: 0; color: var(--muted); line-height: 1.5; }
+.signin p.err { color: var(--danger); }
 .err { color: var(--danger); font-size: calc(13px * var(--ts, 1)); }
 
 /* First-run checklist */
@@ -884,6 +885,7 @@ body.resizing iframe { pointer-events: none; }
 [data-mode='dark'] .ribbon .sep { background: rgba(255, 255, 255, 0.14); }
 [data-mode='dark'] .ib:hover:not(:disabled) { color: var(--ink); }
 [data-mode='dark'] .sw { background: #3a4664; }
+[data-mode='dark'] .sw[aria-checked='true'] { background: var(--accent-fill); }
 [data-mode='dark'] .compose-head, [data-mode='dark'] .panel-head { color: var(--ink); }
 [data-mode='dark'] .toast { background: linear-gradient(135deg, #2a3a66, #1a2442 70%); }
 [data-mode='dark'] input, [data-mode='dark'] select, [data-mode='dark'] textarea { color: var(--ink); }
@@ -1347,3 +1349,35 @@ body.resizing iframe { pointer-events: none; }
 @keyframes slide-out-right { to { transform: translateX(100%); } }
 @keyframes slide-under-out { to { transform: translateX(-28%); filter: brightness(0.92); } }
 @keyframes slide-under-in { from { transform: translateX(-28%); filter: brightness(0.92); } }
+
+/* Guided setup (SetupWizard.tsx) */
+.setup-guided { width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.setup-guided p { color: var(--ink-2); }
+.wiz { max-width: 620px; }
+.wiz-steps { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; gap: 6px; flex-wrap: wrap; }
+.wiz-steps li { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: calc(12px * var(--ts, 1)); font-weight: 600; }
+.wiz-steps .n { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); font-size: calc(11px * var(--ts, 1)); }
+.wiz-steps li.on { background: var(--accent); color: #fff; }
+.wiz-steps li.on .n { background: rgba(255, 255, 255, 0.25); }
+.wiz-steps li.past { color: var(--ink-2); }
+.wiz-steps li.past .n { background: var(--ok-bg); color: var(--ok); }
+.wiz-body { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+.wiz-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; color: var(--ink); line-height: 1.5; }
+.wiz-list li { padding-left: 4px; }
+.wiz-list .btn, .wiz-list .wiz-copy { margin-top: 8px; }
+.wiz-list .btn { display: flex; width: fit-content; gap: 6px; align-items: center; text-decoration: none; }
+.wiz-copy { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wiz-copy code { padding: 6px 10px; border-radius: 8px; background: var(--surface-2); font-size: calc(13px * var(--ts, 1)); overflow-wrap: anywhere; }
+.wiz-copy .btn { margin-top: 0; }
+.wiz-hint, .wiz-field small, .wiz-feats small { color: var(--muted); font-size: calc(13px * var(--ts, 1)); line-height: 1.45; }
+.wiz-warn { display: block; color: var(--danger); font-size: calc(13px * var(--ts, 1)); margin-top: 4px; }
+.wiz-field { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.wiz-field > span { font-weight: 600; font-size: calc(13px * var(--ts, 1)); }
+.wiz-field .input, .wiz-field .select { width: 100%; font-size: max(16px, calc(14px * var(--ts, 1))); }
+.wiz-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+.wiz-feats { display: flex; flex-direction: column; gap: 4px; }
+.wiz-feat { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+.wiz-feat > div { display: flex; flex-direction: column; gap: 2px; }
+.wiz-feat b { font-weight: 600; font-size: calc(14px * var(--ts, 1)); }
+.wiz-feat a { font-size: calc(12px * var(--ts, 1)); color: var(--ink-2); text-underline-offset: 2px; }
+.wiz-nav { width: 100%; display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; }
