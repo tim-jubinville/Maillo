@@ -36,8 +36,9 @@ body:
     attributes:
       label: Host type
       options:
-        - PHP host (maillo-config.php)
-        - Static host without PHP (config.js)
+        - Shared hosting (Apache, cPanel)
+        - Nginx with PHP-FPM
+        - Other
         - Demo mode (?demo)
     validations:
       required: true

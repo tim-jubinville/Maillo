@@ -37,10 +37,11 @@ declare global {
   interface Window {
     MAILLO_CONFIG?: Partial<AppConfig>;
     MAILLO_SETUP?: SetupState;
-    /** Former name, still read so older config.js files keep working. */
-    MAILMAX_CONFIG?: Partial<AppConfig>;
   }
 }
+
+/** True in the demo build published with the website (MAILLO_DEMO=1 npm run build). */
+declare const __DEMO_BUILD__: boolean;
 
 export const defaultAppName = 'Maillo';
 
@@ -91,17 +92,17 @@ export function applyBranding(b: Branding | null | undefined) {
   if (typeof b.logoInvertDark === 'boolean') config.logoInvertDark = b.logoInvertDark;
 }
 
-/** True when no settings could be read (config.js missing or with a syntax error), so the sign-in screen can say so. */
-export const configMissing = !window.MAILLO_CONFIG && !window.MAILMAX_CONFIG;
+/** True when config.php gave no settings and no checklist: the host didn't run it (no PHP) or it's missing. */
+export const configMissing = !window.MAILLO_CONFIG && !window.MAILLO_SETUP;
 
 /** The setup checklist from config.php, while maillo-config.php isn't filled in or the server isn't ready. */
 export const setup: SetupState | undefined = window.MAILLO_SETUP && typeof window.MAILLO_SETUP === 'object' ? window.MAILLO_SETUP : undefined;
 
-/** The settings file this install uses, for messages that say where to change something. */
-export const configFile = window.MAILLO_CONFIG?.accountCheck || setup ? 'maillo-config.php' : 'config.js';
+/** The settings file, for messages that say where to change something. */
+export const configFile = 'maillo-config.php';
 
 function load(): AppConfig {
-  const raw = (window.MAILLO_CONFIG ?? window.MAILMAX_CONFIG ?? {}) as Partial<AppConfig>;
+  const raw = (window.MAILLO_CONFIG ?? {}) as Partial<AppConfig>;
   const params = new URLSearchParams(location.search);
   return {
     appName: (raw.appName ?? '').trim() || defaults.appName,
@@ -128,7 +129,7 @@ function load(): AppConfig {
       push: !!raw.features?.push
     },
     links: { ...defaults.links, ...(raw.links ?? {}) },
-    demo: !!raw.demo || params.has('demo'),
+    demo: __DEMO_BUILD__ || !!raw.demo || params.has('demo'),
     accountCheck: raw.accountCheck === true
   };
 }

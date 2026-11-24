@@ -6,7 +6,7 @@
  * in maillo-config.php turns that off).
  * Only allowed accounts (allowedAccounts or allowedDomains) can use it, and the request
  * must carry a valid Google access token issued to this install's OAuth client.
- * maillo-config.php, config.js and .htaccess are never replaced.
+ * maillo-config.php and .htaccess are never replaced.
  */
 declare(strict_types=1);
 
@@ -17,7 +17,7 @@ header('X-Content-Type-Options: nosniff');
 const MAX_UPLOAD = 30 * 1024 * 1024;
 const MAX_UNPACKED = 120 * 1024 * 1024;
 const KEEP_BACKUPS = 3;
-const PROTECTED_PATHS = ['config.js', 'maillo-config.php', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
+const PROTECTED_PATHS = ['maillo-config.php', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
 const MAX_LOGO = 1024 * 1024;
 // Where releases are published, and how often to ask (at most).
 const RELEASE_REPO = 'tim-jubinville/Maillo';
@@ -27,7 +27,7 @@ const CHECK_MIN_GAP = 60;
 // A newer release may add server files: they're accepted when that release's own update.php lists
 // them here (no new risk, since the package's update.php replaces this one anyway).
 // maillo-config.php is listed so updaters before 0.6.9 accept the package; it's protected, so this one never
-// replaces it (and a blank copy doesn't take over from an existing config.js, see config_source()).
+// replaces it.
 const SERVER_FILES = ['update.php', 'maillo-common.php', 'ai.php', 'session.php', 'config.php', 'maillo-config.php', 'push.php'];
 
 /** SERVER_FILES as declared by the update.php inside a package (top-level .php names only). */

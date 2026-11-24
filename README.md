@@ -1,10 +1,10 @@
 # Maillo
 
-A self-hosted web interface for Gmail. Your mail stays in your Google account; Maillo is a set of static files you upload to your own web server. It talks to Gmail directly from your browser through Google's official API.
+A self-hosted web interface for Gmail. Your mail stays in your Google account; Maillo is a set of files you upload to your own web host, which needs to run PHP. It talks to Gmail directly from your browser through Google's official API.
 
 - No database and no third-party service in between; one settings file (`maillo-config.php`) and a few small PHP files: settings for the browser (`config.php`), an updater (`update.php`), lasting sign-in (`session.php`) and a Gemini relay (`ai.php`)
 - Sign in with Google; access tokens stay in the browser tab and are never stored on a server
-- Works on any static host: shared hosting (Apache, cPanel), Nginx, Cloudflare Pages, Netlify, and others
+- Runs on any web host with PHP 7.4 or later and HTTPS: shared hosting (Apache, cPanel) or Nginx with PHP-FPM. Static hosts without PHP (Cloudflare Pages, Netlify, GitHub Pages) aren't supported
 - English and French interface
 
 ## Features
@@ -100,7 +100,7 @@ See [docs/INSTALL.md](docs/INSTALL.md). In short:
 2. Fill in `maillo-config.php` from the release zip: your Client ID and who may sign in. It's the only file to edit.
 3. Upload the files to your web server and open the address. If anything is missing, Maillo shows a checklist.
 
-Hosts without PHP use `config.js` instead (rename `config.example.js`). Installs made before 0.6.9 keep using `config.js` until you move to `maillo-config.php` (see INSTALL.md).
+Installs made before 0.6.9 use `config.js`, which Maillo no longer reads: move your settings to `maillo-config.php` before updating (see INSTALL.md).
 
 ## Try it without Google
 
@@ -124,18 +124,17 @@ npm run package    # dist/ plus docs zipped into release/
 
 Either way, the Release workflow builds the install zip and attaches it to the release as `maillo-<version>.zip` and `maillo.zip`. The latest one is always at `https://github.com/<owner>/<repo>/releases/latest/download/maillo.zip`. Use that zip to install, not GitHub's "Source code" zip, which is the unbuilt repo.
 
-Local development needs `http://localhost:5173` listed as an authorised JavaScript origin on your OAuth client, or use `?demo`.
+The dev server can't run PHP. Open it with `?demo` for sample data, or, to sign in with Google, put your settings in a `config.local.js` at the repo root (gitignored), as `window.MAILLO_CONFIG = { googleClientId: "…" };`: the dev server serves it in place of `config.php`. Signing in locally also needs `http://localhost:5173` listed as an authorised JavaScript origin on your OAuth client.
 
 ### Website
 
-The landing page lives in `site/` (plain HTML, no build). On every push to `main`, the Website workflow publishes it to GitHub Pages, with a demo build of the app at `/demo/` (sample data only). To turn it on: Settings → Pages → Source: **GitHub Actions**. For a custom domain, add it in the same screen.
+The landing page lives in `site/` (plain HTML, no build). On every push to `main`, the Website workflow publishes it to GitHub Pages, with a demo build of the app at `/demo/` (`MAILLO_DEMO=1 npm run build`: sample data only, no PHP). To turn it on: Settings → Pages → Source: **GitHub Actions**. For a custom domain, add it in the same screen.
 
 ### Project layout
 
 ```
 public/maillo-config.php  the one settings file (never served; config.php hands the browser its safe part)
 public/config.php     gives the browser its settings as window.MAILLO_CONFIG, or the setup checklist
-public/config.example.js  settings for hosts without PHP (renamed to config.js there)
 public/.htaccess      headers for Apache hosts
 public/manifest.webmanifest  web app manifest (installable app)
 sw/sw.js              service worker template; the build fills in the version and file list

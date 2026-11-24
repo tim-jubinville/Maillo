@@ -1,8 +1,8 @@
 # Installing Maillo
 
-Maillo is mostly a static website, with a few small PHP files for the server side. You need:
+Maillo is a web app with a few small PHP files on the server side. You need:
 
-- A web server that serves files over **HTTPS** (Google sign-in requires it). Shared hosting with PHP 7.4 or later (cPanel and similar) is the easiest: you fill in one settings file. Hosts without PHP work too, with fewer features (see "Hosts without PHP").
+- A web host that runs **PHP 7.4 or later** and serves files over **HTTPS** (Google sign-in requires it). Shared hosting (cPanel and similar) is the easiest; Nginx with PHP-FPM works too. Static hosts that can't run PHP (Cloudflare Pages, Netlify, GitHub Pages) aren't supported.
 - An address for it, such as `https://mail.example.com`
 - A Google account with Gmail, and access to [Google Cloud Console](https://console.cloud.google.com/)
 
@@ -136,7 +136,7 @@ location / {
 # Settings, secrets, sessions and backups are never served.
 location ~ (^|/)(maillo-config|maillo-common)\.php$ { return 404; }
 location ~ (^|/)\.(maillo|mailmax)- { return 404; }
-location ~ ^/(config\.js|config\.php|sw\.js|manifest\.webmanifest)$ { add_header Cache-Control no-cache; }
+location ~ ^/(config\.php|sw\.js|manifest\.webmanifest)$ { add_header Cache-Control no-cache; }
 ```
 
 Maillo's setup checklist looks for these rules in `.htaccess`, so on Nginx keep the release's `.htaccess` file in the folder as well (Nginx ignores it).
@@ -144,14 +144,6 @@ Maillo's setup checklist looks for these rules in `.htaccess`, so on Nginx keep 
 Maillo can also live in a sub-folder (for example `https://example.com/mail/`). The authorised origin is still just `https://example.com`.
 
 **The setup checklist.** If a required setting is missing or the server isn't ready, Maillo shows a checklist instead of the sign-in button: client ID set, allowed accounts set, PHP version, private files protected, folder writable, OpenSSL and cURL available. Each item says yes or no and how to fix it; none of your settings are shown. Fix what's marked, then click **Check again**.
-
-### Hosts without PHP
-
-Static hosts (Cloudflare Pages, Netlify, GitHub Pages and others) can't run `maillo-config.php`. On those:
-
-1. **Don't upload `maillo-config.php`**: without PHP it would be served as plain text.
-2. Rename `config.example.js` to `config.js` and fill it in. It has the same settings as `maillo-config.php`, without the client secret and Gemini key. The allowed accounts in `config.js` are visible to anyone who opens the file, and only the browser enforces them.
-3. Staying signed in, AI and updating from the browser need PHP, so they aren't available.
 
 ## 6. Sign in
 
@@ -202,7 +194,7 @@ Google only opens its Keep API to Google Workspace accounts, and only once an ad
 
 ## Optional: stay signed in
 
-Browser-only sign-in lasts one hour, after which Google asks again. With `session.php` (PHP hosts), each device stays signed in until you sign out:
+Browser-only sign-in lasts one hour, after which Google asks again. With `session.php`, each device stays signed in until you sign out:
 
 1. Set `features.staySignedIn` to `true` in `maillo-config.php`.
 2. In Google Cloud, open **APIs & Services → Credentials**, open your Web client and copy its **Client secret**. No redirect URI is needed.
@@ -245,46 +237,33 @@ Set `features.syncSettings` to `true` (it needs the Drive API and the `drive.app
 
 ## Updating
 
-**Update notices (PHP hosts).** Twice a day at most, `update.php` asks GitHub for the latest Maillo release and keeps the answer in `.maillo-update.json` (never served or replaced by updates). When a newer version is out, a dot appears on your avatar and its menu offers it. **Settings → Updates** shows it with its release notes and an **Install** button: the server downloads the release zip from GitHub, checks it against GitHub's SHA-256 checksum, then installs it exactly like an uploaded zip (below). **Check now** asks again straight away.
+**Update notices.** Twice a day at most, `update.php` asks GitHub for the latest Maillo release and keeps the answer in `.maillo-update.json` (never served or replaced by updates). When a newer version is out, a dot appears on your avatar and its menu offers it. **Settings → Updates** shows it with its release notes and an **Install** button: the server downloads the release zip from GitHub, checks it against GitHub's SHA-256 checksum, then installs it exactly like an uploaded zip (below). **Check now** asks again straight away.
 
-The check tells GitHub that an install exists at your server's address, nothing more. To turn it off, set `'updateCheck' => false` in `maillo-config.php` (or `updateCheck: false` in `config.js`): GitHub then never hears from your install, and you update by uploading zips. Your host must allow outgoing HTTPS requests (the curl extension, or `allow_url_fopen`).
+The check tells GitHub that an install exists at your server's address, nothing more. To turn it off, set `'updateCheck' => false` in `maillo-config.php`: GitHub then never hears from your install, and you update by uploading zips. Your host must allow outgoing HTTPS requests (the curl extension, or `allow_url_fopen`).
 
-**From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Maillo:
+**From the browser.** Open **Settings → Updates**, choose the new release zip and click **Install update**. Maillo:
 
 - checks that the zip is a Maillo release and refuses unexpected files
-- keeps your `maillo-config.php` (or `config.js`) and `.htaccess`
+- keeps your `maillo-config.php` and `.htaccess`
 - backs up the current version to `.maillo-backup/` (the last three are kept, and the folder is blocked from the web)
 - installs the new files and reloads
 
 **Restore previous version** in the same section puts the last backup back.
 
-This needs PHP 7.4 or later with the zip extension, and write permission on the install folder (standard on cPanel hosting). It only works for accounts in `allowedAccounts` or `allowedDomains`: the server checks your Google sign-in against your OAuth Client ID before changing anything. If the upload is refused as too large, raise `upload_max_filesize` and `post_max_size` in your host's PHP settings.
+This needs PHP's zip extension and write permission on the install folder (standard on cPanel hosting). It only works for accounts in `allowedAccounts` or `allowedDomains`: the server checks your Google sign-in against your OAuth Client ID before changing anything. If the upload is refused as too large, raise `upload_max_filesize` and `post_max_size` in your host's PHP settings.
 
-**By hand (any host).** Upload the files from a newer release, but keep your own `maillo-config.php` (or `config.js`): don't overwrite it with the blank one from the zip. Browsers pick up the new version on the next load.
+**By hand.** Upload the files from a newer release, but keep your own `maillo-config.php`: don't overwrite it with the blank one from the zip. Browsers pick up the new version on the next load.
 
-**Moving from config.js to maillo-config.php (0.6.9 and later).** Installs made before 0.6.9 use `config.js`, and keep working unchanged: Maillo uses `maillo-config.php` only once it has a client ID in it, so the blank copy an update may add changes nothing. To move over:
+**Moving from config.js (installs made before 0.6.9).** Maillo 0.7.0 no longer reads `config.js`. Before updating:
 
-1. Update to 0.6.9 or later as usual.
-2. Open `maillo-config.php` on the server (download it from the zip if it isn't there) and copy each value across from `config.js`. The names are the same; only the punctuation differs: `googleClientId: "…"` becomes `'googleClientId' => '…',` and `allowedAccounts: ["you@example.com"]` becomes `'allowedAccounts' => ['you@example.com'],`.
-3. Optionally move your secrets into it too (`googleClientSecret`, `geminiApiKey`); the ones saved from Settings keep working otherwise.
-4. Replace `.htaccess` with the one from the release (the updater never replaces it), or add its `maillo-config` block to yours, so the file can never be served.
-5. Reload Maillo. If anything is missing, the setup checklist says what. Once it signs in normally, delete `config.js`: until then it's still public, with your allowed accounts in it.
+1. Open `maillo-config.php` on the server (download it from the zip if it isn't there) and copy each value across from `config.js`. The names are the same; only the punctuation differs: `googleClientId: "…"` becomes `'googleClientId' => '…',` and `allowedAccounts: ["you@example.com"]` becomes `'allowedAccounts' => ['you@example.com'],`.
+2. Replace `.htaccess` with the one from the release (the updater never replaces it), so `maillo-config.php` can never be served.
+3. Update, reload Maillo and sign in. If anything is missing, the setup checklist says what.
+4. Delete `config.js` and `config.example.js` from the server: `config.js` is public and lists your allowed accounts.
 
 If you do not want browser updates at all, delete `update.php` from the server.
 
 **Upgrading from 0.6.1 or earlier to 0.6.2 or later.** 0.6.2 adds a server file (`session.php`) that older updaters refuse ("unexpected file"). Upload the new `update.php` from the release zip by hand once, then install the zip from **Settings → Updates**. From then on, the updater accepts new server files a release declares itself.
-
-**Upgrading to 0.4.0.** The browser updater installs 0.4.0 as usual, but it never replaces `.htaccess`. On Apache, upload the new `.htaccess` by hand once (it fixes `config.js` being cached for too long and makes sure `sw.js` and the app manifest are always fresh), or add the same lines to yours.
-
-**Upgrading from Mailmax (0.2.x and earlier).** The app was renamed Maillo in 0.3.0, and the Mailmax updater does not accept a Maillo release. Upload 0.3.0 by hand once:
-
-1. Upload every file from the `maillo-0.3.0` folder, including `.htaccess`, and keep your `config.js`.
-2. Delete the old `mailmax-common.php` from the server.
-3. Your `config.js` keeps working as is (`window.MAILMAX_CONFIG` is still read). To match new installs, rename it to `window.MAILLO_CONFIG` and set `appName: "Maillo"`.
-
-Your settings in the browser, your private notes and your stored Gemini key carry over on their own. Later versions install from the browser as usual.
-
-**Upgrading from 0.1.0.** Version 0.2.0 added two server files that the 0.1.0 updater does not accept. Upload 0.2.0 or later by hand once, keeping your `config.js`.
 
 ## Security notes
 
@@ -299,14 +278,13 @@ Your settings in the browser, your private notes and your stored Gemini key carr
 | Problem | Fix |
 |---|---|
 | "Almost ready" checklist | A required setting is missing or the server isn't ready. Each item says how to fix it. |
-| "This install is not configured yet" | `googleClientId` is empty in `config.js` (installs without `maillo-config.php`). |
-| "config.js could not be read" | `config.js` is missing or has a syntax error. Open `https://your-address/config.js` to check it: every text value needs straight quotes (`"you@example.com"`, not `you@example.com` or curly quotes), and every line in the list needs its comma. If the file looks right, purge the Cloudflare cache (if you use it) and reload. |
+| "Maillo couldn't load its settings" | The host didn't run `config.php`. Check that the host runs PHP and that `config.php` and `maillo-config.php` were uploaded next to `index.html`. Open `https://your-address/config.php`: it should show a line starting with `window.MAILLO_CONFIG` or `window.MAILLO_SETUP`, not PHP code or an error page. |
 | `redirect_uri_mismatch` or `origin_mismatch` | The address in the browser does not exactly match an authorised JavaScript origin (check `https`, `www`, and the port). |
 | `access_denied` | Your account is not a test user (External, Testing) or not in the organisation (Internal). |
 | "… is not allowed on this install" | The account is not listed in `allowedAccounts` or `allowedDomains`. |
 | Sign-in window does not appear | Allow pop-ups for the site. |
 | Notes say they could not be saved or loaded | Enable the Google Drive API, add the `drive.appdata` scope, set `features.notes` to `true`, then sign out and in again. |
-| Settings → AI says ai.php is not reachable | The host does not run PHP, or `ai.php` was not uploaded. |
+| Settings → AI says ai.php is not reachable | `ai.php` was not uploaded, or a login wall or firewall blocks it. |
 | "Google rejected this key" | Enable the Generative Language API in the key's project, and check the key's API restrictions. |
 | Contact photos don't appear | Enable the People API, add the three contacts/directory scopes, set `features.contactPhotos` to `true`, then sign out and in again. Only people with a photo in Contacts or the directory get one. |
 | Calendar or Tasks panel is empty | Enable the API in Google Cloud, add the scope, set the feature to `true`, then sign out and in again. |

@@ -306,7 +306,7 @@ export function signIn(opts: { switchAccount?: boolean } = {}): Promise<string> 
   if (serverSession && !opts.switchAccount) {
     return renewFromServer().then((ok) => (ok && session ? session.token : signInPopup(opts)));
   }
-  // Without the client secret on the server (or without PHP), sign-in is the hourly kind.
+  // Without the client secret on the server, sign-in is the hourly kind.
   if (staySignedIn() && serverReady) return signInWithCode(!!opts.switchAccount);
   return signInPopup(opts);
 }
