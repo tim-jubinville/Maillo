@@ -7,7 +7,6 @@ import {
   buildMime,
   displayName,
   escapeHtml,
-  formatAddress,
   parseMessage,
   strToB64url,
   textToHtml,
@@ -1366,19 +1365,24 @@ export function signatureBlock(sig: string): string {
   return getPrefs().signatureDash ? `-- <br>${sig}` : sig;
 }
 
+/** An address as people read it ("Léa Fontaine <lea@example.com>"), for quote and forward headers. */
+function showAddress(a: Address): string {
+  return a.name ? `${a.name} <${a.email}>` : a.email;
+}
+
 function quoteHtml(m: ParsedMessage): string {
   const body = m.html || textToHtml(m.text);
-  const who = escapeHtml(formatAddress(m.from));
+  const who = escapeHtml(showAddress(m.from));
   return `<div class="gmail_quote"><div>${escapeHtml(t('compose.wrote', { date: fullDate(m.date), from: '' }).replace(/,\s*$/, ''))} ${who}</div><blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">${body}</blockquote></div>`;
 }
 
 function forwardHtml(m: ParsedMessage): string {
   const rows = [
-    `${t('compose.from')}: ${escapeHtml(formatAddress(m.from))}`,
+    `${t('compose.from')}: ${escapeHtml(showAddress(m.from))}`,
     `Date: ${escapeHtml(fullDate(m.date))}`,
     `${t('compose.subject')}: ${escapeHtml(m.subject)}`,
-    `${t('compose.to')}: ${escapeHtml(m.to.map(formatAddress).join(', '))}`,
-    m.cc.length ? `${t('compose.cc')}: ${escapeHtml(m.cc.map(formatAddress).join(', '))}` : ''
+    `${t('compose.to')}: ${escapeHtml(m.to.map(showAddress).join(', '))}`,
+    m.cc.length ? `${t('compose.cc')}: ${escapeHtml(m.cc.map(showAddress).join(', '))}` : ''
   ].filter(Boolean);
   return `<div class="gmail_quote"><div>${t('compose.forwarded')}<br>${rows.join('<br>')}</div><br>${m.html || textToHtml(m.text)}</div>`;
 }
@@ -1425,28 +1429,54 @@ export function openCompose(mode: ComposeMode = 'new', msg?: ParsedMessage, pres
       c.inReplyTo = msg.messageId;
       c.references = [msg.references, msg.messageId].filter(Boolean).join(' ');
       c.quoted = quoteHtml(msg);
+      // Images shown in the quoted message travel with the reply, as Gmail does.
+      c.attachments = carryAttachments(c.key, msg, c.quoted, false);
     } else if (mode === 'forward') {
       c.subject = `Fwd: ${base}`;
       c.quoted = forwardHtml(msg);
       c.threadId = undefined;
-      c.attachments = msg.attachments
-        .filter((a) => !a.inline)
-        .map((a, i) => ({ id: `fw${i}`, filename: a.filename, mimeType: a.mimeType, base64: '', size: a.size, loading: true }));
-      const key = c.key;
-      msg.attachments.filter((a) => !a.inline).forEach(async (a, i) => {
-        try {
-          const data = a.inlineData ?? (a.attachmentId ? await api.getAttachment(a.messageId, a.attachmentId) : '');
-          const b64 = data.replace(/-/g, '+').replace(/_/g, '/');
-          const cur = state.compose;
-          if (!cur || cur.key !== key) return;
-          setState({ compose: { ...cur, attachments: cur.attachments.map((x) => (x.id === `fw${i}` ? { ...x, base64: b64, loading: false } : x)) } });
-        } catch (e) {
-          fail(e);
-        }
-      });
+      c.attachments = carryAttachments(c.key, msg, c.quoted, true);
     }
   }
   setState({ compose: c });
+}
+
+/** Attachment downloads still running, per compose window, so Send can wait for them. */
+const loads = new Map<number, Promise<void>[]>();
+
+/**
+ * The attachments of `msg` to carry into a compose window: its files (when `files`), and the inline images
+ * `html` shows. They start as placeholders and download in the background.
+ */
+function carryAttachments(key: number, msg: ParsedMessage, html: string, files: boolean): ComposeAttachment[] {
+  const picked = msg.attachments.filter((a) => (a.contentId && a.inline ? html.includes(`cid:${a.contentId}`) : files));
+  const out = picked.map((a, i) => ({
+    id: `m${key}-${i}`,
+    filename: a.filename,
+    mimeType: a.mimeType,
+    base64: '',
+    size: a.size,
+    loading: true,
+    ...(a.contentId && a.inline ? { contentId: a.contentId } : {})
+  }));
+  loads.set(key, picked.map(async (a, i) => {
+    const id = out[i].id;
+    const patchAtt = (fn: (list: ComposeAttachment[]) => ComposeAttachment[]) => {
+      const cur = state.compose;
+      if (cur && cur.key === key) setState({ compose: { ...cur, attachments: fn(cur.attachments) } });
+    };
+    try {
+      const data = a.inlineData ?? (a.attachmentId ? await api.getAttachment(a.messageId, a.attachmentId) : '');
+      const b64 = data.replace(/-/g, '+').replace(/_/g, '/');
+      patchAtt((list) => list.map((x) => (x.id === id ? { ...x, base64: b64, loading: false } : x)));
+    } catch (e) {
+      // Leave it out rather than send an empty file, and say so.
+      patchAtt((list) => list.filter((x) => x.id !== id));
+      if (e instanceof AuthRequired) fail(e);
+      else toast(t('compose.attachmentFailed', { name: a.filename }));
+    }
+  }));
+  return out;
 }
 
 export async function openDraft(threadId: string) {
@@ -1458,6 +1488,8 @@ export async function openDraft(threadId: string) {
     const m = parseMessage(full.message);
     const thread = await api.getThread(threadId, 'metadata');
     const isReply = (thread.messages?.length ?? 1) > 1;
+    const key = composeSeq;
+    const html = m.html || textToHtml(m.text);
     openCompose('draft', undefined, {
       draftId: d.id,
       threadId: isReply ? threadId : undefined,
@@ -1467,10 +1499,11 @@ export async function openDraft(threadId: string) {
       bcc: m.bcc,
       showCc: m.cc.length + m.bcc.length > 0,
       subject: m.subject,
-      html: m.html || textToHtml(m.text),
+      html,
       inReplyTo: undefined,
       references: m.references || undefined,
-      attachments: [],
+      // The draft's own files and inline images, so saving it again doesn't drop them.
+      attachments: carryAttachments(key, m, html, true),
       status: 'saved'
     });
   } catch (e) {
@@ -1503,10 +1536,16 @@ function outgoing(c: ComposeState) {
 function hasContent(c: ComposeState): boolean {
   const text = c.html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
   const sig = signatureFor(c.from).replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
-  return !!(c.to.length || c.cc.length || c.bcc.length || c.subject.trim() || c.attachments.length || (text && text !== sig));
+  return !!(c.to.length || c.cc.length || c.bcc.length || c.subject.trim() || c.attachments.some((a) => !a.contentId) || (text && text !== sig));
 }
 
 let saving: Promise<void> | null = null;
+/** Each compose window's draft, kept even after the window closes (a save can finish after Send). */
+const draftIds = new Map<number, string>();
+
+function draftOf(c: ComposeState): string | undefined {
+  return c.draftId ?? draftIds.get(c.key);
+}
 
 export async function saveDraft(): Promise<void> {
   const c = state.compose;
@@ -1514,11 +1553,19 @@ export async function saveDraft(): Promise<void> {
   if (saving) await saving;
   const cur = state.compose;
   if (!cur) return;
+  if (cur.attachments.some((a) => a.loading)) {
+    // Saving now would leave out the files still downloading; save again once they're in.
+    await Promise.all(loads.get(cur.key) ?? []);
+    if (state.compose?.key !== cur.key) return;
+    return saveDraft();
+  }
   const raw = strToB64url(outgoing(cur));
   updateCompose({ status: 'saving' });
   saving = (async () => {
     try {
-      const d = cur.draftId ? await api.updateDraft(cur.draftId, raw, cur.threadId) : await api.createDraft(raw, cur.threadId);
+      const known = draftOf(cur);
+      const d = known ? await api.updateDraft(known, raw, cur.threadId) : await api.createDraft(raw, cur.threadId);
+      draftIds.set(cur.key, d.id);
       if (state.compose?.key === cur.key) updateCompose({ draftId: d.id, status: 'saved' });
     } catch (e) {
       if (state.compose?.key === cur.key) updateCompose({ status: 'error' });
@@ -1543,7 +1590,8 @@ export async function discardCompose() {
   if (!c) return;
   setState({ compose: undefined });
   if (saving) await saving;
-  const id = c.draftId;
+  const id = draftOf(c);
+  loads.delete(c.key);
   if (id) {
     try {
       await api.deleteDraft(id);
@@ -1555,9 +1603,25 @@ export async function discardCompose() {
   }
 }
 
+let waitingToSend = false;
+
 export async function sendCompose() {
-  const c = state.compose;
-  if (!c) return;
+  let c = state.compose;
+  if (!c || waitingToSend) return;
+  if (c.attachments.some((a) => a.loading)) {
+    // Forwarded files are still downloading: send once they're in, not without them.
+    waitingToSend = true;
+    const tid = toast(t('compose.waitingAttachments'), { timeout: 60000, progress: true });
+    try {
+      await Promise.all(loads.get(c.key) ?? []);
+    } finally {
+      waitingToSend = false;
+      dismissToast(tid);
+    }
+    if (state.compose?.key !== c.key) return;
+    c = state.compose;
+  }
+  loads.delete(c.key);
   if (!c.to.length && !c.cc.length && !c.bcc.length) {
     toast(t('compose.noRecipients'));
     return;
@@ -1589,7 +1653,7 @@ export async function sendCompose() {
   const sendingId = toast(t('toast.sending'), { timeout: 30000, progress: true });
   try {
     if (saving) await saving;
-    const draftId = c.draftId ?? state.compose?.draftId;
+    const draftId = draftOf(c);
     const raw = strToB64url(outgoing(c));
     let sent;
     if (draftId) {

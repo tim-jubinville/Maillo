@@ -284,6 +284,8 @@ export interface OutgoingAttachment {
   filename: string;
   mimeType: string;
   base64: string;
+  /** Set for images shown in the body (cid: links): sent inline, not as a regular attachment. */
+  contentId?: string;
 }
 
 export interface Outgoing {
@@ -338,23 +340,36 @@ export function buildMime(o: Outgoing): string {
     wrap76(bytesToB64(new TextEncoder().encode(o.html))),
     `--${alt}--`
   ].join('\r\n');
-  if (!o.attachments.length) {
-    lines.push(`Content-Type: multipart/alternative; boundary="${alt}"`, '', altBody);
+  const files = o.attachments.filter((a) => !a.contentId);
+  // Inline images are only sent when the body still links to them.
+  const inline = o.attachments.filter((a) => a.contentId && o.html.includes(`cid:${a.contentId}`));
+  const part = (a: OutgoingAttachment, disposition: 'inline' | 'attachment') => [
+    `Content-Type: ${a.mimeType || 'application/octet-stream'}; name="${a.filename.replace(/"/g, '')}"`,
+    `Content-Disposition: ${disposition}; ${encodeFilename(a.filename)}`,
+    ...(a.contentId ? [`Content-ID: <${a.contentId.replace(/[<>\r\n]/g, '')}>`] : []),
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap76(a.base64)
+  ];
+  // The body: text and HTML, wrapped with its inline images when there are any.
+  let bodyType = `multipart/alternative; boundary="${alt}"`;
+  let body = altBody;
+  if (inline.length) {
+    const rel = boundary();
+    const out = [`--${rel}`, `Content-Type: ${bodyType}`, '', altBody];
+    for (const a of inline) out.push(`--${rel}`, ...part(a, 'inline'));
+    out.push(`--${rel}--`);
+    bodyType = `multipart/related; boundary="${rel}"`;
+    body = out.join('\r\n');
+  }
+  if (!files.length) {
+    lines.push(`Content-Type: ${bodyType}`, '', body);
     return lines.join('\r\n');
   }
   const mixed = boundary();
   lines.push(`Content-Type: multipart/mixed; boundary="${mixed}"`, '', `--${mixed}`);
-  lines.push(`Content-Type: multipart/alternative; boundary="${alt}"`, '', altBody);
-  for (const a of o.attachments) {
-    lines.push(
-      `--${mixed}`,
-      `Content-Type: ${a.mimeType || 'application/octet-stream'}; name="${a.filename.replace(/"/g, '')}"`,
-      `Content-Disposition: attachment; ${encodeFilename(a.filename)}`,
-      'Content-Transfer-Encoding: base64',
-      '',
-      wrap76(a.base64)
-    );
-  }
+  lines.push(`Content-Type: ${bodyType}`, '', body);
+  for (const a of files) lines.push(`--${mixed}`, ...part(a, 'attachment'));
   lines.push(`--${mixed}--`);
   return lines.join('\r\n');
 }
