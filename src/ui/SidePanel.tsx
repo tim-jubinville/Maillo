@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { requestKeepToken } from '../auth';
 import { config } from '../config';
-import { KeepAuthRequired } from '../gmail/api';
+import { ApiError, KeepAuthRequired } from '../gmail/api';
 import type { CalendarEvent, KeepNote, TaskItem } from '../gmail/types';
 import { locale, t } from '../i18n';
 import { getPrefs, setPrefs } from '../prefs';
@@ -302,6 +302,7 @@ const KEEP_DENIED = /invalid_scope|access_denied|unauthorized_client|keep_not_gr
 function Keep() {
   const [notes, setNotes] = useState<KeepNote[] | null>(null);
   const [problem, setProblem] = useState<KeepProblem>(null);
+  const [detail, setDetail] = useState('');
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -315,7 +316,11 @@ function Keep() {
         setProblem(null);
       },
       (e) => {
-        if (!(e instanceof KeepAuthRequired)) return setProblem('failed');
+        if (!(e instanceof KeepAuthRequired)) {
+          // Google's own reason (API off, not allowed…) helps whoever sets this up.
+          setDetail(e instanceof ApiError ? `${e.status}: ${e.message}` : e instanceof Error ? e.message : '');
+          return setProblem('failed');
+        }
         if (!askForToken) return setProblem('connect');
         return requestKeepToken().then(() => load(false), fromTokenError);
       }
@@ -385,6 +390,7 @@ function Keep() {
       )}
       {problem === 'failed' && (
         <PanelEmpty icon="keep" title={t('keep.failedTitle')} sub={t('keep.failed')}>
+          {detail && <code class="pempty-detail">{detail}</code>}
           <button class="btn sm" onClick={() => load(true)}>{t('list.retry')}</button>
         </PanelEmpty>
       )}
