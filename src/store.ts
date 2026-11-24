@@ -563,6 +563,27 @@ async function loadUserInfo() {
   }
 }
 
+// Safari's own back swipe (and the browser's back gesture elsewhere) already animates the page: note when one
+// happens, so the phone slide doesn't play a second time after it.
+let uaGestureAt = 0;
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', (e) => {
+    if ((e as PopStateEvent & { hasUAVisualTransition?: boolean }).hasUAVisualTransition) uaGestureAt = performance.now();
+  });
+  // A drag that starts at the screen's edge and moves sideways (not a tap on the back button there).
+  let startX = -1;
+  let dragging = false;
+  const edge = (e: TouchEvent) => {
+    const x = e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX ?? 0;
+    if (e.type === 'touchstart') {
+      startX = x < 30 || x > window.innerWidth - 30 ? x : -1;
+      dragging = false;
+    } else if (e.type === 'touchmove' && startX >= 0 && Math.abs(x - startX) > 12) dragging = true;
+    if (dragging) uaGestureAt = performance.now();
+  };
+  for (const t of ['touchstart', 'touchmove', 'touchend', 'touchcancel'] as const) window.addEventListener(t, edge, { capture: true, passive: true });
+}
+
 function onHash() {
   const prev = state.route;
   const next = parseHash();
@@ -574,6 +595,7 @@ function onHash() {
     prev.view === 'mail' &&
     next.view === 'mail' &&
     !prev.thread !== !next.thread &&
+    performance.now() - uaGestureAt > 800 &&
     window.matchMedia('(max-width: 900px) and (prefers-reduced-motion: no-preference)').matches;
   if (!sliding) return applyHash(prev, next);
   const root = document.documentElement;
