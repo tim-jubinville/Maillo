@@ -4,7 +4,7 @@
  */
 
 const SPRING = 'cubic-bezier(0.3, 1.3, 0.5, 1)';
-const ITEMS = ':scope > button, :scope > .sep, :scope > .sel-n, :scope > .cb, :scope > * > button, :scope > * > .sep, :scope > * > .sel-n, :scope > * > .cb';
+const ITEMS = 'button, .sep, .sel-n, .cb, .count';
 
 // The last ribbon of each kind that went away, so its replacement can morph from it instead of flowing in anew.
 const gone = new Map<string, { rect: DOMRect; sig: Set<string>; at: number }>();
@@ -12,7 +12,10 @@ const gone = new Map<string, { rect: DOMRect; sig: Set<string>; at: number }>();
 const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 function items(el: HTMLElement): HTMLElement[] {
-  return [...el.querySelectorAll<HTMLElement>(ITEMS)].filter((x) => !x.closest('.pop') && x.offsetParent !== null);
+  // Every visible control, however deeply BarItems nests it, but not the parts inside a button or an open menu.
+  return [...el.querySelectorAll<HTMLElement>(ITEMS)].filter(
+    (x) => !x.closest('.pop') && !x.parentElement?.closest('button') && x.offsetParent !== null
+  );
 }
 
 function keyOf(x: HTMLElement): string {
@@ -21,11 +24,6 @@ function keyOf(x: HTMLElement): string {
 
 function signature(el: HTMLElement): Set<string> {
   return new Set(items(el).map(keyOf));
-}
-
-function radius(el: HTMLElement): string {
-  const c = getComputedStyle(el);
-  return `${c.borderTopLeftRadius} ${c.borderTopRightRadius} ${c.borderBottomRightRadius} ${c.borderBottomLeftRadius}`;
 }
 
 /** Joined to its neighbour: squashing it would open a seam, so it only flows. */
@@ -64,14 +62,20 @@ function squish(el: HTMLElement, wide: boolean) {
   );
 }
 
-/** Clip the ribbon back to its old outline and let it flow out to the new one. */
+/** Cut the ribbon back to its old outline and let it flow out to the new one. Its shadow stays whole throughout. */
 function flow(el: HTMLElement, from: { left: number; right: number }, duration = 560) {
   const r = el.getBoundingClientRect();
   const l = Math.max(0, from.left - r.left);
   const rt = Math.max(0, r.right - from.right);
-  if (l < 2 && rt < 2) return;
-  const round = radius(el);
-  el.animate([{ clipPath: `inset(0 ${rt}px 0 ${l}px round ${round})` }, { clipPath: `inset(0 0px 0 0px round ${round})` }], { duration, easing: SPRING });
+  if (rt < 2) return;
+  // Ribbons grow to the right; one that would also grow to the left just settles in place.
+  if (l > 2) return;
+  el.style.setProperty('--flow-rad', getComputedStyle(el).borderTopRightRadius === '0px' ? '0px' : '16px');
+  el.classList.add('flowing');
+  const a = el.animate([{ '--flow-r': `${rt}px` }, { '--flow-r': '0px' }] as Keyframe[], { duration, easing: SPRING });
+  const done = () => el.classList.remove('flowing');
+  a.onfinish = done;
+  a.oncancel = done;
 }
 
 export function ribbonMotion(el: HTMLElement, kind: string): () => void {

@@ -4,7 +4,7 @@ import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type 
 import { getPrefs } from '../prefs';
 import { dropZone, endDrag, startThreadDrag } from '../dnd';
 import { CATEGORIES, go, listHash, type Category, type MailRoute } from '../route';
-import { actions, loadList, pileOf, PILES, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
+import { actions, closeThread, loadList, pileOf, PILES, nextPage, openRow, prevPage, refresh, selectAll, toggleSelect, type AppState } from '../store';
 import { Avatar, Ribbon } from './common';
 import { BarButtons, fitItems, MoreMenu, useWidth, type BarItem } from './BarItems';
 import { InboxZero } from './InboxZero';
@@ -138,6 +138,10 @@ export function ThreadList({ s, route, split }: { s: AppState; route: MailRoute;
         aria-label={title}
         key={rowsKey}
         ref={scroller}
+        // Beside an open conversation, clicking the list's empty space closes it.
+        onClick={(e) => {
+          if (split && route.thread && !(e.target as Element).closest('.row, button, a, input, .chip')) closeThread();
+        }}
         onFocusIn={(e) => (focusWithin.current = (e.target as HTMLElement).closest<HTMLElement>('[data-id]')?.dataset.id)}
         onFocusOut={() => (focusWithin.current = undefined)}
       >

@@ -4,6 +4,7 @@ import { config } from '../config';
 import { b64urlToBase64, displayName, type Attachment, type ParsedMessage } from '../gmail/mime';
 import { locale, t } from '../i18n';
 import { fullDate, labelColor, labelDisplayName, listDate, sizeLabel } from '../model';
+import { dropZone } from '../dnd';
 import { bindSwipe, setSwipeHandler, takeSwipeDir, useNarrow } from '../mobile';
 import { go, listHash, threadHash, type MailRoute } from '../route';
 import { actions, api, closeThread, defaultReplyMode, expandQuickReply, replyAllExtras, notesEnabled, pileLabelIds, pileOf, PILES, openCompose, openDraft, personName, quickReply, senderName, setNote, setState, toast, type AppState } from '../store';
@@ -129,7 +130,11 @@ export function ReadingPane({ s, route, showBack }: { s: AppState; route: MailRo
   const editingNote = s.noteEditing === o.id;
 
   return (
-    <section class="readcol" aria-label={t('read.label')}>
+    <section
+      class={`readcol ${s.dragging === 'label' ? 'drop-ok' : ''}`}
+      aria-label={t('read.label')}
+      {...dropZone('label', ([labelId]) => actions.label([o.id], [labelId], []))}
+    >
       <Ribbon label={t('read.label')} class="read-ribbon">
       <RibbonBar
         showBack={showBack}
