@@ -129,7 +129,7 @@ if ($action === 'set_key') {
         fail(400, 'model_not_found', ['model' => $model]);
     }
     if ($code !== 200) {
-        fail(502, 'gemini_unreachable');
+        fail(424, 'gemini_unreachable');
     }
     $php = "<?php\n// Gemini API key for Maillo's AI relay. Do not share this file.\nreturn " . var_export(['key' => $key, 'saved' => gmdate('c'), 'by' => $email], true) . ";\n";
     if (@file_put_contents($secretFile, $php, LOCK_EX) === false) {
@@ -196,13 +196,13 @@ if ($action === 'generate') {
     }
     if ($code === 400 || $code === 401 || $code === 403 || $code === 404) {
         $why = is_array($res) ? (string) ($res['error']['message'] ?? $res['error']['status'] ?? '') : '';
-        fail(502, 'gemini_rejected', ['detail' => function_exists('mb_substr') ? mb_substr($why, 0, 240) : substr($why, 0, 240)]);
+        fail(424, 'gemini_rejected', ['detail' => function_exists('mb_substr') ? mb_substr($why, 0, 240) : substr($why, 0, 240)]);
     }
     if ($code === 0) {
-        fail(504, 'gemini_timeout');
+        fail(424, 'gemini_timeout');
     }
     if ($code !== 200 || !is_array($res)) {
-        fail(502, 'gemini_unreachable', ['detail' => 'HTTP ' . $code]);
+        fail(424, 'gemini_unreachable', ['detail' => 'HTTP ' . $code]);
     }
     $cand = $res['candidates'][0] ?? null;
     $text = '';
@@ -212,7 +212,7 @@ if ($action === 'generate') {
         }
     }
     if ($text === '') {
-        fail(502, 'empty_response', ['reason' => (string) ($cand['finishReason'] ?? $res['promptFeedback']['blockReason'] ?? '')]);
+        fail(424, 'empty_response', ['reason' => (string) ($cand['finishReason'] ?? $res['promptFeedback']['blockReason'] ?? '')]);
     }
     out(200, [
         'ok' => true,

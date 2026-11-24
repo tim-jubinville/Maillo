@@ -710,7 +710,7 @@ if ($action === 'subscribe') {
         return $a;
     });
     if (!empty($a['watchError'])) {
-        fail(502, 'watch_failed', ['detail' => $a['watchError']]);
+        fail(424, 'watch_failed', ['detail' => $a['watchError']]);
     }
     out(200, ['ok' => true, 'expiration' => (int) ($a['expiration'] ?? 0)]);
 }
@@ -750,7 +750,7 @@ if ($action === 'prefs' || $action === 'unsubscribe' || $action === 'test') {
             'silent' => !$p['sound'],
         ], vapid_subject());
         if ($code < 200 || $code >= 300) {
-            fail(502, 'push_failed', ['status' => $code]);
+            fail(424, 'push_failed', ['status' => $code]);
         }
     }
     out(200, ['ok' => true]);

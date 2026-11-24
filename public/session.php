@@ -271,7 +271,7 @@ if ($action === 'token') {
         fail(401, 'no_session');
     }
     if ($status !== 200 || !is_array($res) || empty($res['access_token'])) {
-        fail(502, 'google_unreachable');
+        fail(424, 'google_unreachable');
     }
     // The allowed-accounts list may have changed since this session started.
     $email = strtolower((string) $s['email']);
