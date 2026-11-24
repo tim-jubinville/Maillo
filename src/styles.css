@@ -281,17 +281,19 @@ a:hover { color: var(--violet); }
 .list-ribbon .toolbar { min-width: 0; }
 .list-ribbon .cb { margin: 0 6px 0 8px; }
 .list-ribbon .sel-n { animation: fadein 140ms ease-out; }
-.list-ribbon.joined { margin-right: -1px; border-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+/* It reaches 11 px further to meet the reading ribbon; the padding keeps its buttons where they were. */
+.list-ribbon.joined { margin-right: -1px; padding-right: 11px; border-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon { left: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 /* The list ribbon reaches over the column divider, so the two read as one bar with no line between. */
 .list-ribbon.joined { z-index: 9; }
-/* Same backing on both halves so the joined bar has one even tone, and shadows that only fall downward (no seam). */
-.list-ribbon.joined, .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
+/* Same backing on both halves so the joined bar has one even tone, and shadows that only fall downward (no seam).
+   The list ribbon always wears it, so nothing about it changes when a conversation opens beside it. */
+.list-ribbon, .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
   background: var(--ribbon-bg), var(--surface);
   -webkit-backdrop-filter: none; backdrop-filter: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 22px -14px rgba(20, 33, 61, 0.28);
 }
-[data-mode='dark'] .list-ribbon.joined, [data-mode='dark'] .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
+[data-mode='dark'] .list-ribbon, [data-mode='dark'] .listcol.split:has(.list-ribbon.joined) ~ .readcol .read-ribbon {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 22px -14px rgba(0, 0, 0, 0.6);
 }
 .list-ribbon.joined::after { content: ''; position: absolute; top: -1px; bottom: -1px; right: -2px; width: 3px; background: inherit; }
@@ -1184,3 +1186,15 @@ body.resizing iframe { pointer-events: none; }
 .tab.drop-ok { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
 .tab.drop-on { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent); transform: translateY(-1px); }
 @media (max-width: 900px) { .toasts { max-width: calc(100% - 112px); } }
+
+/* While a ribbon flows out, its body is cut back with a rounded leading edge, but its shadow keeps showing above, below and behind. */
+@property --flow-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.ribbon.flowing {
+  --fr: calc(100% - var(--flow-r)); --c: var(--flow-rad, 16px); --e: 44px;
+  clip-path: polygon(
+    calc(-1 * var(--e)) calc(-1 * var(--e)), calc(var(--fr) - var(--c)) calc(-1 * var(--e)), calc(var(--fr) - var(--c)) 0,
+    calc(var(--fr) - 0.5 * var(--c)) calc(0.134 * var(--c)), calc(var(--fr) - 0.134 * var(--c)) calc(0.5 * var(--c)), var(--fr) var(--c),
+    var(--fr) calc(100% - var(--c)), calc(var(--fr) - 0.134 * var(--c)) calc(100% - 0.5 * var(--c)), calc(var(--fr) - 0.5 * var(--c)) calc(100% - 0.134 * var(--c)),
+    calc(var(--fr) - var(--c)) 100%, calc(var(--fr) - var(--c)) calc(100% + var(--e)), calc(-1 * var(--e)) calc(100% + var(--e))
+  );
+}
