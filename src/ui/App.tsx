@@ -46,7 +46,6 @@ export function App() {
         {s.route.view === 'settings' ? (
           <div class="card glass settings-card">
             <Settings s={s} section={s.route.section} />
-            <SideIcons s={s} />
           </div>
         ) : (
           <MailCard s={s} route={s.route} />
@@ -159,7 +158,7 @@ function Header({ s }: { s: AppState }) {
       <div class="header-right">
         <Menu
           label={t('header.account', { email: s.me })}
-          class={`avatar-btn ${online || config.demo ? '' : 'offline'}`}
+          class={`avatar-btn ${online || config.demo ? '' : 'offline'} ${s.update ? 'has-update' : ''}`}
           align="right"
           hover
           button={<span aria-hidden="true"><Photo src={s.mePhoto} fallback={(s.me[0] || '?').toUpperCase()} /></span>}
@@ -173,6 +172,9 @@ function Header({ s }: { s: AppState }) {
                   {config.demo ? t('header.demo') : online ? t('header.synced') : t('header.offline')}
                 </span>
               </div>
+              {s.update && (
+                <a class="mi mi-update" href="#/settings/updates" onClick={close}><Icon name="download" />{t('header.update', { v: s.update.version })}<span class="update-dot" aria-hidden="true" /></a>
+              )}
               <a class="mi" href="#/settings/general" onClick={close}><Icon name="gear" />{t('header.settings')}</a>
               <button class="mi" onClick={() => { close(); setState({ showKeys: true }); }}><Icon name="keyboard" />{t('header.help')}<span class="kbd mi-kbd" aria-hidden="true">?</span></button>
               {!config.demo && (

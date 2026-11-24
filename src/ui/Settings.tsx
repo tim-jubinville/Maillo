@@ -2,7 +2,7 @@ import DOMPurify from 'dompurify';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { aiGenerate, aiRemoveKey, aiSetKey, aiStatus, AiError, type AiStatus } from '../ai';
-import { currentToken, hasServerSession, sessionCall, setServerReady, staySignedIn, type SessionReply } from '../auth';
+import { hasServerSession, sessionCall, setServerReady, staySignedIn, type SessionReply } from '../auth';
 import { changeLanguage, onSyncStatus, pull, syncEnabled, syncStatus } from '../sync';
 import { config } from '../config';
 import type { GFilter, GSendAs, GVacation } from '../gmail/types';
@@ -15,7 +15,8 @@ import { disablePush, enablePush, pushStatus, pushSupported, testPush, type Push
 import { getPrefs, setNotifyPrefs, setPrefs, TEXT_SCALES, type NotifyPrefs } from '../prefs';
 import { installState, isStandalone, onInstallChange, promptInstall } from '../pwa';
 import { SETTINGS_SECTIONS, type SettingsSection } from '../route';
-import { api, loadLabels, setState, toast, type AppState } from '../store';
+import { api, applyUpdateCheck, loadLabels, setState, toast, type AppState } from '../store';
+import { callUpdater, checkForUpdate, type UpdateCheck, type UpdaterStatus } from '../updates';
 import { AppIcon, AppName, Logo, Seg, Switch, isSvgUrl } from './common';
 import { Icon } from './Icon';
 import { SignatureEditor } from './SignatureEditor';
@@ -581,40 +582,11 @@ function Forwarding() {
   );
 }
 
-interface UpdaterStatus {
-  ok: boolean;
-  error?: string;
-  version?: string;
-  php?: string;
-  zip?: boolean;
-  writable?: boolean;
-  maxUpload?: number;
-  account?: string;
-  backups?: { id: string; version: string }[];
-  path?: string;
-  current?: string;
-}
-
-function callUpdater(form: FormData, onProgress?: (pct: number) => void): Promise<UpdaterStatus> {
-  return new Promise((resolve, reject) => {
-    const token = currentToken();
-    if (!token) return reject(new Error('invalid_token'));
-    form.append('token', token);
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', './update.php');
-    xhr.responseType = 'text';
-    if (onProgress) xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
-    xhr.onload = () => {
-      try {
-        const j = JSON.parse(xhr.responseText) as UpdaterStatus;
-        resolve(j);
-      } catch {
-        resolve({ ok: false, error: xhr.status === 404 ? 'unavailable' : 'unavailable' });
-      }
-    };
-    xhr.onerror = () => reject(new Error('network'));
-    xhr.send(form);
-  });
+function latestHelp(c: UpdateCheck): string {
+  if (c.error === 'check_failed' && !c.latest) return t('upd.checkFailed');
+  if (!c.latest) return '';
+  if (!c.available) return t('upd.upToDate', { v: c.latest });
+  return c.canInstall ? t('upd.available', { v: c.latest }) : t('upd.availableManual', { v: c.latest });
 }
 
 function updateError(r: UpdaterStatus): string {
@@ -722,6 +694,7 @@ function AiSettings() {
 
 function Updates() {
   const [status, setStatus] = useState<UpdaterStatus | null>(null);
+  const [check, setCheck] = useState<UpdateCheck | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -732,26 +705,37 @@ function Updates() {
     const f = new FormData();
     f.append('action', 'status');
     callUpdater(f).then(setStatus).catch(() => setStatus({ ok: false, error: 'unavailable' }));
+    recheck(false);
   };
   useEffect(load, []);
 
-  const install = async (force = false) => {
-    if (!file) return;
+  const recheck = (force: boolean) => {
+    if (config.demo) return;
+    if (force) setCheck((c) => (c ? { ...c, checked: -1 } : c));
+    checkForUpdate(force).then((r) => {
+      setCheck(r);
+      applyUpdateCheck(r);
+    });
+  };
+
+  const install = async (force = false, latest = false) => {
+    if (!file && !latest) return;
     setError('');
-    setBusy(t('upd.uploading', { pct: 0 }));
+    setBusy(latest ? t('upd.downloading') : t('upd.uploading', { pct: 0 }));
     const f = new FormData();
     f.append('action', 'update');
-    f.append('package', file);
+    if (latest) f.append('source', 'latest');
+    else if (file) f.append('package', file);
     if (force) f.append('force', '1');
     try {
-      const r = await callUpdater(f, (pct) => setBusy(pct >= 100 ? t('upd.installing') : t('upd.uploading', { pct })));
+      const r = await callUpdater(f, latest ? undefined : (pct) => setBusy(pct >= 100 ? t('upd.installing') : t('upd.uploading', { pct })));
       if (r.ok) {
         setBusy(t('upd.done', { v: r.version ?? '' }));
         setTimeout(() => location.reload(), 1500);
         return;
       }
       setBusy('');
-      if (r.error === 'downgrade' && confirm(t('upd.downgrade', { v: r.version ?? '', current: r.current ?? '' }))) return install(true);
+      if (r.error === 'downgrade' && confirm(t('upd.downgrade', { v: r.version ?? '', current: r.current ?? '' }))) return install(true, latest);
       setError(updateError(r));
     } catch (e) {
       setBusy('');
@@ -793,11 +777,31 @@ function Updates() {
       {!config.demo && status && !status.ok && status.error !== 'unavailable' && <div class="frow err">{updateError(status)}</div>}
       {!config.demo && status?.ok && !status.zip && <div class="frow err">{t('upd.err.zip_unavailable')}</div>}
       {!config.demo && status?.ok && status.zip && !status.writable && <div class="frow err">{t('upd.err.not_writable')}</div>}
+      {!config.demo && check?.ok && check.enabled && (
+        <Row title={t('upd.latest')} help={latestHelp(check)}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {check.available && check.url && (
+              <a class="btn sm" href={check.url} target="_blank" rel="noopener noreferrer">{t('upd.notes')}</a>
+            )}
+            {check.available && ready && check.canInstall ? (
+              <button class="btn primary sm" disabled={!!busy} onClick={() => install(false, true)}>
+                <Icon name="download" size={16} />
+                {t('upd.installVersion', { v: check.latest ?? '' })}
+              </button>
+            ) : (
+              <button class="btn sm" disabled={!!busy || check.checked === -1} onClick={() => recheck(true)}>
+                {check.checked === -1 ? t('upd.checkingNow') : t('upd.checkNow')}
+              </button>
+            )}
+          </div>
+        </Row>
+      )}
+      {!config.demo && check && !check.ok && check.error !== 'unavailable' && <div class="frow err">{updateError({ ok: false, error: check.error ?? 'network' })}</div>}
       {ready && (
         <>
           <div class="srow">
             <div class="slbl">
-              <b><label for="upd-file">{t('upd.choose')}</label></b>
+              <b><label for="upd-file">{check?.enabled ? t('upd.chooseManual') : t('upd.choose')}</label></b>
               {!!status?.maxUpload && <span>{t('upd.maxSize', { size: sizeLabel(status.maxUpload) })}</span>}
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>

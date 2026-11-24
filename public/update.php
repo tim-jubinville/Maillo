@@ -1,7 +1,9 @@
 <?php
 /*
- * Updates this install from a release zip uploaded in Settings > Updates,
- * and stores the custom logo set in Settings > Appearance.
+ * Updates this install from a release zip uploaded in Settings > Updates, or fetched
+ * straight from the project's latest GitHub release, and stores the custom logo set in
+ * Settings > Appearance. Checks for a newer release at most twice a day (updateCheck
+ * in maillo-config.php turns that off).
  * Only allowed accounts (allowedAccounts or allowedDomains) can use it, and the request
  * must carry a valid Google access token issued to this install's OAuth client.
  * maillo-config.php, config.js and .htaccess are never replaced.
@@ -17,6 +19,10 @@ const MAX_UNPACKED = 120 * 1024 * 1024;
 const KEEP_BACKUPS = 3;
 const PROTECTED_PATHS = ['config.js', 'maillo-config.php', '.htaccess', '.maillo-backup', '.mailmax-backup', '.well-known', 'branding', 'branding.json'];
 const MAX_LOGO = 1024 * 1024;
+// Where releases are published, and how often to ask (at most).
+const RELEASE_REPO = 'tim-jubinville/Maillo';
+const CHECK_EVERY = 12 * 3600;
+const CHECK_MIN_GAP = 60;
 // Server files shipped in the release; any other .php file in a package is refused.
 // A newer release may add server files: they're accepted when that release's own update.php lists
 // them here (no new risk, since the package's update.php replaces this one anyway).
@@ -167,6 +173,105 @@ function remove_stale(string $root, array $keepFiles): void
     }
 }
 
+/**
+ * GET over HTTPS (redirects stay on HTTPS). Returns [status, body], status 0 on failure;
+ * bodies over $max bytes are cut off and reported as status 413.
+ */
+function https_get(string $url, int $max, array $headers = []): array
+{
+    $headers[] = 'User-Agent: Maillo-updater';
+    if (function_exists('curl_init')) {
+        $body = '';
+        $tooBig = false;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_WRITEFUNCTION => function ($ch, string $chunk) use (&$body, &$tooBig, $max): int {
+                if (strlen($body) + strlen($chunk) > $max) {
+                    $tooBig = true;
+                    return 0;
+                }
+                $body .= $chunk;
+                return strlen($chunk);
+            },
+        ]);
+        curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        return $tooBig ? [413, ''] : [$status, $body];
+    }
+    if (!ini_get('allow_url_fopen') || strpos($url, 'https://') !== 0) {
+        return [0, ''];
+    }
+    $ctx = stream_context_create(['http' => ['header' => implode("\r\n", $headers), 'timeout' => 60, 'follow_location' => 1, 'max_redirects' => 5, 'ignore_errors' => true]]);
+    $fh = @fopen($url, 'rb', false, $ctx);
+    if (!$fh) {
+        return [0, ''];
+    }
+    $body = (string) stream_get_contents($fh, $max + 1);
+    $meta = stream_get_meta_data($fh);
+    fclose($fh);
+    $status = 0;
+    foreach ($meta['wrapper_data'] ?? [] as $h) {
+        if (preg_match('#^HTTP/\S+\s+(\d{3})#', (string) $h, $m)) {
+            $status = (int) $m[1];
+        }
+    }
+    return strlen($body) > $max ? [413, ''] : [$status, $body];
+}
+
+/** The latest published release, from a cache refreshed at most every CHECK_EVERY seconds. */
+function latest_release(string $root, bool $force): array
+{
+    $file = $root . '/.maillo-update.json';
+    $cache = @json_decode((string) @file_get_contents($file), true);
+    $age = is_array($cache) ? time() - (int) ($cache['checked'] ?? 0) : PHP_INT_MAX;
+    if (is_array($cache) && $age < ($force ? CHECK_MIN_GAP : CHECK_EVERY)) {
+        return $cache;
+    }
+    [$status, $body] = https_get('https://api.github.com/repos/' . RELEASE_REPO . '/releases/latest', 512 * 1024, ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28']);
+    $r = $status === 200 ? json_decode($body, true) : null;
+    $version = is_array($r) ? ltrim((string) ($r['tag_name'] ?? ''), 'v') : '';
+    if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+        // Keep the last good answer; retry after CHECK_MIN_GAP instead of on every request.
+        $fallback = is_array($cache) ? $cache : ['latest' => null];
+        $fallback['checked'] = time() - CHECK_EVERY + CHECK_MIN_GAP;
+        $fallback['error'] = 'check_failed';
+        @file_put_contents($file, json_encode($fallback), LOCK_EX);
+        return $fallback;
+    }
+    $prefix = 'https://github.com/' . RELEASE_REPO . '/releases/download/';
+    $asset = null;
+    foreach (['maillo-' . $version . '.zip', 'maillo.zip'] as $want) {
+        foreach ((array) ($r['assets'] ?? []) as $a) {
+            $url = (string) ($a['browser_download_url'] ?? '');
+            if (($a['name'] ?? '') === $want && strpos($url, $prefix) === 0) {
+                $digest = (string) ($a['digest'] ?? '');
+                $asset = ['url' => $url, 'size' => (int) ($a['size'] ?? 0), 'sha256' => preg_match('/^sha256:([0-9a-f]{64})$/', $digest, $m) ? $m[1] : ''];
+                break 2;
+            }
+        }
+    }
+    $page = (string) ($r['html_url'] ?? '');
+    $data = [
+        'checked' => time(),
+        'latest' => [
+            'version' => $version,
+            'url' => strpos($page, 'https://github.com/') === 0 ? $page : '',
+            'published' => (string) ($r['published_at'] ?? ''),
+            'asset' => $asset,
+        ],
+    ];
+    @file_put_contents($file, json_encode($data), LOCK_EX);
+    return $data;
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     fail(405, 'method_not_allowed');
 }
@@ -184,10 +289,32 @@ if ($action === 'status') {
         'zip' => class_exists('ZipArchive'),
         'writable' => is_writable($root),
         'maxUpload' => min(MAX_UPLOAD, bytes_from_ini((string) ini_get('upload_max_filesize')), bytes_from_ini((string) ini_get('post_max_size'))),
+        'updateCheck' => $cfg['updateCheck'],
         'backups' => array_map(function ($d) {
             $parts = explode('_', $d, 2);
             return ['id' => $d, 'version' => $parts[1] ?? ''];
         }, backups($backupRoot)),
+    ]);
+}
+
+if ($action === 'check') {
+    if (!$cfg['updateCheck']) {
+        out(200, ['ok' => true, 'enabled' => false]);
+    }
+    $rel = latest_release($root, ($_POST['force'] ?? '') === '1');
+    $current = installed_version($root);
+    $latest = $rel['latest'] ?? null;
+    out(200, [
+        'ok' => true,
+        'enabled' => true,
+        'current' => $current,
+        'latest' => $latest['version'] ?? '',
+        'url' => $latest['url'] ?? '',
+        'published' => $latest['published'] ?? '',
+        'available' => $latest !== null && $current !== '' && version_compare($latest['version'], $current, '>'),
+        'canInstall' => !empty($latest['asset']) && class_exists('ZipArchive') && is_writable($root),
+        'checked' => (int) ($rel['checked'] ?? 0),
+        'error' => $rel['error'] ?? null,
     ]);
 }
 
@@ -198,16 +325,48 @@ if ($action === 'update') {
     if (!is_writable($root)) {
         fail(500, 'not_writable');
     }
-    $file = $_FILES['package'] ?? null;
-    if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-        $err = is_array($file) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
-        fail(400, in_array($err, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) ? 'too_large' : 'no_file');
-    }
-    if ((int) $file['size'] > MAX_UPLOAD) {
-        fail(400, 'too_large');
+    $expected = '';
+    if (($_POST['source'] ?? '') === 'latest') {
+        // The latest GitHub release: downloaded here, then checked exactly like an upload.
+        if (!$cfg['updateCheck']) {
+            fail(403, 'check_disabled');
+        }
+        $asset = latest_release($root, false)['latest']['asset'] ?? null;
+        if (!is_array($asset)) {
+            fail(502, 'download_failed');
+        }
+        [$status, $data] = https_get($asset['url'], MAX_UPLOAD);
+        if ($status === 413) {
+            fail(400, 'too_large');
+        }
+        if ($status !== 200 || $data === '') {
+            fail(502, 'download_failed');
+        }
+        if ($asset['sha256'] !== '' && !hash_equals($asset['sha256'], hash('sha256', $data))) {
+            fail(502, 'download_corrupt');
+        }
+        $zipPath = (string) tempnam(sys_get_temp_dir(), 'maillo');
+        if ($zipPath === '' || @file_put_contents($zipPath, $data) === false) {
+            fail(500, 'write_failed', ['path' => 'temp']);
+        }
+        unset($data);
+        register_shutdown_function(function () use ($zipPath) {
+            @unlink($zipPath);
+        });
+        $expected = (string) (latest_release($root, false)['latest']['version'] ?? '');
+    } else {
+        $file = $_FILES['package'] ?? null;
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $err = is_array($file) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
+            fail(400, in_array($err, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) ? 'too_large' : 'no_file');
+        }
+        if ((int) $file['size'] > MAX_UPLOAD) {
+            fail(400, 'too_large');
+        }
+        $zipPath = (string) $file['tmp_name'];
     }
     $zip = new ZipArchive();
-    if ($zip->open($file['tmp_name']) !== true) {
+    if ($zip->open($zipPath) !== true) {
         fail(400, 'not_a_zip');
     }
 
@@ -263,7 +422,7 @@ if ($action === 'update') {
     }
     $meta = json_decode((string) $zip->getFromIndex($entries['version.json']), true);
     $newVersion = is_array($meta) ? (string) ($meta['version'] ?? '') : '';
-    if (!is_array($meta) || !in_array($meta['name'] ?? '', ['maillo', 'mailmax'], true) || $newVersion === '') {
+    if (!is_array($meta) || !in_array($meta['name'] ?? '', ['maillo', 'mailmax'], true) || $newVersion === '' || ($expected !== '' && $newVersion !== $expected)) {
         fail(400, 'not_a_release');
     }
     $current = installed_version($root);

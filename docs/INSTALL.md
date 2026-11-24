@@ -245,6 +245,10 @@ Set `features.syncSettings` to `true` (it needs the Drive API and the `drive.app
 
 ## Updating
 
+**Update notices (PHP hosts).** Twice a day at most, `update.php` asks GitHub for the latest Maillo release and keeps the answer in `.maillo-update.json` (never served or replaced by updates). When a newer version is out, a dot appears on your avatar and its menu offers it. **Settings → Updates** shows it with its release notes and an **Install** button: the server downloads the release zip from GitHub, checks it against GitHub's SHA-256 checksum, then installs it exactly like an uploaded zip (below). **Check now** asks again straight away.
+
+The check tells GitHub that an install exists at your server's address, nothing more. To turn it off, set `'updateCheck' => false` in `maillo-config.php` (or `updateCheck: false` in `config.js`): GitHub then never hears from your install, and you update by uploading zips. Your host must allow outgoing HTTPS requests (the curl extension, or `allow_url_fopen`).
+
 **From the browser (PHP hosts).** Open **Settings → Updates**, choose the new release zip and click **Install update**. Maillo:
 
 - checks that the zip is a Maillo release and refuses unexpected files

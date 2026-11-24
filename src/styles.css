@@ -291,9 +291,9 @@ a:hover { color: var(--violet); }
 .settings-card { display: flex; }
 .settings-card .settings { flex: 1; }
 .settings-card .section { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border: 1px solid var(--line-soft); box-shadow: 0 1px 3px rgba(20, 33, 61, 0.06); }
-.side-icons { width: 56px; flex: 0 0 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; }
-/* With a panel open, the icons share its backing so panel and icons read as one piece. */
-.card:has(.panel) .side-icons { background: var(--surface-2); position: relative; }
+/* Same width as the left rail, so the icons line up under the account avatar. */
+.side-icons { width: 68px; flex: 0 0 68px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; position: relative; background: var(--surface-2); }
+/* The column shares the panel's backing; with a panel open, a short divider sets the icons apart from it. */
 .card:has(.panel) .side-icons::before { content: ''; position: absolute; left: 0; top: 16px; bottom: 16px; width: 1px; background: var(--line-soft); }
 .sp { position: relative; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 .sp .ic { width: 20px; height: 20px; stroke-width: 1.9; }
@@ -366,6 +366,12 @@ a:hover { color: var(--violet); }
 }
 .photo { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .avatar-btn > span { width: 100%; height: 100%; display: inline-flex; align-items: center; justify-content: center; }
+/* A newer release: a dot on the avatar, and a first item in its menu. */
+.avatar-btn.has-update { overflow: visible; position: relative; }
+.avatar-btn.has-update > span { border-radius: 50%; overflow: hidden; }
+.avatar-btn.has-update::after { content: ''; position: absolute; top: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent-fill); box-shadow: 0 0 0 2px var(--surface); }
+.update-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-fill); margin-left: auto; flex: none; }
+.mi-update { color: var(--ink); font-weight: 600; }
 .av.sm { width: 30px; height: 30px; font-size: calc(12px * var(--ts, 1)); }
 .av.lg { width: 40px; height: 40px; font-size: calc(14px * var(--ts, 1)); }
 .av.xl { width: 64px; height: 64px; font-size: calc(22px * var(--ts, 1)); }
