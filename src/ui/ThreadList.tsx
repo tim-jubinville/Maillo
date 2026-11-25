@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'preact/hooks';
+import { useNarrow } from '../mobile';
 import { t, type StringKey } from '../i18n';
 import { labelColor, labelDisplayName, listDate, nudgeDays, SYSTEM_LABELS, type ThreadRow } from '../model';
 import { getPrefs } from '../prefs';
@@ -372,10 +373,13 @@ function ListRibbon({ s, route, sel, all, title, range, joined }: { s: AppState;
   const count = useRef<HTMLSpanElement>(null);
   const width = useWidth(bar);
   const countW = useWidth(count);
+  const narrow = useNarrow();
   const selecting = sel.length > 0;
+  // Phones keep only the number and drop the paging arrows while selecting, leaving room for actions.
+  const compact = narrow && selecting;
   const items = selecting ? bulkItems(s, route, sel) : [];
   // Padding, checkbox, count, clear, "…", paging arrows.
-  const fixed = 16 + 34 + (countW > 1000 ? 110 : countW + 8) + 38 + 38 + 76;
+  const fixed = 16 + 34 + (countW > 1000 ? 110 : countW + 8) + 38 + 38 + (compact ? 0 : 76);
   const { shown, room } = fitItems(items, width - fixed);
   const hidden = items.filter((i) => !shown.has(i.id));
   const showRange = !!range && (!selecting || (hidden.length === 0 && room >= 64));
@@ -388,7 +392,7 @@ function ListRibbon({ s, route, sel, all, title, range, joined }: { s: AppState;
         {checkbox}
         {selecting ? (
           <>
-            <span class="sel-n" ref={count}>{t('list.selected', { n: sel.length })}</span>
+            <span class="sel-n" ref={count}>{compact ? sel.length : t('list.selected', { n: sel.length })}</span>
             <button class="ib clear-sel" aria-label={t('list.clearSelection')} title={t('list.clearSelection')} onClick={() => selectAll(false)}><Icon name="x" /></button>
             <span class="sep" />
             <BarButtons items={items} shown={shown} />
@@ -400,9 +404,13 @@ function ListRibbon({ s, route, sel, all, title, range, joined }: { s: AppState;
             <h1 class="ell">{title}</h1>
           </>
         )}
-        <span class="range">{showRange ? range : ''}</span>
-        <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={s.list.page === 0} onClick={prevPage}><Icon name="chevLeft" /></button>
-        <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!s.list.next} onClick={nextPage}><Icon name="chevRight" /></button>
+        <span class="range">{showRange && !compact ? range : ''}</span>
+        {!compact && (
+          <>
+            <button class="ib" aria-label={t('list.newer')} title={t('list.newer')} disabled={s.list.page === 0} onClick={prevPage}><Icon name="chevLeft" /></button>
+            <button class="ib" aria-label={t('list.older')} title={t('list.older')} disabled={!s.list.next} onClick={nextPage}><Icon name="chevRight" /></button>
+          </>
+        )}
       </div>
     </Ribbon>
   );
