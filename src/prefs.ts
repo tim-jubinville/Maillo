@@ -20,7 +20,11 @@ export interface NotifyPrefs {
   quietFrom: string;
   quietTo: string;
   badge: boolean;
+  /** Which unread Inbox conversations the app icon's badge counts. */
+  badgeCount: BadgeCount;
 }
+
+export type BadgeCount = 'all' | 'important' | 'primary';
 
 /** What swiping a conversation sideways does on a touch screen. */
 export type SwipeAction = 'archive' | 'trash' | 'read' | 'aside' | 'action' | 'none';
@@ -111,7 +115,8 @@ const defaults: Prefs = {
     quiet: false,
     quietFrom: '22:00',
     quietTo: '07:00',
-    badge: true
+    badge: true,
+    badgeCount: 'all'
   }
 };
 

@@ -7,7 +7,7 @@ How it differs from the web version:
 - **No server.** The app files ship inside the app and talk to Google directly. Settings come from `config.native.js` instead of `maillo-config.php`.
 - **Stays signed in by itself.** Sign-in opens in the iOS sign-in sheet with an iOS OAuth client (PKCE, no client secret). The refresh token stays in the iOS Keychain, on this device only, and never reaches the web view.
 - **Haptics.** Archiving, sending, moving a conversation in or out of a pile, pulling to refresh and swiping a row past its action point tap back through the Taptic Engine. They follow **Settings → Sounds & Haptics → System Haptics** on the iPhone.
-- **Not in the app yet:** AI, notifications while closed, and the updater (TestFlight handles updates). Install app and Updates are hidden in Settings.
+- **Not in the app yet:** AI and the updater (TestFlight handles updates). Install app and Updates are hidden in Settings.
 
 ## What you need
 
@@ -80,10 +80,21 @@ Server side:
    The team ID is the one in `ios/local.xcconfig`; the client ID is the `googleClientId` from `config.native.js`.
 5. **Settings → About → Copy diagnostics** on the web should then show `iOS push (APNs) set: yes, key uploaded: yes, curl HTTP/2: yes`. APNs only works over HTTP/2, so the host's PHP curl must support it.
 
-The app side (turning notifications on in the app, opening a conversation from a notification) comes in a later version. Previews follow the device's preview setting; unlike web push, Apple can read what it carries. The app icon's badge can count unread Inbox conversations: all, important or primary only.
+App side:
+
+1. With Cloudflare Access (or another login wall) in front of your install, add a bypass for the path `/push.php`, as for Pub/Sub: the app calls it directly.
+2. In `config.native.js`, set `pushServer` to your web install's address, e.g. `'https://mail.example.com/'`.
+3. `npm run ios` and build. The app already has the Push Notifications capability (`App/App.entitlements`, set in `ios/debug.xcconfig` and `ios/release.xcconfig`); Xcode's automatic signing adds push to the provisioning profile once the identifier has it.
+4. In the app, **Settings → Notifications → When Maillo is closed → Turn on**, allow notifications, then **Send a test**. Builds run from Xcode use Apple's sandbox; TestFlight builds use production. Both work with the same key.
+
+Notifications follow the rules in **Settings → Notifications**, and tapping one opens its conversation. **Unread count on the app icon** can count all, important or primary unread Inbox conversations; push.php keeps it current while the app is closed, including when you read mail elsewhere. Previews follow the preview setting; unlike web push, Apple can read what it carries.
 
 ## Troubleshooting
 
+- **"Your Maillo server isn't set up to send to the iPhone app yet"**: diagnostics on the web must say `iOS push (APNs) set: yes, key uploaded: yes` (section 6).
+- **"The server could not be reached"** when turning on notifications: `pushServer` is wrong, or a login wall in front of the install doesn't let `/push.php` through.
+- **"iOS couldn't register this iPhone"**: the identifier on the Apple Developer site needs **Push Notifications** ticked; then build again so Xcode refreshes the provisioning profile.
+- **The test arrives but new mail doesn't**: check web push on the web first (INSTALL.md); the app rides on it.
 - **"Sign-in did not complete"**: check that the OAuth client is the iOS type and that its bundle ID matches the app's exactly.
 - **Error 400 `redirect_uri_mismatch` or `invalid_request` from Google**: the client ID in `config.native.js` isn't an iOS client.
 - **Blank screen**: run `npm run ios` before building in Xcode. The app files are copied into `ios/App/App/public`, which isn't committed.

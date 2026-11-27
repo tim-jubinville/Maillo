@@ -1,10 +1,10 @@
 import { playChime } from './chime';
-import { config } from './config';
+import { config, isNative } from './config';
 import { deliverDemoMail } from './gmail/demo';
 import { decodeEntities, displayName, header, parseAddress } from './gmail/mime';
 import type { GThread, ListThreadsParams } from './gmail/types';
 import { t } from './i18n';
-import { getPrefs, type NotifyPrefs, type NotifyScope } from './prefs';
+import { getPrefs, onPrefs, type NotifyPrefs, type NotifyScope } from './prefs';
 import { swRegistration } from './pwa';
 import { go, parseHash, threadHash, type MailRoute } from './route';
 import { api, checkNow, getState, onState, pollChanges, refresh } from './store';
@@ -232,16 +232,50 @@ async function sessionPaused() {
   await showPopup({ title: t('notify.pausedTitle'), body: t('notify.pausedBody'), tag: 'maillo-session', threadId: '' }, true).catch(() => undefined);
 }
 
+declare const __NATIVE_BUILD__: boolean;
+let nativeBadge: ((n: number) => void) | undefined;
+if (__NATIVE_BUILD__) import('./native').then((m) => (nativeBadge = m.nativeSetBadge)).catch(() => undefined);
+
+type BadgeNav = Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+
 let lastBadge = -1;
-function updateBadge() {
-  const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
-  if (!nav.setAppBadge) return;
-  const s = getState();
-  const n = getPrefs().notify;
-  const count = n.badge && s.phase === 'ready' ? s.counts.INBOX ?? 0 : 0;
+let badgeKey = '';
+
+function showBadge(count: number) {
   if (count === lastBadge) return;
   lastBadge = count;
-  (count ? nav.setAppBadge(count) : nav.clearAppBadge?.())?.catch(() => undefined);
+  if (isNative) {
+    if (nativeBadge) nativeBadge(count);
+    else lastBadge = -1;
+    return;
+  }
+  const nav = navigator as BadgeNav;
+  (count ? nav.setAppBadge?.(count) : nav.clearAppBadge?.())?.catch(() => undefined);
+}
+
+/** Unread Inbox conversations that are important, or in Primary (all of the Inbox when it has no categories). */
+async function scopedUnread(scope: 'important' | 'primary'): Promise<number> {
+  if (scope === 'primary') {
+    const [cat] = await api.getLabels(['CATEGORY_PERSONAL']);
+    if (!cat?.messagesTotal) return getState().counts.INBOX ?? 0;
+  }
+  const r = await api.listThreads({ labelIds: ['INBOX', 'UNREAD', scope === 'important' ? 'IMPORTANT' : 'CATEGORY_PERSONAL'], maxResults: 100 });
+  const n = r.threads?.length ?? 0;
+  return r.nextPageToken ? Math.max(n, r.resultSizeEstimate ?? 0) : n;
+}
+
+/** The app icon's unread count (installed web app, or the iOS app), following Settings → Notifications. */
+function updateBadge() {
+  if (!isNative && !(navigator as BadgeNav).setAppBadge) return;
+  const s = getState();
+  const n = getPrefs().notify;
+  if (!n.badge || s.phase !== 'ready') return showBadge(0);
+  if (n.badgeCount === 'all') return showBadge(s.counts.INBOX ?? 0);
+  // Important and Primary cost a Gmail list call: count again only when the Inbox's unread count changes.
+  const key = `${n.badgeCount}:${s.counts.INBOX ?? 0}`;
+  if (key === badgeKey && lastBadge >= 0) return;
+  badgeKey = key;
+  scopedUnread(n.badgeCount).then(showBadge, () => (badgeKey = ''));
 }
 
 export function initNotifier() {
@@ -274,4 +308,5 @@ export function initNotifier() {
     wasExpired = s.sessionExpired;
   });
   window.addEventListener('online', () => check().catch(() => undefined));
+  onPrefs(updateBadge);
 }

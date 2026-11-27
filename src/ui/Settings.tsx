@@ -70,7 +70,7 @@ export function Settings({ s, section }: { s: AppState; section: SettingsSection
           {section === 'general' && <General />}
           {section === 'appearance' && <Appearance />}
           {section === 'notifications' && <NotificationSettings s={s} />}
-          {section === 'notifications' && !isNative && <PushSettings />}
+          {section === 'notifications' && <PushSettings />}
           {section === 'app' && <InstallApp />}
           {section === 'labels' && <Labels s={s} />}
           {section === 'filters' && <Filters s={s} />}
@@ -1067,7 +1067,8 @@ function NotificationSettings({ s }: { s: AppState }) {
         </button>
       </Row>
       {perm === 'denied' && <div class="frow err">{t('notify.blocked')}</div>}
-      {perm === 'unsupported' && <div class="frow err">{ios && !isStandalone() ? t('notify.iosHint') : t('notify.unsupported')}</div>}
+      {perm === 'unsupported' && !isNative && <div class="frow err">{ios && !isStandalone() ? t('notify.iosHint') : t('notify.unsupported')}</div>}
+      {isNative && <div class="frow" style={{ color: 'var(--muted)' }}>{t('notify.appNote')}</div>}
       <fieldset class="nset" disabled={off}>
         <Row title={t('notify.scope')} help={t('notify.scopeHelp')}>
           <Seg
@@ -1164,13 +1165,26 @@ function NotificationSettings({ s }: { s: AppState }) {
         <Row title={t('notify.badge')} help={t('notify.badgeHelp')}>
           <Switch label={t('notify.badge')} on={n.badge} onChange={(v) => set({ badge: v })} />
         </Row>
+        <Row title={t('notify.badgeCount')} help={t('notify.badgeCountHelp')}>
+          <Seg
+            label={t('notify.badgeCount')}
+            value={n.badgeCount}
+            disabled={!n.badge}
+            onChange={(v) => set({ badgeCount: v })}
+            options={[
+              { value: 'all', label: t('notify.badgeAll') },
+              { value: 'important', label: t('notify.badgeImportant') },
+              { value: 'primary', label: t('notify.badgePrimary') }
+            ]}
+          />
+        </Row>
       </fieldset>
     </Section>
   );
 }
 
 function pushError(r: PushStatus): string {
-  const key = `push.err.${r.error}` as StringKey;
+  const key = `push.err.${r.error === 'permission' && isNative ? 'permissionApp' : r.error}` as StringKey;
   const known = t(key, { detail: r.detail ?? '' });
   return known === key ? t('push.err.generic', { code: r.error ?? 'unknown' }) : known;
 }
@@ -1213,9 +1227,11 @@ function PushSettings() {
     load();
   };
   const on = !!status?.device;
-  const blocker = status?.ok ? (!status.topic ? t('push.err.no_topic') : !status.staySignedIn ? t('push.err.needsStay') : !status.crypto ? t('push.err.no_crypto') : '') : '';
+  const blocker = status?.ok
+    ? !status.topic ? t('push.err.no_topic') : !status.staySignedIn ? t('push.err.needsStay') : isNative ? (!status.apns ? t('push.err.no_apns') : '') : !status.crypto ? t('push.err.no_crypto') : ''
+    : '';
   return (
-    <Section title={t('push.title')} note={t('push.help')}>
+    <Section title={t('push.title')} note={t(isNative ? 'push.helpApp' : 'push.help')}>
       {!config.features.push && <div class="frow" style={{ color: 'var(--muted)' }}>{t('push.offHelp')}</div>}
       {config.features.push && config.demo && <div class="frow" style={{ color: 'var(--muted)' }}>{t('ai.demo')}</div>}
       {config.features.push && !config.demo && !pushSupported && <div class="frow err">{t('push.unsupported')}</div>}
@@ -1223,7 +1239,7 @@ function PushSettings() {
       {status && !status.ok && <div class="frow err">{pushError(status)}</div>}
       {status?.ok && (
         <>
-          <Row title={t('push.device')} help={on && status.expiration ? t('push.watch', { date: new Date(status.expiration * 1000).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) }) : t('push.deviceHelp')}>
+          <Row title={t('push.device')} help={on && status.expiration ? t('push.watch', { date: new Date(status.expiration * 1000).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) }) : t(isNative ? 'push.deviceHelpApp' : 'push.deviceHelp')}>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               <span class="tag" style={{ fontSize: 'calc(13px * var(--ts, 1))', height: '26px' }}>{on ? t('push.on') : t('push.off')}</span>
               {on ? (
@@ -1239,8 +1255,9 @@ function PushSettings() {
           {blocker && <div class="frow err">{blocker}</div>}
           {status.watchError && <div class="frow err">{t('push.err.watch_failed', { detail: status.watchError })}</div>}
           {status.tokenError && <div class="frow err">{t('push.err.tokenError')}</div>}
-          {status.endpoint && <CopyRow title={t('push.endpoint')} help={t('push.endpointHelp')} value={status.endpoint} />}
-          {status.renewUrl && <CopyRow title={t('push.renew')} help={t('push.renewHelp')} value={status.renewUrl} />}
+          {/* Server setup belongs to the web install; the app only turns this device on or off. */}
+          {!isNative && status.endpoint && <CopyRow title={t('push.endpoint')} help={t('push.endpointHelp')} value={status.endpoint} />}
+          {!isNative && status.renewUrl && <CopyRow title={t('push.renew')} help={t('push.renewHelp')} value={status.renewUrl} />}
         </>
       )}
       {(error || note) && <div class={`frow ${error ? 'err' : ''}`} role="status">{error || note}</div>}

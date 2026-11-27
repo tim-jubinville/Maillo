@@ -2,3 +2,6 @@ CAPACITOR_DEBUG = true
 
 // Your Apple team ID goes in local.xcconfig (gitignored), not in the project: see docs/IOS.md.
 #include? "local.xcconfig"
+
+// Push notifications (aps-environment). Xcode switches it to production when archiving for TestFlight.
+CODE_SIGN_ENTITLEMENTS = App/App.entitlements

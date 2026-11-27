@@ -106,7 +106,7 @@ Installs made before 0.6.9 use `config.js`, which Maillo no longer reads: move y
 
 ### iPhone app (experimental)
 
-An iOS build wrapped with Capacitor, for installing on your own iPhone through TestFlight. It signs in through the iOS sign-in sheet and keeps the refresh token in the Keychain. See [docs/IOS.md](docs/IOS.md).
+An iOS build wrapped with Capacitor, for installing on your own iPhone through TestFlight. It signs in through the iOS sign-in sheet and keeps the refresh token in the Keychain. Haptics, Stickies, and notifications with an unread badge through your install's `push.php` and Apple (APNs). See [docs/IOS.md](docs/IOS.md).
 
 ## Try it without Google
 
