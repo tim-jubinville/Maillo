@@ -579,7 +579,8 @@ body.resizing iframe { pointer-events: none; }
 .stk-hint { display: block; margin-top: 6px; font-size: calc(11px * var(--ts, 1)); color: color-mix(in srgb, var(--sk) 72%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .stk-tools { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--sb) 88%, transparent); opacity: 0; transition: opacity 0.15s; }
 .stk:hover .stk-tools, .stk-tools:focus-within { opacity: 1; }
-@media (hover: none) { .stk-tools { opacity: 1; } }
+/* Touch screens show the tools all the time: as a row under the text, so they never cover it. */
+@media (hover: none) { .stk-tools { opacity: 1; position: static; width: fit-content; margin: 2px -8px -8px auto; background: none; } }
 .stk-tools .ib { color: var(--sk); }
 .stk-dot { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--sd); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sk) 22%, transparent); }
 .stk-swatches { display: flex; gap: 4px; padding: 3px 4px; }

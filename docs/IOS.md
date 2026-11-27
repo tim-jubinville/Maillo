@@ -31,7 +31,7 @@ The scopes are the same as on the web. With a Google Workspace account and the c
 cp config.native.example.js config.native.js
 ```
 
-Fill in `config.native.js` (gitignored): the iOS client ID, your account in `allowedAccounts`, and the features you use (`calendar`, `tasks`, `notes`, `contactPhotos`, `syncSettings`).
+Fill in `config.native.js` (gitignored): the iOS client ID, your account in `allowedAccounts`, and the features you use (`calendar`, `tasks`, `notes`, `stickies`, `contactPhotos`, `syncSettings`), the same as in your web install's `maillo-config.php`. Stickies, notes and synced settings live in Drive, so they're shared with the web. After turning on a feature that adds a Google permission, sign out and in again in the app.
 
 ## 3. Signing
 
