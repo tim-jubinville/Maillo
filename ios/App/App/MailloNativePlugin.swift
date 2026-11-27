@@ -22,7 +22,8 @@ public class MailloNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
         CAPPluginMethod(name: "exchange", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "refresh", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hasSession", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "signOut", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "signOut", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise)
     ]
 
     private var authSession: ASWebAuthenticationSession?
@@ -60,6 +61,24 @@ public class MailloNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
 
     public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         return bridge?.viewController?.view.window ?? ASPresentationAnchor()
+    }
+
+    // MARK: Haptics
+
+    /// A tap from the Taptic Engine (src/haptics.ts). iOS skips it by itself when System Haptics is off.
+    @objc func haptic(_ call: CAPPluginCall) {
+        let kind = call.getString("kind") ?? "light"
+        DispatchQueue.main.async {
+            switch kind {
+            case "success": UINotificationFeedbackGenerator().notificationOccurred(.success)
+            case "warning": UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            case "selection": UISelectionFeedbackGenerator().selectionChanged()
+            case "medium": UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            case "soft": UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            default: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+            call.resolve()
+        }
     }
 
     // MARK: Tokens

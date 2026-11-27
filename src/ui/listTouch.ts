@@ -3,6 +3,7 @@ import type { RefObject } from 'preact';
 import { t } from '../i18n';
 import type { ThreadRow } from '../model';
 import { isNarrow } from '../mobile';
+import { haptic } from '../haptics';
 import { iconUrl } from './Icon';
 import { getPrefs, type SwipeAction } from '../prefs';
 import { actions, getState, pileOf, refresh, toggleSelect } from '../store';
@@ -75,7 +76,10 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       el.style.setProperty('--pull', `${v}px`);
       el.style.setProperty('--pull-r', `${v * 4}deg`);
       el.classList.toggle('on', v > 0);
-      el.classList.toggle('armed', v >= PULL_ARM);
+      // A tick when the pull crosses the point where letting go refreshes, like the native control.
+      const armedNow = v >= PULL_ARM;
+      if (armedNow && !el.classList.contains('armed') && !el.classList.contains('spin')) haptic('soft');
+      el.classList.toggle('armed', armedNow);
     };
 
     // Shared by touch and trackpad: follow the gesture, then act or settle back.
@@ -86,7 +90,9 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
       // Nothing to do in that direction: the row barely moves.
       dx = next ? Math.max(-row.offsetWidth * 0.9, Math.min(row.offsetWidth * 0.9, mx)) : mx / 6;
       swipe = next;
+      const wasArmed = armed;
       armed = !!next && Math.abs(mx) >= ARM;
+      if (armed !== wasArmed) haptic('selection');
       row.classList.add('swiping');
       row.classList.toggle('armed', armed);
       row.style.setProperty('--sx', `${dx}px`);
@@ -175,7 +181,7 @@ export function useListTouch(scroller: RefObject<HTMLDivElement | null>, ptr: Re
           mode = 'long';
           suppress = true;
           toggleSelect(start.id);
-          navigator.vibrate?.(12);
+          haptic('medium', 12);
         }, 480);
       }
     };
