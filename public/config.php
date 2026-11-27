@@ -56,6 +56,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             'features' => $features,
             'clientSecret' => pick_secret($cfg['clientSecret'], 'GOOGLE_CLIENT_SECRET', is_array($stored) ? (string) ($stored['secret'] ?? '') : '')[0] !== '',
             'pushTopic' => $cfg['pushTopic'] !== '',
+            'apns' => $cfg['apns'] !== null,
+            'apnsKey' => is_file($root . '/.maillo-push/apns.p8'),
+            'http2' => function_exists('curl_version') && defined('CURL_VERSION_HTTP2') && (curl_version()['features'] & CURL_VERSION_HTTP2),
             'updateCheck' => $cfg['updateCheck'],
             'updateChannel' => $cfg['updateChannel'],
         ]);

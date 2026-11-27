@@ -7,18 +7,22 @@
  * (so features.staySignedIn is needed too), and sends a web push to each device that turned on
  * notifications, following that device's notification rules. Push messages are encrypted for the
  * device (RFC 8291) and signed with this install's own VAPID key (RFC 8292); no third party sees them.
+ * The iOS app's devices get theirs through Apple instead (APNs, with the key set up in `apns`), and
+ * can have the app icon's badge kept to the unread count.
  *
  * Requests:
  *   POST ?key=…                from Pub/Sub (the key is this install's own, shown in Settings)
  *   GET  ?renew=…              renews every mailbox watch that's due (for a daily cron job; same key)
  *   POST action=status         push setup for this account (token)
- *   POST action=subscribe      this device's push subscription and rules (token, subscription, prefs)
+ *   POST action=subscribe      this device's push subscription and rules (token, subscription, prefs),
+ *                              or the iOS app's (token, apnsToken, env, prefs)
  *   POST action=prefs          update this device's rules (token, endpoint, prefs)
  *   POST action=unsubscribe    forget this device (token, endpoint)
  *   POST action=test           send a test notification to this device (token, endpoint)
  *
  * Kept in .maillo-push/ (never served, backed up or replaced by updates): the endpoint key, the
- * VAPID key pair, and per account the watch, the last history id seen and each device's subscription.
+ * VAPID key pair, the APNs key (apns.p8, uploaded by hand), and per account the watch, the last
+ * history id seen and each device's subscription.
  */
 declare(strict_types=1);
 
@@ -239,6 +243,139 @@ function valid_endpoint(string $url): bool
     return false;
 }
 
+/* ---------- Apple push (APNs) for the iOS app ---------- */
+
+/** The .p8 key from Apple, or '' when it hasn't been uploaded. */
+function apns_key(string $dir): string
+{
+    $pem = is_file($dir . '/apns.p8') ? (string) @file_get_contents($dir . '/apns.p8') : '';
+    return strpos($pem, 'PRIVATE KEY') !== false ? $pem : '';
+}
+
+function curl_http2(): bool
+{
+    return function_exists('curl_version') && defined('CURL_VERSION_HTTP2') && (curl_version()['features'] & CURL_VERSION_HTTP2);
+}
+
+function apns_ready(array $cfg, string $dir): bool
+{
+    return $cfg['apns'] !== null && apns_key($dir) !== '' && curl_http2() && function_exists('openssl_sign');
+}
+
+/**
+ * The signed token APNs wants. Apple refuses tokens older than an hour and new ones more often than
+ * every 20 minutes, so one is kept in state.php and replaced after 45 minutes.
+ */
+function apns_jwt(array $cfg, string $dir, bool $fresh = false): string
+{
+    $file = $dir . '/state.php';
+    $s = php_read($file);
+    $id = $cfg['apns']['keyId'] . '.' . $cfg['apns']['teamId'];
+    if (!$fresh && ($s['apnsJwtFor'] ?? '') === $id && (int) ($s['apnsJwtAt'] ?? 0) > time() - 45 * 60 && !empty($s['apnsJwt'])) {
+        return (string) $s['apnsJwt'];
+    }
+    $key = openssl_pkey_get_private(apns_key($dir));
+    $input = b64u(json_encode(['alg' => 'ES256', 'kid' => $cfg['apns']['keyId']])) . '.' . b64u(json_encode(['iss' => $cfg['apns']['teamId'], 'iat' => time()]));
+    if (!$key || !openssl_sign($input, $der, $key, OPENSSL_ALGO_SHA256)) {
+        return '';
+    }
+    $jwt = $input . '.' . b64u(der_to_raw($der));
+    $s['apnsJwt'] = $jwt;
+    $s['apnsJwtAt'] = time();
+    $s['apnsJwtFor'] = $id;
+    php_write($file, $s);
+    return $jwt;
+}
+
+/** The notification as Apple wants it. A badge-only update has no alert. */
+function apns_payload(?array $message, ?int $badge): array
+{
+    $aps = [];
+    if ($message) {
+        // With previews, the body is "subject\nsnippet": the subject goes in the subtitle, like Mail.
+        $parts = explode("\n", (string) $message['body'], 2);
+        $alert = ['title' => (string) $message['title']];
+        if (count($parts) === 2 && $message['threadId'] !== '') {
+            $alert['subtitle'] = $parts[0];
+            $alert['body'] = $parts[1];
+        } else {
+            $alert['body'] = (string) $message['body'];
+        }
+        $aps['alert'] = $alert;
+        $aps['thread-id'] = (string) $message['tag'];
+        if (empty($message['silent'])) {
+            $aps['sound'] = 'default';
+        }
+    }
+    if ($badge !== null) {
+        $aps['badge'] = $badge;
+    }
+    $out = ['aps' => $aps];
+    if ($message && $message['threadId'] !== '') {
+        $out['threadId'] = (string) $message['threadId'];
+    }
+    return $out;
+}
+
+/** Sends to one iOS device. Returns the HTTP status, with 410 meaning the device is gone. */
+function send_apns(array $cfg, string $dir, array $device, ?array $message, ?int $badge): int
+{
+    static $handles = [];
+    if (!apns_ready($cfg, $dir)) {
+        return 0;
+    }
+    $host = ($device['env'] ?? '') === 'sandbox' ? 'api.sandbox.push.apple.com' : 'api.push.apple.com';
+    $body = json_encode(apns_payload($message, $badge), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        $jwt = apns_jwt($cfg, $dir, $attempt > 0);
+        if ($jwt === '') {
+            return 0;
+        }
+        $headers = [
+            'authorization: bearer ' . $jwt,
+            'apns-topic: ' . $cfg['apns']['bundleId'],
+            'apns-push-type: alert',
+            // Badge-only updates can wait for a good moment; mail goes out at once.
+            'apns-priority: ' . ($message ? '10' : '5'),
+            'apns-expiration: ' . (time() + PUSH_TTL),
+            'apns-collapse-id: ' . substr($message ? (string) $message['tag'] : 'maillo-badge', 0, 64),
+            'content-type: application/json',
+        ];
+        // One connection per host for the whole request: APNs prefers connections that stay open.
+        $ch = $handles[$host] ?? ($handles[$host] = curl_init());
+        curl_setopt_array($ch, [
+            CURLOPT_URL => 'https://' . $host . '/3/device/' . $device['token'],
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_2_0,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => 10,
+        ]);
+        $res = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $reason = is_string($res) ? (string) (json_decode($res, true)['reason'] ?? '') : '';
+        if ($code === 403 && $reason === 'ExpiredProviderToken' && $attempt === 0) {
+            continue;
+        }
+        if ($code === 410 || ($code === 400 && in_array($reason, ['BadDeviceToken', 'DeviceTokenNotForTopic'], true))) {
+            return 410;
+        }
+        return $code;
+    }
+    return 0;
+}
+
+/** Sends one notification to a device, whichever kind it is; 404/410 mean it's gone. */
+function send_to(array $cfg, string $dir, array $state, array $device, array $message, string $subject, ?int $badge = null): int
+{
+    if (($device['type'] ?? '') === 'apns') {
+        return send_apns($cfg, $dir, $device, $message, $badge);
+    }
+    return send_push($state, $device, $message, $subject);
+}
+
 /* ---------- Google: tokens, watch, history ---------- */
 
 /** The OAuth client secret: maillo-config.php, then the environment, then what Settings stored. */
@@ -422,6 +559,8 @@ function clean_prefs($p): array
         'quietTo' => $time($p['quietTo'] ?? '', '07:00'),
         'tz' => is_string($p['tz'] ?? null) && in_array($p['tz'], timezone_identifiers_list(), true) ? $p['tz'] : 'UTC',
         'lang' => ($p['lang'] ?? '') === 'fr' ? 'fr' : 'en',
+        // The iOS app's icon badge: which unread Inbox conversations it counts.
+        'badge' => in_array($p['badge'] ?? '', ['all', 'important', 'primary'], true) ? $p['badge'] : 'off',
     ];
 }
 
@@ -492,33 +631,91 @@ function message_for(array $p, array $items): array
     ];
 }
 
-/** Sends what each device wants to hear about; forgets devices whose subscription has ended. */
-function deliver(array $state, array &$a, array $items, string $subject): void
+/** Unread Inbox conversations for a badge: all, important or primary. -1 when Gmail didn't answer. */
+function unread_count(string $token, string $scope): int
+{
+    $auth = ['Authorization: Bearer ' . $token];
+    if ($scope === 'primary') {
+        // Mailboxes without categories have no Primary label: everything there counts, as in wanted().
+        [$c, $l] = http_get(GMAIL . '/labels/CATEGORY_PERSONAL', $auth);
+        if ($c !== 200 || (int) ($l['messagesTotal'] ?? 0) === 0) {
+            $scope = 'all';
+        }
+    }
+    if ($scope === 'all') {
+        [$c, $l] = http_get(GMAIL . '/labels/INBOX', $auth);
+        return $c === 200 && is_array($l) ? (int) ($l['threadsUnread'] ?? 0) : -1;
+    }
+    $label = $scope === 'important' ? 'IMPORTANT' : 'CATEGORY_PERSONAL';
+    [$c, $res] = http_get(GMAIL . '/threads?labelIds=INBOX&labelIds=UNREAD&labelIds=' . $label . '&maxResults=100&fields=threads/id,nextPageToken,resultSizeEstimate', $auth);
+    if ($c !== 200 || !is_array($res)) {
+        return -1;
+    }
+    $n = count((array) ($res['threads'] ?? []));
+    return !empty($res['nextPageToken']) ? max($n, (int) ($res['resultSizeEstimate'] ?? 0)) : $n;
+}
+
+/** Each iOS device's badge right now (null: no badge, or no answer from Gmail). Counted once per scope. */
+function badges(string $token, array $devices): array
+{
+    $counts = [];
+    $out = [];
+    foreach ($devices as $k => $d) {
+        $p = clean_prefs($d['prefs'] ?? []);
+        if (($d['type'] ?? '') !== 'apns' || !$p['enabled']) {
+            $out[$k] = null;
+            continue;
+        }
+        if ($p['badge'] === 'off') {
+            // Turned off: clear what's there once.
+            $out[$k] = !empty($d['badge']) ? 0 : null;
+            continue;
+        }
+        $counts[$p['badge']] = $counts[$p['badge']] ?? unread_count($token, $p['badge']);
+        $out[$k] = $counts[$p['badge']] >= 0 ? $counts[$p['badge']] : null;
+    }
+    return $out;
+}
+
+/**
+ * Sends what each device wants to hear about, and keeps iOS badges to the unread count;
+ * forgets devices whose subscription has ended.
+ */
+function deliver(array $cfg, string $dir, array $state, array &$a, array $items, string $subject, string $token): void
 {
     $fresh = array_values(array_filter($items, function ($m) {
         return $m['date'] >= time() - MAX_AGE;
     }));
-    if (!$fresh) {
-        return;
-    }
+    $badges = badges($token, $a['devices']);
     foreach ($a['devices'] as $k => $d) {
         $p = clean_prefs($d['prefs'] ?? []);
-        if (!$p['enabled'] || in_quiet_hours($p)) {
+        if (!$p['enabled']) {
             continue;
         }
-        $mine = array_values(array_filter($fresh, function ($m) use ($p) {
+        $badge = $badges[$k] ?? null;
+        $mine = $fresh && !in_quiet_hours($p) ? array_values(array_filter($fresh, function ($m) use ($p) {
             return wanted($p, $m);
-        }));
+        })) : [];
         // Up to three conversations get a notification each; more become one summary.
         $batches = count($mine) > 3 ? [$mine] : array_map(function ($m) {
             return [$m];
         }, $mine);
+        $gone = false;
         foreach ($batches as $batch) {
-            $code = send_push($state, $d, message_for($p, $batch), $subject);
+            $code = send_to($cfg, $dir, $state, $d, message_for($p, $batch), $subject, $badge);
             if ($code === 404 || $code === 410) {
-                unset($a['devices'][$k]);
+                $gone = true;
                 break;
             }
+        }
+        // Mail read or archived elsewhere: a badge-only update, only when the number changed.
+        if (!$gone && !$batches && $badge !== null && $badge !== (int) ($d['badge'] ?? -1)) {
+            $gone = send_apns($cfg, $dir, $d, null, $badge) === 410;
+        }
+        if ($gone) {
+            unset($a['devices'][$k]);
+        } elseif ($badge !== null) {
+            $a['devices'][$k]['badge'] = $badge;
         }
     }
     $a['devices'] = array_values($a['devices']);
@@ -583,6 +780,17 @@ if ($cli || isset($_GET['renew'])) {
     exit;
 }
 
+// The iOS app's web view (its origin is capacitor://localhost) may call the actions below, once APNs is set up.
+if ($cfg['apns'] !== null && ($_SERVER['HTTP_ORIGIN'] ?? '') === 'capacitor://localhost') {
+    header('Access-Control-Allow-Origin: capacitor://localhost');
+    header('Access-Control-Allow-Methods: POST');
+    header('Vary: Origin');
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
     exit;
@@ -635,7 +843,7 @@ if (isset($_GET['key'])) {
         }
         unset($a['tokenError']);
         $items = new_mail($token, $a, preg_match('/^\d+$/', $historyId) ? $historyId : '');
-        deliver($state, $a, $items, vapid_subject());
+        deliver($cfg, $dir, $state, $a, $items, vapid_subject(), $token);
         if (watch_due($a)) {
             start_watch($cfg, $token, $a);
         }
@@ -648,7 +856,7 @@ header('Content-Type: application/json; charset=utf-8');
 if (!$cfg['pushEnabled']) {
     fail(403, 'push_disabled');
 }
-$email = authorize($cfg);
+$email = authorize($cfg, $cfg['apns'] !== null ? $cfg['nativeClientIds'] : []);
 $action = (string) ($_POST['action'] ?? '');
 $token = (string) $_POST['token'];
 
@@ -681,7 +889,38 @@ if ($action === 'status') {
         'watchError' => (string) ($a['watchError'] ?? ''),
         'tokenError' => !empty($a['tokenError']),
         'crypto' => function_exists('openssl_pkey_derive'),
+        'apns' => apns_ready($cfg, $dir),
     ]);
+}
+
+if ($action === 'subscribe' && isset($_POST['apnsToken'])) {
+    if ($cfg['pushTopic'] === '') {
+        fail(409, 'no_topic');
+    }
+    if (!apns_ready($cfg, $dir)) {
+        fail(409, 'no_apns');
+    }
+    $apnsToken = strtolower((string) $_POST['apnsToken']);
+    $env = (string) ($_POST['env'] ?? '') === 'sandbox' ? 'sandbox' : 'production';
+    if (!preg_match('/^[0-9a-f]{64,200}$/', $apnsToken)) {
+        fail(400, 'bad_subscription');
+    }
+    $endpoint = 'apns:' . $apnsToken;
+    $prefs = clean_prefs(json_decode((string) ($_POST['prefs'] ?? ''), true));
+    push_state($dir);
+    $a = with_account($dir, $email, function (array $a) use ($cfg, $token, $endpoint, $apnsToken, $env, $prefs) {
+        $a['devices'] = array_values(array_filter($a['devices'], function ($d) use ($endpoint) {
+            return $d['endpoint'] !== $endpoint;
+        }));
+        $a['devices'][] = ['type' => 'apns', 'endpoint' => $endpoint, 'token' => $apnsToken, 'env' => $env, 'prefs' => $prefs, 'added' => time()];
+        $a['devices'] = array_slice($a['devices'], -MAX_DEVICES);
+        start_watch($cfg, $token, $a);
+        return $a;
+    });
+    if (!empty($a['watchError'])) {
+        fail(424, 'watch_failed', ['detail' => $a['watchError']]);
+    }
+    out(200, ['ok' => true, 'expiration' => (int) ($a['expiration'] ?? 0)]);
 }
 
 if ($action === 'subscribe') {
@@ -741,7 +980,7 @@ if ($action === 'prefs' || $action === 'unsubscribe' || $action === 'test') {
             fail(404, 'not_subscribed');
         }
         $p = clean_prefs($found['prefs'] ?? []);
-        $code = send_push($state, $found, [
+        $code = send_to($cfg, $dir, $state, $found, [
             'type' => 'mail',
             'title' => 'Maillo',
             'body' => $p['lang'] === 'fr' ? 'Les notifications arrivent même quand Maillo est fermé.' : 'Notifications arrive even when Maillo is closed.',
