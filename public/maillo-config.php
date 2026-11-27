@@ -87,6 +87,15 @@ return [
     // for example 'projects/my-project/topics/maillo'.
     'pushTopic' => '',
 
+    // Optional. Notifications in the iOS app (docs/IOS.md), sent through Apple (APNs) by push.php.
+    // Needs features.push. keyId: your APNs key's ID; teamId: your Apple Developer team ID;
+    // bundleId: the app's bundle ID. Upload the key itself (AuthKey_….p8) as .maillo-push/apns.p8.
+    // 'apns' => ['keyId' => '', 'teamId' => '', 'bundleId' => 'app.maillo.ios'],
+
+    // Optional. The iOS app's OAuth client ID (the googleClientId in its config.native.js), so the app
+    // can turn notifications on through push.php.
+    // 'nativeClientIds' => [],
+
     // Optional. Gemini API key for the AI features, the model to use, and how many AI
     // requests each account may make per day. Leave empty or 0 for the defaults
     // ('gemini-flash-latest', 300 a day).

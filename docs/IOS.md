@@ -61,6 +61,27 @@ To run it on your iPhone over a cable, pick your iPhone as the destination in Xc
 
 Each upload needs a higher build number: raise **Build** (`CURRENT_PROJECT_VERSION`) in Xcode's General tab. Internal builds skip App Review and expire after 90 days.
 
+## 6. Notifications (optional)
+
+The app has no server of its own, so notifications go through your web install's `push.php`: Gmail tells it about new mail, as for web push, and it sends to your iPhone through Apple (APNs). Set up web push first (INSTALL.md, "Optional: new mail within seconds"), and stay signed in on the web (**Settings → Accounts → Stay signed in** in a browser): `push.php` reads new mail with that sign-in, because the app's own sign-in never leaves the iPhone.
+
+Server side:
+
+1. On the [Apple Developer site](https://developer.apple.com/account/resources), **Identifiers → app.maillo.ios**: tick **Push Notifications** and save.
+2. **Keys → +**: name it, tick **Apple Push Notifications service (APNs)**, continue and download the `AuthKey_….p8` file (Apple lets you download it once). Note its **Key ID**.
+3. Upload the file to your install as `.maillo-push/apns.p8` (the folder appears once web push has been turned on).
+4. In `maillo-config.php`, add:
+
+   ```php
+   'apns' => ['keyId' => 'YOUR-KEY-ID', 'teamId' => 'YOUR-TEAM-ID', 'bundleId' => 'app.maillo.ios'],
+   'nativeClientIds' => ['YOUR-IOS-CLIENT-ID.apps.googleusercontent.com'],
+   ```
+
+   The team ID is the one in `ios/local.xcconfig`; the client ID is the `googleClientId` from `config.native.js`.
+5. **Settings → About → Copy diagnostics** on the web should then show `iOS push (APNs) set: yes, key uploaded: yes, curl HTTP/2: yes`. APNs only works over HTTP/2, so the host's PHP curl must support it.
+
+The app side (turning notifications on in the app, opening a conversation from a notification) comes in a later version. Previews follow the device's preview setting; unlike web push, Apple can read what it carries. The app icon's badge can count unread Inbox conversations: all, important or primary only.
+
 ## Troubleshooting
 
 - **"Sign-in did not complete"**: check that the OAuth client is the iOS type and that its bundle ID matches the app's exactly.

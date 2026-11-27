@@ -43,6 +43,21 @@ function push_topic(string $t): string
     return preg_match('#^projects/[a-z][a-z0-9\-]{4,61}[a-z0-9]/topics/[A-Za-z][A-Za-z0-9\-_.~+%]{2,254}$#', $t) ? $t : '';
 }
 
+/** The iOS app's push settings (apns in maillo-config.php), or null while any part is missing. */
+function apns_settings($a): ?array
+{
+    if (!is_array($a)) {
+        return null;
+    }
+    $keyId = strtoupper(trim((string) ($a['keyId'] ?? '')));
+    $teamId = strtoupper(trim((string) ($a['teamId'] ?? '')));
+    $bundleId = trim((string) ($a['bundleId'] ?? ''));
+    if (!preg_match('/^[A-Z0-9]{10}$/', $keyId) || !preg_match('/^[A-Z0-9]{10}$/', $teamId) || !preg_match('/^[A-Za-z0-9.\-]{1,155}$/', $bundleId)) {
+        return null;
+    }
+    return ['keyId' => $keyId, 'teamId' => $teamId, 'bundleId' => $bundleId];
+}
+
 /**
  * Loads maillo-config.php: null when there is none, ['__error' => line] when it has a typo.
  * Kept in its own function so the file can't see or change anything here.
@@ -95,6 +110,10 @@ function read_config(string $root): array
         'staySignedIn' => !empty($features['staySignedIn']),
         'pushEnabled' => !empty($features['push']),
         'pushTopic' => push_topic((string) ($c['pushTopic'] ?? '')),
+        'apns' => apns_settings($c['apns'] ?? null),
+        'nativeClientIds' => array_values(array_filter(array_map(function ($id) {
+            return is_string($id) && preg_match('/^[0-9A-Za-z\-]+\.apps\.googleusercontent\.com$/', trim($id)) ? trim($id) : '';
+        }, is_array($c['nativeClientIds'] ?? null) ? $c['nativeClientIds'] : []))),
         'accounts' => clean_list($c['allowedAccounts'] ?? []),
         'domains' => array_map(function ($d) {
             return ltrim($d, '@');
@@ -225,17 +244,18 @@ function http_post_form(string $url, array $fields): array
     return [$code, is_string($res) ? json_decode($res, true) : null];
 }
 
-function authorize(array $cfg): string
+/** $alsoClients: other OAuth clients of this install whose tokens are accepted too (the iOS app's, for push.php). */
+function authorize(array $cfg, array $alsoClients = []): string
 {
     $token = (string) ($_POST['token'] ?? '');
     if ($token === '' || !preg_match('/^[A-Za-z0-9._\-~+\/]+=*$/', $token)) {
         fail(401, 'no_token');
     }
-    return check_account($cfg, $token);
+    return check_account($cfg, $token, $alsoClients);
 }
 
 /** Checks that an access token was issued to this install's client, for an allowed account; returns the address. */
-function check_account(array $cfg, string $token): string
+function check_account(array $cfg, string $token, array $alsoClients = []): string
 {
     if ($cfg['clientId'] === '') {
         fail(403, 'not_configured');
@@ -245,7 +265,11 @@ function check_account(array $cfg, string $token): string
     }
     [$code, $info] = http_get('https://oauth2.googleapis.com/tokeninfo?access_token=' . rawurlencode($token));
     $aud = is_array($info) ? (string) ($info['aud'] ?? $info['azp'] ?? '') : '';
-    if ($code !== 200 || !hash_equals($cfg['clientId'], $aud)) {
+    $known = hash_equals($cfg['clientId'], $aud);
+    foreach ($alsoClients as $id) {
+        $known = $known || hash_equals((string) $id, $aud);
+    }
+    if ($code !== 200 || $aud === '' || !$known) {
         fail(401, 'invalid_token');
     }
     [$code, $profile] = http_get('https://gmail.googleapis.com/gmail/v1/users/me/profile', ['Authorization: Bearer ' . $token]);

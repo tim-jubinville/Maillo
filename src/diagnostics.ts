@@ -23,6 +23,9 @@ interface ServerDiag {
   features?: Record<string, boolean>;
   clientSecret?: boolean;
   pushTopic?: boolean;
+  apns?: boolean;
+  apnsKey?: boolean;
+  http2?: boolean;
   updateCheck?: boolean;
   updateChannel?: string;
 }
@@ -85,6 +88,7 @@ export async function diagnostics(): Promise<string> {
       `Setup checklist: ${missing(s.checks)}`,
       `Server features: ${on(s.features)}`,
       `Client secret set: ${yes(s.clientSecret)}, Pub/Sub topic set: ${yes(s.pushTopic)}`,
+      `iOS push (APNs) set: ${yes(s.apns)}, key uploaded: ${yes(s.apnsKey)}, curl HTTP/2: ${yes(s.http2)}`,
       `Updates: ${s.updateCheck ? `on, ${s.updateChannel} channel` : 'off'}`
     );
   }
