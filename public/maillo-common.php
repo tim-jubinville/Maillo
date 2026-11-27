@@ -178,7 +178,7 @@ function http_get(string $url, array $headers = []): array
     return [$code, is_string($body) ? json_decode($body, true) : null];
 }
 
-function http_post_json(string $url, array $payload, array $headers = []): array
+function http_post_json(string $url, array $payload, array $headers = [], int $timeout = 60): array
 {
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $headers[] = 'Content-Type: application/json';
@@ -186,7 +186,7 @@ function http_post_json(string $url, array $payload, array $headers = []): array
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 60,
+            CURLOPT_TIMEOUT => $timeout,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $body,
             CURLOPT_HTTPHEADER => $headers,
@@ -199,7 +199,7 @@ function http_post_json(string $url, array $payload, array $headers = []): array
             'method' => 'POST',
             'header' => implode("\r\n", $headers),
             'content' => $body,
-            'timeout' => 60,
+            'timeout' => $timeout,
             'ignore_errors' => true,
         ]]);
         $res = @file_get_contents($url, false, $ctx);

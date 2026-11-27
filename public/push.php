@@ -35,6 +35,8 @@ const PUSH_TTL = 86400;
 const MAX_DEVICES = 20;
 // Mail older than this when it's first seen doesn't notify (a watch that lapsed for days, say).
 const MAX_AGE = 2 * 86400;
+// Passes one process makes over changes that keep arriving, before leaving the rest to the next one.
+const MAX_PASSES = 10;
 
 $root = __DIR__;
 $dir = $root . '/.maillo-push';
@@ -123,6 +125,29 @@ function with_account(string $dir, string $email, callable $fn)
             fclose($fh);
         }
     }
+}
+
+/** Leaves a note that the mailbox changed, keeping the highest history id announced. */
+function pending_note(string $file, string $historyId): void
+{
+    $id = preg_match('/^\d+$/', $historyId) ? $historyId : '';
+    $old = is_file($file) ? trim((string) @file_get_contents($file)) : '';
+    if ($old !== '' && ($id === '' || (int) $old > (int) $id)) {
+        $id = $old;
+    }
+    @file_put_contents($file, $id, LOCK_EX);
+}
+
+/** Takes the note, if there is one: its history id ('' when unknown), or null when there's none. */
+function take_pending(string $file): ?string
+{
+    $taken = $file . '.taken';
+    if (!@rename($file, $taken)) {
+        return null;
+    }
+    $id = trim((string) @file_get_contents($taken));
+    @unlink($taken);
+    return preg_match('/^\d+$/', $id) ? $id : '';
 }
 
 /* ---------- base64url, keys ---------- */
@@ -389,23 +414,53 @@ function push_client_secret(array $cfg, string $root): string
     return is_string($env) && $env !== '' ? $env : (string) ($stored['secret'] ?? '');
 }
 
-function unseal_rt(string $sealed, string $root, array $cfg): string
+/** The key session.php seals refresh tokens with ('' when there's none yet). */
+function seal_key(string $root, array $cfg): string
 {
     $key = function_exists('session_key_override') ? session_key_override($cfg) : '';
     if ($key === '') {
         $key = base64_decode((string) (php_read($root . '/.maillo-oauth.php')['key'] ?? ''), true);
     }
+    return is_string($key) && strlen($key) === 32 ? $key : '';
+}
+
+function unseal_rt(string $sealed, string $root, array $cfg): string
+{
+    $key = seal_key($root, $cfg);
     $raw = base64_decode($sealed, true);
-    if (!is_string($key) || strlen($key) !== 32 || !is_string($raw) || strlen($raw) < 29) {
+    if ($key === '' || !is_string($raw) || strlen($raw) < 29) {
         return '';
     }
     $p = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
     return is_string($p) ? $p : '';
 }
 
-/** A fresh access token for an account, from the most recently used session.php session. */
-function server_token(array $cfg, string $root, string $email): string
+/** The same sealing as session.php's (iv . tag . ciphertext), for the cached access token. */
+function seal(string $plain, string $root, array $cfg): string
 {
+    $key = seal_key($root, $cfg);
+    if ($key === '') {
+        return '';
+    }
+    $iv = random_bytes(12);
+    $tag = '';
+    $c = openssl_encrypt($plain, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
+    return is_string($c) ? base64_encode($iv . $tag . $c) : '';
+}
+
+/**
+ * An access token for an account, from the most recently used session.php session.
+ * With the account's data ($a), the token is kept there (sealed) until a few minutes before it
+ * expires, so a run of notifications doesn't ask Google for a new one each time.
+ */
+function server_token(array $cfg, string $root, string $email, ?array &$a = null): string
+{
+    if ($a !== null && !empty($a['at']) && (int) ($a['atExp'] ?? 0) > time() + 300) {
+        $cached = unseal_rt((string) $a['at'], $root, $cfg);
+        if ($cached !== '') {
+            return $cached;
+        }
+    }
     $best = null;
     foreach (glob($root . '/.maillo-sessions/*.php') ?: [] as $f) {
         $s = php_read($f);
@@ -424,7 +479,17 @@ function server_token(array $cfg, string $root, string $email): string
         'client_secret' => $secret,
         'grant_type' => 'refresh_token',
     ]);
-    return $code === 200 && is_array($res) ? (string) ($res['access_token'] ?? '') : '';
+    $token = $code === 200 && is_array($res) ? (string) ($res['access_token'] ?? '') : '';
+    if ($a !== null) {
+        $sealed = $token !== '' ? seal($token, $root, $cfg) : '';
+        if ($sealed !== '') {
+            $a['at'] = $sealed;
+            $a['atExp'] = time() + (int) ($res['expires_in'] ?? 3600);
+        } else {
+            unset($a['at'], $a['atExp']);
+        }
+    }
+    return $token;
 }
 
 const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me';
@@ -444,7 +509,7 @@ function start_watch(array $cfg, string $token, array &$a): bool
         'topicName' => $cfg['pushTopic'],
         'labelIds' => array_values(array_unique($labels)),
         'labelFilterBehavior' => 'INCLUDE',
-    ], ['Authorization: Bearer ' . $token]);
+    ], ['Authorization: Bearer ' . $token], 15);
     if ($code !== 200 || !is_array($res)) {
         $a['watchError'] = is_array($res) ? (string) ($res['error']['message'] ?? $code) : (string) $code;
         return false;
@@ -489,6 +554,10 @@ function new_mail(string $token, array &$a, string $upTo): array
     }
     if ($code !== 200 || !is_array($res)) {
         $a['historyId'] = $start;
+        if ($code === 401) {
+            // The cached access token stopped working: get a new one next time.
+            unset($a['at'], $a['atExp']);
+        }
         return [];
     }
     if (!empty($res['historyId']) && (int) $res['historyId'] > (int) $a['historyId']) {
@@ -678,15 +747,16 @@ function badges(string $token, array $devices): array
 }
 
 /**
- * Sends what each device wants to hear about, and keeps iOS badges to the unread count;
- * forgets devices whose subscription has ended.
+ * Sends what each device wants to hear about, and keeps iOS badges to the unread count
+ * (unless $countBadges is false); forgets devices whose subscription has ended.
  */
-function deliver(array $cfg, string $dir, array $state, array &$a, array $items, string $subject, string $token): void
+function deliver(array $cfg, string $dir, array $state, array &$a, array $items, string $subject, string $token, bool $countBadges = true): void
 {
     $fresh = array_values(array_filter($items, function ($m) {
         return $m['date'] >= time() - MAX_AGE;
     }));
-    $badges = badges($token, $a['devices']);
+    // While more changes are waiting, the next pass counts the badge: no need to ask Gmail twice.
+    $badges = $countBadges ? badges($token, $a['devices']) : [];
     foreach ($a['devices'] as $k => $d) {
         $p = clean_prefs($d['prefs'] ?? []);
         if (!$p['enabled']) {
@@ -755,7 +825,7 @@ function renew_all(array $cfg, string $root, string $dir): int
             if (!$a['devices'] || !watch_due($a)) {
                 return null;
             }
-            $token = server_token($cfg, $root, $email);
+            $token = server_token($cfg, $root, $email, $a);
             if ($token !== '' && start_watch($cfg, $token, $a)) {
                 $n++;
             }
@@ -832,23 +902,51 @@ if (isset($_GET['key'])) {
         exit;
     }
     ignore_user_abort(true);
-    with_account($dir, $email, function (array $a) use ($cfg, $root, $state, $email, $historyId) {
-        if (!$a['devices']) {
-            return null;
+    @set_time_limit(120);
+    // Gmail announces every change to the Inbox (read, archived, labelled), so a few swipes send
+    // dozens of these at once. Each leaves a note and only one process per account does the work:
+    // the others exit at once instead of waiting in line, which on shared hosting used up the
+    // account's process limit and made every site on it answer 508.
+    $file = account_file($dir, $email);
+    pending_note($file . '.pending', $historyId);
+    while (true) {
+        $run = fopen($file . '.run', 'c');
+        if (!$run || !flock($run, LOCK_EX | LOCK_NB)) {
+            // Someone is already on it, and will see the note.
+            exit;
         }
-        $token = server_token($cfg, $root, $email);
-        if ($token === '') {
-            $a['tokenError'] = time();
-            return $a;
+        // Let the rest of a burst arrive, so it's handled in one pass.
+        usleep(1500000);
+        for ($pass = 0; $pass < MAX_PASSES; $pass++) {
+            $note = take_pending($file . '.pending');
+            if ($note === null) {
+                break;
+            }
+            with_account($dir, $email, function (array $a) use ($cfg, $root, $dir, $state, $email, $note, $file) {
+                if (!$a['devices']) {
+                    return null;
+                }
+                $token = server_token($cfg, $root, $email, $a);
+                if ($token === '') {
+                    $a['tokenError'] = time();
+                    return $a;
+                }
+                unset($a['tokenError']);
+                $items = new_mail($token, $a, $note);
+                deliver($cfg, $dir, $state, $a, $items, vapid_subject(), $token, !is_file($file . '.pending'));
+                if (watch_due($a)) {
+                    start_watch($cfg, $token, $a);
+                }
+                return $a;
+            });
         }
-        unset($a['tokenError']);
-        $items = new_mail($token, $a, preg_match('/^\d+$/', $historyId) ? $historyId : '');
-        deliver($cfg, $dir, $state, $a, $items, vapid_subject(), $token);
-        if (watch_due($a)) {
-            start_watch($cfg, $token, $a);
+        flock($run, LOCK_UN);
+        fclose($run);
+        // A note that came in just as this pass ended: its process found the lock taken, so go again.
+        if (!is_file($file . '.pending')) {
+            break;
         }
-        return $a;
-    });
+    }
     exit;
 }
 
