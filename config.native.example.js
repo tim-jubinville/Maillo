@@ -9,6 +9,7 @@ window.MAILLO_CONFIG = {
   allowedDomains: [],
   language: 'auto',
   theme: 'sky',
-  // The app always stays signed in. These need a server, so they're off in the app: ai, push, keep, staySignedIn.
-  features: { calendar: false, tasks: false, notes: false, contactPhotos: false, syncSettings: false }
+  // The same optional features as maillo-config.php on the web; turn on the ones your web install uses.
+  // The app always stays signed in. These need a server, so they're off in the app: ai, push, staySignedIn.
+  features: { calendar: false, tasks: false, notes: false, stickies: false, contactPhotos: false, syncSettings: false }
 };
