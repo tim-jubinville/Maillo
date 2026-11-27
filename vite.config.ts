@@ -38,6 +38,9 @@ export default defineConfig({
       apply: 'build',
       transformIndexHtml(html) {
         if (!native) return html;
+        // The app may call its web install's push.php (pushServer in config.native.js).
+        const server = existsSync(nativeConfig) ? /pushServer:\s*['"](https:\/\/[^/'"\s]+)/.exec(readFileSync(nativeConfig, 'utf8'))?.[1] : undefined;
+        if (server) html = html.replace("connect-src 'self'", `connect-src 'self' ${server}`);
         return html
           .replace('<script src="./config.php"></script>', '<script src="./config.native.js"></script>')
           .replace(/<link rel="manifest"[^>]*>\n/, '')

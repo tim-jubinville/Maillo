@@ -208,17 +208,19 @@ export function Seg<T extends string | number>({
   value,
   options,
   label,
-  onChange
+  onChange,
+  disabled
 }: {
   value: T;
   options: { value: T; label: string }[];
   label: string;
   onChange: (v: T) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div class="seg" role="radiogroup" aria-label={label}>
+    <div class="seg" role="radiogroup" aria-label={label} aria-disabled={disabled || undefined}>
       {options.map((o) => (
-        <button type="button" role="radio" aria-checked={o.value === value} onClick={() => onChange(o.value)}>
+        <button type="button" role="radio" disabled={disabled} aria-checked={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}

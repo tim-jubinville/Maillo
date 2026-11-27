@@ -1,7 +1,7 @@
 // The iOS app (Capacitor). Sign-in runs in the system's sign-in sheet (ASWebAuthenticationSession) with
 // PKCE and the iOS OAuth client, which has no secret. The refresh token never reaches the web view:
 // the native plugin (ios/App/App/MailloNativePlugin.swift) keeps it in the Keychain and hands out access tokens.
-import { registerPlugin } from '@capacitor/core';
+import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 
 export interface NativeToken {
   access_token: string;
@@ -20,6 +20,10 @@ interface MailloNativePlugin {
   signOut(opts: { revoke: boolean }): Promise<void>;
   /** A tap from the Taptic Engine. */
   haptic(o: { kind: HapticKind }): Promise<void>;
+  /** This device's APNs token. Rejects with "permission" when notifications aren't allowed (ask: false never prompts). */
+  registerPush(o: { ask: boolean }): Promise<{ token: string; env: 'sandbox' | 'production' }>;
+  setBadge(o: { count: number }): Promise<void>;
+  addListener(event: 'notificationTap', fn: (d: { threadId: string }) => void): Promise<PluginListenerHandle>;
 }
 
 export type HapticKind = 'light' | 'medium' | 'soft' | 'selection' | 'success' | 'warning';
@@ -103,4 +107,20 @@ export function nativeSignOut(revoke = false): Promise<void> {
 
 export function nativeHaptic(kind: HapticKind): void {
   Native.haptic({ kind }).catch(() => undefined);
+}
+
+export async function nativeRegisterPush(ask: boolean): Promise<{ token: string; env: string } | { error: string }> {
+  try {
+    return await Native.registerPush({ ask });
+  } catch (e) {
+    return { error: message(e) === 'permission' ? 'permission' : 'register_failed' };
+  }
+}
+
+export function nativeSetBadge(count: number): void {
+  Native.setBadge({ count }).catch(() => undefined);
+}
+
+export function onNotificationTap(fn: (threadId: string) => void): void {
+  Native.addListener('notificationTap', (d) => fn(d.threadId)).catch(() => undefined);
 }

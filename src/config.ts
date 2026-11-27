@@ -19,6 +19,8 @@ export interface AppConfig {
     contacts: string;
     gmailSettings: string;
   };
+  /** iOS app only: the web install that sends its notifications (its push.php), e.g. https://mail.example.com/. */
+  pushServer: string;
   demo: boolean;
   /** Settings come from maillo-config.php, which keeps the allowed accounts on the server: ask it after signing in. */
   accountCheck: boolean;
@@ -68,9 +70,16 @@ const defaults: AppConfig = {
     contacts: 'https://contacts.google.com/',
     gmailSettings: 'https://mail.google.com/mail/u/0/#settings/general'
   },
+  pushServer: '',
   demo: false,
   accountCheck: false
 };
+
+/** An https address ending in /, or '' when it isn't one. */
+function serverUrl(v: unknown): string {
+  if (typeof v !== 'string' || !/^https:\/\/[^\s/?#]+/i.test(v.trim())) return '';
+  return v.trim().replace(/\/*$/, '/');
+}
 
 function list(v: unknown): string[] {
   return Array.isArray(v) ? v.map((x) => String(x).trim().toLowerCase()).filter(Boolean) : [];
@@ -104,6 +113,7 @@ export const configFile = 'maillo-config.php';
 
 function load(): AppConfig {
   const raw = (window.MAILLO_CONFIG ?? {}) as Partial<AppConfig>;
+  const pushServer = isNative ? serverUrl(raw.pushServer) : '';
   const params = new URLSearchParams(location.search);
   return {
     appName: (raw.appName ?? '').trim() || defaults.appName,
@@ -128,9 +138,11 @@ function load(): AppConfig {
       staySignedIn: !isNative && !!raw.features?.staySignedIn,
       syncSettings: !!raw.features?.syncSettings,
       stickies: !!raw.features?.stickies,
-      push: !isNative && !!raw.features?.push
+      // The app's notifications go through the web install's push.php (pushServer).
+      push: isNative ? !!pushServer : !!raw.features?.push
     },
     links: { ...defaults.links, ...(raw.links ?? {}) },
+    pushServer,
     demo: __DEMO_BUILD__ || !!raw.demo || params.has('demo'),
     accountCheck: !isNative && raw.accountCheck === true
   };

@@ -3,6 +3,7 @@ import Capacitor
 import Foundation
 import Security
 import UIKit
+import UserNotifications
 
 /// Maillo's web view, with Maillo's own plugin registered.
 class MailloViewController: CAPBridgeViewController {
@@ -14,7 +15,7 @@ class MailloViewController: CAPBridgeViewController {
 /// Google sign-in for the iOS app (src/native.ts): the system sign-in sheet, PKCE with the iOS OAuth client
 /// (no secret), and the refresh token kept in the Keychain. The refresh token never goes to the web view.
 @objc(MailloNativePlugin)
-public class MailloNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPresentationContextProviding {
+public class MailloNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPresentationContextProviding, NotificationHandlerProtocol {
     public let identifier = "MailloNativePlugin"
     public let jsName = "MailloNative"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -23,7 +24,9 @@ public class MailloNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
         CAPPluginMethod(name: "refresh", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hasSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "signOut", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "registerPush", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise)
     ]
 
     private var authSession: ASWebAuthenticationSession?
@@ -61,6 +64,81 @@ public class MailloNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
 
     public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         return bridge?.viewController?.view.window ?? ASPresentationAnchor()
+    }
+
+    // MARK: Notifications (src/push.ts): the device token for push.php, taps, and the icon badge
+
+    private var pushCalls: [CAPPluginCall] = []
+
+    override public func load() {
+        bridge?.notificationRouter.pushNotificationHandler = self
+        NotificationCenter.default.addObserver(self, selector: #selector(didRegisterForPush(_:)), name: .capacitorDidRegisterForRemoteNotifications, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didFailToRegisterForPush(_:)), name: .capacitorDidFailToRegisterForRemoteNotifications, object: nil)
+    }
+
+    /// Resolves with this device's APNs token. With ask false, never shows the permission prompt (for refreshing at launch).
+    @objc func registerPush(_ call: CAPPluginCall) {
+        let ask = call.getBool("ask") ?? true
+        let center = UNUserNotificationCenter.current()
+        let register = {
+            DispatchQueue.main.async {
+                self.pushCalls.append(call)
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                register()
+            case .notDetermined where ask:
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                    if granted { register() } else { call.reject("permission") }
+                }
+            default:
+                call.reject("permission")
+            }
+        }
+    }
+
+    @objc private func didRegisterForPush(_ note: Notification) {
+        guard let token = note.object as? Data else { return }
+        // Debug builds (Xcode) get sandbox tokens; archives for TestFlight get production ones.
+        #if DEBUG
+        let env = "sandbox"
+        #else
+        let env = "production"
+        #endif
+        let hex = token.map { String(format: "%02x", $0) }.joined()
+        pushCalls.forEach { $0.resolve(["token": hex, "env": env]) }
+        pushCalls.removeAll()
+    }
+
+    @objc private func didFailToRegisterForPush(_ note: Notification) {
+        pushCalls.forEach { $0.reject("register_failed") }
+        pushCalls.removeAll()
+    }
+
+    @objc func setBadge(_ call: CAPPluginCall) {
+        let count = max(0, call.getInt("count") ?? 0)
+        DispatchQueue.main.async {
+            if #available(iOS 16.0, *) {
+                UNUserNotificationCenter.current().setBadgeCount(count)
+            } else {
+                UIApplication.shared.applicationIconBadgeNumber = count
+            }
+            call.resolve()
+        }
+    }
+
+    /// While Maillo is open it shows new mail itself, so pushed banners stay quiet; the badge still updates.
+    public func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions {
+        return [.badge]
+    }
+
+    /// A tapped notification opens its conversation. Kept until the web view listens, for taps that launch the app.
+    public func didReceive(response: UNNotificationResponse) {
+        let threadId = response.notification.request.content.userInfo["threadId"] as? String ?? ""
+        notifyListeners("notificationTap", data: ["threadId": threadId], retainUntilConsumed: true)
     }
 
     // MARK: Haptics

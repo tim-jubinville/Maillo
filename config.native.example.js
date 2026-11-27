@@ -10,6 +10,9 @@ window.MAILLO_CONFIG = {
   language: 'auto',
   theme: 'sky',
   // The same optional features as maillo-config.php on the web; turn on the ones your web install uses.
-  // The app always stays signed in. These need a server, so they're off in the app: ai, push, staySignedIn.
-  features: { calendar: false, tasks: false, notes: false, stickies: false, contactPhotos: false, syncSettings: false }
+  // The app always stays signed in. These need a server, so they're off in the app: ai, staySignedIn.
+  features: { calendar: false, tasks: false, notes: false, stickies: false, contactPhotos: false, syncSettings: false },
+  // Optional. Notifications while the app is closed go through your web install's push.php: its address,
+  // e.g. 'https://mail.example.com/'. That install needs push and APNs set up (docs/IOS.md, section 6).
+  pushServer: ''
 };
