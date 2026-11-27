@@ -19,6 +19,7 @@ import { t, type StringKey } from './i18n';
 import { CATEGORY_LABEL, listParams, rowFromThread, stripSubjectPrefix, fullDate, type ThreadRow } from './model';
 import { getPrefs, onPrefs, setPrefs, type PanelId } from './prefs';
 import type { DragKind } from './dnd';
+import { haptic } from './haptics';
 import { startStickies } from './stickies';
 import { startSync } from './sync';
 import { clearCache, getThread as cachedThread, openCache, putThread, saveMeta, saveRows, type ListSnap, type Warm } from './cache';
@@ -1212,6 +1213,7 @@ function currentFolder(): string | undefined {
 
 export const actions = {
   archive(ids: string[]) {
+    haptic('medium');
     const f = currentFolder();
     run(ids, { add: [], remove: ['INBOX'] }, { drop: f === 'inbox' || !!(state.route as MailRoute).label || f === undefined, message: t('toast.archived', { n: ids.length }) });
   },
@@ -1261,6 +1263,7 @@ export const actions = {
   // Piles are exclusive: moving a conversation to one pile takes it out of the other.
   async pin(p: PileId, ids: string[]) {
     if (!ids.length) return;
+    haptic('light');
     const f = currentFolder();
     const r = state.route as MailRoute;
     const others = PILES.filter((x) => x !== p).map((x) => state.piles[x].labelId).filter((x): x is string => !!x);
@@ -1299,6 +1302,7 @@ export const actions = {
   async unpin(ids: string[], toInbox: boolean) {
     const labels = pileLabelIds();
     if (!labels.length || !ids.length) return;
+    haptic('light');
     const r = state.route as MailRoute;
     const back = toInbox && currentFolder() === 'inbox';
     await run(ids, { add: toInbox ? ['INBOX'] : [], remove: labels }, {
@@ -1661,6 +1665,7 @@ export async function sendCompose() {
       sent = await api.sendDraft(draftId);
     } else sent = await api.send(raw, c.threadId);
     dismissToast(sendingId);
+    haptic('success');
     const r = state.route;
     toast(t('toast.sent'), {
       action: sent?.threadId && r.view === 'mail' ? { label: t('toast.view'), run: () => go(threadHash({ view: 'mail', folder: 'sent', category: 'primary' }, sent!.threadId)) } : undefined
@@ -1671,7 +1676,10 @@ export async function sendCompose() {
     dismissToast(sendingId);
     setState({ compose: { ...c, minimized: false } });
     if (e instanceof AuthRequired) fail(e);
-    else toast(t('toast.sendFailed'));
+    else {
+      haptic('warning');
+      toast(t('toast.sendFailed'));
+    }
   }
 }
 

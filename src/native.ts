@@ -18,7 +18,11 @@ interface MailloNativePlugin {
   hasSession(): Promise<{ value: boolean }>;
   /** Removes the refresh token and asks Google to end it. */
   signOut(opts: { revoke: boolean }): Promise<void>;
+  /** A tap from the Taptic Engine. */
+  haptic(o: { kind: HapticKind }): Promise<void>;
 }
+
+export type HapticKind = 'light' | 'medium' | 'soft' | 'selection' | 'success' | 'warning';
 
 const Native = registerPlugin<MailloNativePlugin>('MailloNative');
 
@@ -95,4 +99,8 @@ export async function nativeRefresh(clientId: string): Promise<NativeToken | nul
 
 export function nativeSignOut(revoke = false): Promise<void> {
   return Native.signOut({ revoke }).catch(() => undefined);
+}
+
+export function nativeHaptic(kind: HapticKind): void {
+  Native.haptic({ kind }).catch(() => undefined);
 }
