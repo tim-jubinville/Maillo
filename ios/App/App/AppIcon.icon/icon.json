@@ -1,4 +1,5 @@
 {
+  "color-space-for-untagged-svg-colors" : "display-p3",
   "fill" : {
     "linear-gradient" : [
       "display-p3:0.66275,0.83922,0.98431,1.00000",
@@ -9,12 +10,32 @@
     {
       "layers" : [
         {
-          "glass" : false,
+          "blend-mode-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : "plus-lighter"
+            }
+          ],
+          "glass" : true,
           "image-name" : "4_envelope-folds.svg",
           "name" : "4_envelope-folds"
-        },
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    },
+    {
+      "layers" : [
         {
-          "glass" : true,
+          "blend-mode" : "plus-darker",
+          "glass" : false,
+          "hidden" : false,
           "image-name" : "3_envelope-pocket.svg",
           "name" : "3_envelope-pocket"
         }
@@ -24,7 +45,7 @@
         "opacity" : 0.5
       },
       "translucency" : {
-        "enabled" : false,
+        "enabled" : true,
         "value" : 0.3
       }
     },
@@ -35,6 +56,7 @@
           "name" : "2_letter-details"
         },
         {
+          "glass" : false,
           "image-name" : "1_letter.svg",
           "name" : "1_letter"
         }
@@ -50,9 +72,6 @@
     }
   ],
   "supported-platforms" : {
-    "circles" : [
-      "watchOS"
-    ],
     "squares" : "shared"
   }
 }
