@@ -5,7 +5,7 @@ import { labelColor, labelDisplayName } from '../model';
 import { getPrefs, setPrefs } from '../prefs';
 import { go, listHash, type Folder, type MailRoute } from '../route';
 import { actions, dismissToast, openCompose, pileLabelIds, setState, signInClick, signOutClick, useApp, type AppState } from '../store';
-import { Brand, Menu, Photo } from './common';
+import { Brand, Menu, Photo, Seg } from './common';
 import { dropZone, endDrag, startLabelDrag } from '../dnd';
 import { Compose } from './Compose';
 import { composeInWindow, PopoutWindow } from './Popout';
@@ -203,11 +203,12 @@ function Header({ s }: { s: AppState }) {
                   {config.demo ? t('header.demo') : online ? t('header.synced') : t('header.offline')}
                 </span>
               </div>
+              <PhoneHub close={close} />
               {s.update && (
                 <a class="mi mi-update" href="#/settings/updates" onClick={close}><Icon name="download" />{t('header.update', { v: s.update.version })}<span class="update-dot" aria-hidden="true" /></a>
               )}
               <a class="mi" href="#/settings/general" onClick={close}><Icon name="gear" />{t('header.settings')}</a>
-              <button class="mi" onClick={() => { close(); setState({ showKeys: true }); }}><Icon name="keyboard" />{t('header.help')}<span class="kbd mi-kbd" aria-hidden="true">?</span></button>
+              <button class="mi desk-only" onClick={() => { close(); setState({ showKeys: true }); }}><Icon name="keyboard" />{t('header.help')}<span class="kbd mi-kbd" aria-hidden="true">?</span></button>
               {!config.demo && (
                 <button class="mi" onClick={() => { close(); signInClick(true); }}><Icon name="user" />{t('auth.switch')}</button>
               )}
@@ -219,6 +220,43 @@ function Header({ s }: { s: AppState }) {
         </Menu>
       </div>
     </header>
+  );
+}
+
+/**
+ * Phones only (the account menu): the side apps, Chat and Meet as large tiles, one tap from anywhere,
+ * since the right-hand icons and the rail don't fit; and a quick light/dark switch.
+ */
+function PhoneHub({ close }: { close: () => void }) {
+  const [mode, setMode] = useState(getPrefs().mode);
+  return (
+    <div class="phone-hub">
+      <div class="hub-apps" role="group" aria-label={t('nav.apps')}>
+        {panelApps().map((i) => (
+          <button class="hub-app" onClick={() => { close(); setState({ sidebarOpen: false, sheet: i.id }); }}>
+            <CIcon name={i.icon} size={28} />
+            <span>{i.label}</span>
+          </button>
+        ))}
+        <a class="hub-app" href={config.links.chat} target="_blank" rel="noopener noreferrer" onClick={close}>
+          <CIcon name="chat" size={28} />
+          <span>{t('nav.chat')}</span>
+        </a>
+        <a class="hub-app" href={config.links.meet} target="_blank" rel="noopener noreferrer" onClick={close}>
+          <CIcon name="meet" size={28} />
+          <span>{t('nav.meet')}</span>
+        </a>
+      </div>
+      <div class="hub-mode">
+        <Seg
+          label={t('app.mode')}
+          value={mode}
+          onChange={(v) => { setMode(v); setPrefs({ mode: v }); }}
+          options={[{ value: 'system', label: t('app.system') }, { value: 'light', label: t('app.light') }, { value: 'dark', label: t('app.dark') }]}
+        />
+      </div>
+      <hr />
+    </div>
   );
 }
 
@@ -337,14 +375,6 @@ function Sidebar({ s }: { s: AppState }) {
           </a>
         );
       })}
-      {/* Phones hide the right-hand icon column; its apps sit quietly at the foot of the drawer instead. */}
-      <div class="drawer-apps" role="group" aria-label={t('nav.apps')}>
-        {panelApps().map((i) => (
-          <button class="sp" aria-label={i.label} title={i.label} onClick={() => setState({ sidebarOpen: false, sheet: i.id })}>
-            <CIcon name={i.icon} size={20} />
-          </button>
-        ))}
-      </div>
     </nav>
   );
 }
