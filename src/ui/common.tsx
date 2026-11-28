@@ -159,29 +159,27 @@ function useFitPop(open: boolean, wrap: { current: HTMLElement | null }, pop: { 
     const anchor = wrap.current;
     if (!open || !el || !anchor) return;
     const m = 8;
+    // Placed from the button's position, never by putting the menu back where it would overflow and measuring
+    // again: a menu past the edge widens the page, and iOS then reports a wider viewport.
     const fit = () => {
-      Object.assign(el.style, { top: '', bottom: '', left: '', right: '', maxHeight: '' });
       const vv = window.visualViewport;
-      const vw = vv?.width ?? window.innerWidth;
-      const vh = (vv?.height ?? window.innerHeight) + (vv?.offsetTop ?? 0);
+      const vw = document.documentElement.clientWidth;
+      const top0 = vv?.offsetTop ?? 0;
+      const vh = vv ? vv.height + top0 : window.innerHeight;
       const a = anchor.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
+      const w = el.offsetWidth;
+      const natural = el.classList.contains('right') ? a.right - w : a.left;
+      const left = Math.max(m, Math.min(natural, vw - m - w));
+      el.style.left = `${Math.round(left - a.left)}px`;
+      el.style.right = 'auto';
       const below = vh - a.bottom - 6 - m;
-      const above = a.top - 6 - (vv?.offsetTop ?? 0) - m;
-      const opensUp = r.bottom <= a.top + 1;
-      const fits = opensUp ? r.top >= m : r.bottom <= vh - m;
-      const up = fits ? opensUp : above > below;
-      if (up !== opensUp) {
-        el.style.top = up ? 'auto' : 'calc(100% + 6px)';
-        el.style.bottom = up ? 'calc(100% + 6px)' : 'auto';
-      }
+      const above = a.top - top0 - 6 - m;
+      const need = el.scrollHeight;
+      const upFirst = !!el.closest('.ribbon.bottom');
+      const up = upFirst ? !(need > above && below > above) : need > below && above > below;
+      el.style.top = up ? 'auto' : 'calc(100% + 6px)';
+      el.style.bottom = up ? 'calc(100% + 6px)' : 'auto';
       el.style.maxHeight = `${Math.max(120, Math.min(up ? above : below, 520))}px`;
-      const r2 = el.getBoundingClientRect();
-      const dx = r2.left < m ? m - r2.left : r2.right > vw - m ? vw - m - r2.right : 0;
-      if (dx) {
-        el.style.left = `${el.offsetLeft + dx}px`;
-        el.style.right = 'auto';
-      }
     };
     fit();
     const mo = new MutationObserver(() => requestAnimationFrame(fit));
