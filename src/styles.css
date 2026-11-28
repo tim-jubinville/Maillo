@@ -822,6 +822,7 @@ textarea.diag-text { width: min(560px, 62vw); height: auto; padding: 10px 12px; 
   /* The account menu is the phone's hub: side apps, Chat and Meet as tiles, and a light/dark switch. */
   .header-right .pop { width: min(340px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - var(--hh, 64px) - 24px); padding: 8px; }
   .header-right .pop .desk-only { display: none; }
+  .ribbon .pop { width: min(300px, calc(100vw - 16px)); max-width: none; }
   .phone-hub { display: block; }
   .hub-apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px 2px 8px; }
   .hub-app {
