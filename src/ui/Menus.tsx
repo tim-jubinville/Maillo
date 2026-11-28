@@ -27,7 +27,8 @@ function FilterInput({ label, value, onInput, count, active, setActive, onPick }
 }) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    ref.current?.focus();
+    // On touch screens the keyboard would cover the list; the search is one tap away.
+    if (!window.matchMedia('(pointer: coarse)').matches) ref.current?.focus();
   }, []);
   return (
     <input

@@ -148,6 +148,54 @@ export function useOutside(open: boolean, close: () => void) {
   return ref;
 }
 
+/**
+ * Keeps an open menu inside the visible screen: flips it above or below its button, whichever has room,
+ * slides it sideways off the edges and caps its height (the visual viewport, so the iOS keyboard counts).
+ * Refits when its content changes (Move to / Label as open in place) and when the viewport resizes.
+ */
+function useFitPop(open: boolean, wrap: { current: HTMLElement | null }, pop: { current: HTMLElement | null }) {
+  useLayoutEffect(() => {
+    const el = pop.current;
+    const anchor = wrap.current;
+    if (!open || !el || !anchor) return;
+    const m = 8;
+    const fit = () => {
+      Object.assign(el.style, { top: '', bottom: '', left: '', right: '', maxHeight: '' });
+      const vv = window.visualViewport;
+      const vw = vv?.width ?? window.innerWidth;
+      const vh = (vv?.height ?? window.innerHeight) + (vv?.offsetTop ?? 0);
+      const a = anchor.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const below = vh - a.bottom - 6 - m;
+      const above = a.top - 6 - (vv?.offsetTop ?? 0) - m;
+      const opensUp = r.bottom <= a.top + 1;
+      const fits = opensUp ? r.top >= m : r.bottom <= vh - m;
+      const up = fits ? opensUp : above > below;
+      if (up !== opensUp) {
+        el.style.top = up ? 'auto' : 'calc(100% + 6px)';
+        el.style.bottom = up ? 'calc(100% + 6px)' : 'auto';
+      }
+      el.style.maxHeight = `${Math.max(120, Math.min(up ? above : below, 520))}px`;
+      const r2 = el.getBoundingClientRect();
+      const dx = r2.left < m ? m - r2.left : r2.right > vw - m ? vw - m - r2.right : 0;
+      if (dx) {
+        el.style.left = `${el.offsetLeft + dx}px`;
+        el.style.right = 'auto';
+      }
+    };
+    fit();
+    const mo = new MutationObserver(() => requestAnimationFrame(fit));
+    mo.observe(el, { childList: true, subtree: true });
+    window.visualViewport?.addEventListener('resize', fit);
+    window.addEventListener('resize', fit);
+    return () => {
+      mo.disconnect();
+      window.visualViewport?.removeEventListener('resize', fit);
+      window.removeEventListener('resize', fit);
+    };
+  }, [open]);
+}
+
 export function Menu({
   button,
   label,
@@ -172,6 +220,8 @@ export function Menu({
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const ref = useOutside(open, close);
+  const popRef = useRef<HTMLDivElement>(null);
+  useFitPop(open, ref, popRef);
   const timer = useRef<number | undefined>(undefined);
   const canHover = hover && window.matchMedia('(hover: hover)').matches;
   const hoverProps = canHover
@@ -192,7 +242,7 @@ export function Menu({
         {button}
       </button>
       {open && (
-        <div class={`pop ${align === 'right' ? 'right' : ''}`} role="menu" aria-label={label}>
+        <div class={`pop ${align === 'right' ? 'right' : ''}`} ref={popRef} role="menu" aria-label={label}>
           {children(close)}
         </div>
       )}
